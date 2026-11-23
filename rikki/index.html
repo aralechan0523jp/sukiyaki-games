@@ -720,10 +720,10 @@
             <button type="button" class="bgm-btn" data-track="omatsuri" aria-pressed="false"><span class="bgm-name">お祭り</span><span class="bgm-desc">篠笛と太鼓のお囃子</span></button>
             <button type="button" class="bgm-btn" data-track="funeral" aria-pressed="false"><span class="bgm-name">ホラー</span><span class="bgm-desc">荘厳なオルガン</span></button>
             <button type="button" class="bgm-btn" data-track="dance" aria-pressed="false"><span class="bgm-name">ダンス</span><span class="bgm-desc">四つ打ちEDMビート</span></button>
-            <button type="button" class="bgm-btn" data-track="battle" aria-pressed="false"><span class="bgm-name">バトル</span><span class="bgm-desc">FF風の戦闘BGM</span></button>
             <button type="button" class="bgm-btn" data-track="beethoven" aria-pressed="false"><span class="bgm-name">ベートーベン</span><span class="bgm-desc">交響曲第5番「運命」</span></button>
-            <button type="button" class="bgm-btn" data-track="sakura" aria-pressed="false"><span class="bgm-name">さくら</span><span class="bgm-desc">さくらさくら</span></button>
-            <button type="button" class="bgm-btn" data-track="musunde" aria-pressed="false"><span class="bgm-name">むすんでひらいて</span><span class="bgm-desc">童謡</span></button>
+            <button type="button" class="bgm-btn" data-track="okyo" aria-pressed="false"><span class="bgm-name">お経</span><span class="bgm-desc">読経と木魚</span></button>
+            <button type="button" class="bgm-btn" data-track="kirakira" aria-pressed="false"><span class="bgm-name">きらきら星</span><span class="bgm-desc">鉄琴</span></button>
+            <button type="button" class="bgm-btn" data-track="tanton" aria-pressed="false"><span class="bgm-name">タントン</span><span class="bgm-desc">声のタントン</span></button>
           </div>
           <p class="bgm-note">タップすると、その場で試聴が始まるよ。選んだ曲でゲームが始まるよ。</p>
         </div>
@@ -1111,6 +1111,78 @@
       tone(f * 1.004, t, 0.24, 'sawtooth', 0.045, musicGain);
       tone(f * 2, t, 0.1, 'sine', 0.018, musicGain);
     }
+    /* お経：低い読経のような声。サイン波＋三角波を重ね、ゆるいビブラートで人の声らしくする */
+    function chantTone(midi, t, dur) {
+      if (!AC) return;
+      const f = mtof(midi);
+      const o1 = AC.createOscillator(), o2 = AC.createOscillator(), g = AC.createGain();
+      o1.type = 'sine'; o1.frequency.setValueAtTime(f, t);
+      o2.type = 'triangle'; o2.frequency.setValueAtTime(f * 1.003, t);
+      const lfo = AC.createOscillator(), lfoG = AC.createGain();
+      lfo.type = 'sine'; lfo.frequency.setValueAtTime(4.6, t);
+      lfoG.gain.setValueAtTime(0, t);
+      lfoG.gain.linearRampToValueAtTime(f * 0.006, t + 0.09);
+      lfo.connect(lfoG); lfoG.connect(o1.frequency); lfoG.connect(o2.frequency);
+      const g1 = AC.createGain(); g1.gain.value = 0.16;
+      const g2 = AC.createGain(); g2.gain.value = 0.07;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(1, t + 0.03);
+      g.gain.setValueAtTime(1, t + Math.max(0.04, dur - 0.05));
+      g.gain.linearRampToValueAtTime(0, t + dur);
+      o1.connect(g1); g1.connect(g);
+      o2.connect(g2); g2.connect(g);
+      g.connect(musicGain);
+      o1.start(t); o1.stop(t + dur + 0.05);
+      o2.start(t); o2.stop(t + dur + 0.05);
+      lfo.start(t); lfo.stop(t + dur + 0.05);
+    }
+    /* 木魚：短く減衰するサイン波＋クリックで「ポクッ」という中空の木の音 */
+    function mokugyo(t) {
+      tone(760, t, 0.075, 'sine', 0.34, musicGain, 340);
+      tone(1180, t, 0.04, 'sine', 0.1, musicGain, 700);
+      noise(t, 0.018, 0.16, 'bandpass', 2600, null, musicGain);
+    }
+    /* りん（鈴）：高いサイン波と倍音が長く静かに響く小さな音 */
+    function rinBell(t) {
+      tone(2637, t, 1.5, 'sine', 0.045, musicGain);
+      tone(3951, t, 0.9, 'sine', 0.016, musicGain);
+      tone(5274, t, 0.5, 'sine', 0.008, musicGain);
+    }
+    /* 鉄琴（グロッケン）：サイン波の基音＋約4倍音の倍音、長い余韻 */
+    function glockTone(midi, t) {
+      const f = mtof(midi);
+      tone(f, t, 1.05, 'sine', 0.15, musicGain);
+      tone(f * 3.98, t, 0.55, 'sine', 0.038, musicGain);
+      tone(f * 9.24, t, 0.22, 'sine', 0.012, musicGain);
+    }
+    /* 鉄琴に添える柔らかい低音 */
+    function glockBass(midi, t, dur) {
+      tone(mtof(midi), t, dur, 'sine', 0.16, musicGain);
+      tone(mtof(midi), t, dur, 'triangle', 0.05, musicGain);
+    }
+    /* 声のタントン：ノコギリ波をフォルマント帯域フィルタに通し、
+       母音を「ア」「オ」と交互に変えて人が歌っているように聞かせる */
+    function voiceTanTon(midi, t, dur, vowelA) {
+      if (!AC) return;
+      const f = mtof(midi);
+      const o = AC.createOscillator();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t);
+      /* 母音のフォルマント（第1／第2）：ア＝明るく開く音、オ＝丸くこもる音 */
+      const f1 = vowelA ? 820 : 480, f2 = vowelA ? 1240 : 880;
+      const bp1 = AC.createBiquadFilter(); bp1.type = 'bandpass'; bp1.frequency.value = f1; bp1.Q.value = 1.1;
+      const bp2 = AC.createBiquadFilter(); bp2.type = 'bandpass'; bp2.frequency.value = f2; bp2.Q.value = 1.6;
+      const g1 = AC.createGain(); g1.gain.value = 0.85;
+      const g2 = AC.createGain(); g2.gain.value = 0.5;
+      const g = AC.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.21, t + 0.045);
+      g.gain.setValueAtTime(0.21, t + Math.max(0.05, dur - 0.06));
+      g.gain.linearRampToValueAtTime(0, t + dur);
+      o.connect(bp1); bp1.connect(g1); g1.connect(g);
+      o.connect(bp2); bp2.connect(g2); g2.connect(g);
+      g.connect(musicGain);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
     /* ================= BGMトラック定義 =================
        どの曲も8分音符グリッド（4小節ループ）で、ゲームの拍・テンポ上昇と完全に同期する。
        食材の出現／判定は拍グリッド側で決まるため、曲を変えてもタイミングは変わらない */
@@ -1147,21 +1219,6 @@
           [81, 0, 79, 76, 74, 0, 71, 0]
         ]
       },
-      /* バトル：FF風の戦闘BGM。演奏スタイルはデフォルト（いつもの）と同じ
-         キック／ハット／スネア／ベース／プラックで、ゲームのテンポに追従する */
-      battle: {
-        chords: [50, 50, 46, 45, 50, 50, 46, 45],
-        melody: [
-          [74, 0, 77, 81, 86, 81, 77, 81],
-          [74, 0, 77, 81, 84, 81, 77, 74],
-          [82, 0, 77, 74, 70, 74, 77, 82],
-          [81, 0, 76, 73, 69, 73, 76, 81],
-          [86, 0, 81, 77, 74, 77, 81, 86],
-          [84, 0, 81, 77, 81, 84, 88, 84],
-          [82, 0, 77, 74, 70, 74, 77, 82],
-          [81, 0, 76, 73, 76, 81, 0, 0]
-        ]
-      },
       /* ベートーベン：交響曲第5番「運命」。演奏スタイルはデフォルト（いつもの）と同じ */
       beethoven: {
         chords: [48, 48, 53, 48, 48, 48, 51, 43],
@@ -1176,32 +1233,36 @@
           [63, 0, 62, 0, 60, 0, 0, 0]
         ]
       },
-      /* さくら：さくらさくら。演奏スタイルはデフォルト（いつもの）と同じ */
-      sakura: {
-        chords: [45, 45, 40, 45, 45, 45, 40, 45],
+      /* お経：低い読経の単音＋8分音符ごとの木魚＋2小節ごとのりん（専用スタイルで演奏） */
+      okyo: {
+        chords: [45, 45, 45, 45],
         melody: [
-          [69, 0, 71, 72, 0, 71, 69, 71],
-          [69, 0, 64, 0, 69, 0, 0, 0],
-          [69, 0, 71, 72, 0, 74, 72, 71],
-          [69, 71, 69, 64, 0, 69, 0, 0],
-          [72, 0, 71, 72, 0, 71, 69, 71],
-          [69, 0, 64, 0, 69, 0, 0, 0],
-          [71, 0, 69, 71, 0, 72, 71, 69],
-          [64, 0, 69, 0, 69, 0, 0, 0]
+          [57, 57, 57, 57, 59, 57, 57, 55],
+          [57, 57, 57, 57, 59, 61, 59, 57],
+          [57, 57, 57, 57, 59, 57, 55, 54],
+          [57, 57, 59, 57, 55, 0, 54, 0]
         ]
       },
-      /* むすんでひらいて：童謡。演奏スタイルはデフォルト（いつもの）と同じ */
-      musunde: {
-        chords: [48, 55, 53, 48, 48, 55, 53, 48],
+      /* きらきら星：鉄琴（グロッケン）の音色＋小節頭の柔らかい低音（専用スタイルで演奏） */
+      kirakira: {
+        chords: [48, 41, 48, 43, 48, 41],
         melody: [
-          [67, 72, 76, 72, 74, 71, 72, 0],
-          [67, 72, 76, 72, 74, 72, 0, 0],
-          [69, 0, 69, 74, 72, 71, 72, 74],
-          [76, 74, 71, 72, 0, 0, 0, 0],
-          [67, 72, 76, 72, 74, 71, 72, 0],
-          [67, 72, 76, 72, 74, 72, 0, 0],
-          [69, 0, 69, 74, 72, 71, 72, 74],
-          [76, 74, 71, 72, 0, 72, 74, 76]
+          [72, 72, 79, 79, 81, 81, 79, 0],
+          [77, 77, 76, 76, 74, 74, 72, 0],
+          [79, 79, 77, 77, 76, 76, 74, 0],
+          [79, 79, 77, 77, 76, 76, 74, 0],
+          [72, 72, 79, 79, 81, 81, 79, 0],
+          [77, 77, 76, 76, 74, 74, 72, 0]
+        ]
+      },
+      /* タントン：声で「タン」「トン」と歌う音色＋軽いキックとハット（専用スタイルで演奏） */
+      tanton: {
+        chords: [48, 43, 48, 43],
+        melody: [
+          [72, 67, 72, 67, 69, 67, 64, 67],
+          [72, 67, 72, 67, 74, 72, 69, 67],
+          [72, 67, 72, 67, 69, 67, 64, 67],
+          [72, 0, 67, 0, 64, 0, 0, 0]
         ]
       },
     };
@@ -1257,6 +1318,31 @@
         if (slot % 2 === 1) edmBass(root, t, eighthDur * 0.9);
         if (slot === 0 && lv >= 3) edmBass(root + 12, t, eighthDur * 0.7);
         if (mel) sawLead(mel, t);
+        return;
+      }
+      if (trackId === 'okyo') {
+        /* 読経：低い声のような単音の繰り返し。木魚は8分音符ごとに「ポクッ」、
+           りんは2小節ごとに小さく1回。小節頭では根音の低い声が1小節ぶん静かに伸びる */
+        mokugyo(t);
+        if (slot === 0) {
+          chantTone(root, t, eighthDur * 7.6);
+          if (bar % 2 === 0) rinBell(t);
+        }
+        if (mel) chantTone(mel, t, eighthDur * 0.92);
+        return;
+      }
+      if (trackId === 'kirakira') {
+        /* 鉄琴：グロッケンの長い余韻でメロディを鳴らし、小節頭に柔らかい低音を添える */
+        if (slot === 0) glockBass(root, t, eighthDur * 3.2);
+        if (mel) glockTone(mel, t);
+        return;
+      }
+      if (trackId === 'tanton') {
+        /* 声のタントン：8分音符ごとに母音を「ア」「オ」と交互に変えて歌う。
+           キックとハットで軽くリズムを付ける */
+        if (slot === 0 || slot === 4) kick(t);
+        if (slot % 2 === 1) hat(t, 0.07); else hat(t, 0.03);
+        if (mel) voiceTanTon(mel, t, eighthDur * 0.94, (bar * 8 + slot) % 2 === 0);
         return;
       }
       /* いつもの：従来のBGMそのまま */
