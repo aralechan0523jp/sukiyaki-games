@@ -1156,6 +1156,8 @@
       try { localStorage.setItem('rikki-judge-offset', String(judgeOffsetMs)); } catch (e) { /* 保存できない環境では今回だけ適用 */ }
       const valEl = $('offsetVal');
       if (valEl) valEl.textContent = formatOffset(judgeOffsetMs);
+      /* 輪と点線ガイドの表示位置もオフセットに連動させる */
+      applyRingShift();
     }
 
     /* 1つの8分音符ぶんの演奏。ゲーム本体とタイトルのプレビューで共用する */
@@ -1479,21 +1481,35 @@
 
     /* ================= 描画ループ ================= */
     let layoutCache = { w: 0, targetX: 0, spawnX: 0, potX: 0, potY: 0 };
+    /* ============ 判定位置の表示（白い輪・点線ガイド）をタイミング微調整に連動 ============
+       PERFECTになるタップ時刻は「目標時刻＋オフセット」なので、その瞬間に食材の中心が
+       到達している位置へ、白い輪と中央の点線ガイドを必ず一体で同じ量だけずらす
+       （点線は常に輪の中心を通る）。ずらす量 ＝ 現在のスクロール速度（px/秒）× オフセット（秒）。
+       オフセットがプラスなら左へ、マイナスなら右へ。判定そのものは従来どおり時刻ベースで変更しない */
+    function applyRingShift() {
+      if (!layoutCache.w) return;
+      const bar = (G.playing && AC) ? Math.max(0, currentBarAt(AC.currentTime)) : 0;
+      const travel = travelForBar(bar);
+      const speed = travel > 0 ? (layoutCache.spawnX - layoutCache.targetX) / travel : 0;
+      const cx = layoutCache.targetX - speed * (judgeOffsetMs / 1000);
+      els.targetRing.style.left = cx + 'px';
+      els.apRing.style.left = cx + 'px';
+      els.guideLine.style.left = cx + 'px';
+      /* 炎マスクの穴（判定サークルの中心）も輪に合わせて一緒にずらす */
+      if (els.flames) els.flames.style.setProperty('--holeX', (cx + 4).toFixed(1) + 'px');
+    }
     function measure() {
       const w = els.stage.clientWidth;
       layoutCache.w = w;
       layoutCache.targetX = Math.max(118, w * 0.27);
       layoutCache.spawnX = w + 46;
-      els.targetRing.style.left = layoutCache.targetX + 'px';
-      els.apRing.style.left = layoutCache.targetX + 'px';
-      els.guideLine.style.left = layoutCache.targetX + 'px';
+      applyRingShift();
       /* 炎マスクの穴：判定サークルの中心を #flames 要素内の座標に直して渡す
-         （#flames は left:-4px・高さ84%でステージ下部に置かれている。サークル中心はステージ高さの56%） */
+         （#flames は left:-4px・高さ84%でステージ下部に置かれている。サークル中心はステージ高さの56%）。
+         横位置（--holeX）は applyRingShift() が輪と一体で設定する */
       if (els.flames) {
         const sh = els.stage.clientHeight;
-        const holeX = layoutCache.targetX + 4;
         const holeY = sh * 0.56 - (sh - els.flames.clientHeight);
-        els.flames.style.setProperty('--holeX', holeX.toFixed(1) + 'px');
         els.flames.style.setProperty('--holeY', holeY.toFixed(1) + 'px');
       }
       const sr = els.stage.getBoundingClientRect();
@@ -1510,6 +1526,8 @@
       if (!G.playing || G.over) return;
       const now = AC.currentTime;
       const { targetX, spawnX } = layoutCache;
+      /* レベルでスクロール速度が変わるので、輪とガイドのずらし量を毎フレーム追随させる */
+      applyRingShift();
       /* 停電の終了（ゲームは止まらず、暗闇の中でも判定は続く） */
       if (G.blackoutUntil && now >= G.blackoutUntil) {
         G.blackoutUntil = 0;
