@@ -2224,7 +2224,7 @@
     /* 共有バスケットの値は他人の入力かもしれないので、数値以外は表示に使わない */
     function entryPots(e) { const v = Number(e.pots != null ? e.pots : (e.servings != null ? e.servings : 0)); return Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0; }
     function entryCombo(e) { const v = Number(e.combo != null ? e.combo : (e.maxCombo != null ? e.maxCombo : 0)); return Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0; }
-    function toFullWidthNum(s) { return String(s).replace(/[0-9,]/g, (c) => c === ',' ? '，' : String.fromCharCode(0xFF10 + (c.charCodeAt(0) - 48))); }
+    function toFullWidthNum(s) { return String(s).replace(/[0-9,]/g, (c) => c === ',' ? ',' : String.fromCharCode(0xFF10 + (c.charCodeAt(0) - 48))); }
     function renderRankingList(listEl, entries) {
       if (!listEl) return;
       /* 全角＋縁取りの豪華スコアはタイトル画面のランキングだけに適用する */
