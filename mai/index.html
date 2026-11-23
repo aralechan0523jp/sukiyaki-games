@@ -1428,7 +1428,7 @@
       perfect: 0, good: 0, miss: 0,
       potChops: 0, pots: 0, level: 1,
       tempoResetDone: false, tempoResetBar: -1, tempoDrop: 0, tempoLevel: 1,
-      chopAnimStart: -1, faceUntil: 0, lastFood: -1, rafId: 0, schedTimer: 0, lastChopAt: -Infinity,
+      chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, rafId: 0, schedTimer: 0, lastChopAt: -Infinity,
       blackoutUntil: 0, warnTimer: 0
     };
     const els = {};
@@ -1643,6 +1643,13 @@
         if (tier < 4 && Math.random() < 0.18) slots = pick(PATTERNS[tier + 1]);
       }
       const pw = perfectWin(lv), gw = goodWin(lv);
+      /* 食材同士が重なって見分けられなくなるのを防ぐ最低間隔（秒）。
+         食材は「レーンの長さ ÷ travel（秒）」の速さで流れるため、画面が狭いほど
+         同じ拍間隔でもピクセル間隔が詰まる。アイコン幅62px＋余白6px＝68pxぶんの
+         時間に換算し、これを下回る間隔の音符は出さない（間引く）。
+         テンポが変わっても（21人前で♪=92に戻った後も）ピクセル基準なので常に効く */
+      const lanePx = (layoutCache.spawnX > layoutCache.targetX) ? (layoutCache.spawnX - layoutCache.targetX) : 320;
+      const minGapSec = 68 / (lanePx / travel);
       slots.forEach((s) => {
         const hitTime = t0 + s * ed;
         /* 30人前以降は、しらたきも他の野菜と同様にかぶって出てくる（間隔の制限なし）。
@@ -1667,6 +1674,13 @@
         }
         const shirataki = !!shiraType;
         const xlong = shiraType === 'xl';
+        /* 最低間隔の確保：直前の食材（小節をまたぐ場合も含む）から68pxぶん
+           空いていない音符は間引いて、アイコンも名前ラベルも重ならないようにする。
+           しらたきは従来どおりの特殊な出現のまま（この間引きの対象外） */
+        if (!shirataki) {
+          if (hitTime - G.lastFoodTime < minGapSec) return;
+          G.lastFoodTime = hitTime;
+        }
         let item;
         if (hazard) item = pick(HAZARDS);
         else if (xlong) item = SHIRATAKI_XL;
@@ -2129,7 +2143,7 @@
         score: 0, combo: 0, maxCombo: 0, hearts: 3,
         perfect: 0, good: 0, miss: 0, potChops: 0, pots: 0, level: 1,
         tempoResetDone: false, tempoResetBar: -1, tempoDrop: 0, tempoLevel: 1,
-        chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastChopAt: -Infinity,
+        chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, lastChopAt: -Infinity,
         blackoutUntil: 0, warnTimer: 0
       });
       clearTimeout(G.warnTimer);
