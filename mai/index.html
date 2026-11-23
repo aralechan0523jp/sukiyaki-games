@@ -250,7 +250,8 @@
         position:absolute; top:74%; font-size:56px; line-height:1;
         opacity:0; filter:drop-shadow(0 3px 3px rgba(80,40,0,.35));
       }
-      .cracker.left{ left:2px; transform-origin:20% 85%; }
+      /* 左クラッカーは右寄せした達成文字に追随させ、左端のキャラクターに被らないよう内側へ */
+      .cracker.left{ left:16%; transform-origin:20% 85%; }
       .cracker.right{ right:2px; transform-origin:80% 85%; }
       #crackers.on .cracker.left{ animation:crackerPopL .55s cubic-bezier(.34,1.6,.5,1) forwards; }
       #crackers.on .cracker.right{ animation:crackerPopR .55s cubic-bezier(.34,1.6,.5,1) .09s forwards; }
@@ -265,8 +266,9 @@
         100%{ opacity:1; transform:scaleX(-1) scale(1) rotate(0deg); }
       }
       .confetti-piece{ position:absolute; z-index:13; pointer-events:none; border-radius:2px; }
+      /* 達成文字は中央(50%)だと左寄りに見えキャラクターに寄るため、右寄せ(62%)に。高さ74%は現状維持 */
       #potBanner{
-        position:absolute; top:74%; left:50%; transform:translateX(-50%);
+        position:absolute; top:74%; left:62%; transform:translateX(-50%);
         z-index:14; pointer-events:none; opacity:0; text-align:center; white-space:nowrap;
         font-family:"Mochiy Pop One",sans-serif; font-size:clamp(32px, 9.2vw, 54px);
         color:#e8231c;
@@ -1523,7 +1525,8 @@
       const W = layoutCache.w || els.stage.clientWidth, H = layoutCache.h || els.stage.clientHeight;
       if (!W || !H) return;
       const oy = H * 0.78;
-      [{ ox: 20, dir: 1 }, { ox: W - 20, dir: -1 }].forEach((side) => {
+      /* 紙吹雪の噴き出し位置も右寄せしたクラッカーに合わせる（左は16%付近、右は右端のまま） */
+      [{ ox: Math.round(W * 0.16) + 28, dir: 1 }, { ox: W - 20, dir: -1 }].forEach((side) => {
         for (let i = 0; i < 30; i++) {
           const p = document.createElement('div');
           p.className = 'confetti-piece';
@@ -2089,10 +2092,10 @@
       const judged = G.perfect + G.good + G.miss;
       const acc = judged ? G.perfect / judged : 0;
       let rank = 'D', word = 'まだまだ修行中！';
-      if (acc >= 0.7 && G.pots >= 21) { rank = 'S'; word = 'すき焼きマスター！'; }
-      else if (acc >= 0.6) { rank = 'A'; word = '見事な包丁さばき！'; }
-      else if (acc >= 0.5) { rank = 'B'; word = 'なかなかの腕前！'; }
-      else if (acc >= 0.4) { rank = 'C'; word = 'もう少しで一人前！'; }
+      if (acc >= 0.8 && G.pots >= 22) { rank = 'S'; word = 'すき焼きマスター！'; }
+      else if (acc >= 0.7 && G.pots >= 18) { rank = 'A'; word = '見事な包丁さばき！'; }
+      else if (acc >= 0.6) { rank = 'B'; word = 'なかなかの腕前！'; }
+      else if (acc >= 0.5) { rank = 'C'; word = 'もう少しで一人前！'; }
       els.rankBig.textContent = rank;
       els.rankWord.textContent = word;
       els.stScore.textContent = G.score.toLocaleString('ja-JP');
