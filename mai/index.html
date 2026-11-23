@@ -354,20 +354,14 @@
       .half.small .foodSvg{ width:28px; height:28px; }
       /* 長いしらたき（8人前〜）：横に長く、中心が分かりにくい。前後は少し間をあける（30人前〜は他の野菜と同じ） */
       .note.long{ width:136px; margin-left:-68px; }
-      .note.long .foodSvg{ width:130px; height:50px; opacity:.96; }
-      .note.long .foodName{ font-size:10.5px; white-space:nowrap; letter-spacing:.02em; }
+      .note.long .foodSvg{ width:130px; height:50px; opacity:.88; transform:scaleY(.8); transform-origin:center; }
+      .note.long .foodName{ font-size:10.5px; letter-spacing:.04em; background:rgba(255,250,238,.72); }
       /* 超ロングしらたき（25人前〜）：さらに横に長く、もっと中心が分かりにくい */
       .note.xlong{ width:218px; margin-left:-109px; }
       .note.xlong .foodSvg{ width:212px; height:48px; }
-      .note.xlong .foodName{ font-size:10px; }
       .note.shirataki .centerGuide{ display:none !important; }
-      .note.shirataki .foodSvg{ animation:shiratakiWiggle .85s ease-in-out infinite alternate; }
-      @keyframes shiratakiWiggle{
-        from{ transform:translateY(-1.5px) rotate(-1.1deg) scaleX(1); }
-        to{ transform:translateY(1.5px) rotate(1.1deg) scaleX(1.03); }
-      }
       .half.long{ width:136px; margin-left:-68px; }
-      .half.long .foodSvg{ width:130px; height:50px; }
+      .half.long .foodSvg{ width:130px; height:50px; transform:scaleY(.8); }
       .half.xlong{ width:218px; margin-left:-109px; }
       .half.xlong .foodSvg{ width:212px; height:48px; }
       #judgePop.show{ animation:judgeIn .45s ease-out; }
@@ -646,7 +640,6 @@
       }
       #testBadge[hidden]{ display:none; }
       @media (prefers-reduced-motion: reduce){
-        .note.shirataki .foodSvg{ animation:none; }
         #flames::before, .flame{ animation:none; }
         #judgePop.show, #sfxPop.show, #banner.show, #comboBanner.show, #potSvgWrap.bounce, #warnBanner.show, #potBanner.show{ animation-duration:.01s; }
         #comboBanner.show{ animation-name:comboIn; }
@@ -927,9 +920,9 @@
       { name: '豆腐', svg: '<svg viewBox="0 0 64 64"><rect x="11" y="13" width="42" height="39" rx="6" fill="#fdfcf6" stroke="#d8d0ba" stroke-width="2.5"/><rect x="11" y="13" width="42" height="11" rx="5" fill="#f1ecd9"/><circle cx="24" cy="36" r="2.6" fill="#9dbb7e"/><circle cx="37" cy="43" r="2.6" fill="#9dbb7e"/><circle cx="43" cy="32" r="2.6" fill="#9dbb7e"/></svg>' }
     ];
     /* 8人前完成後に出る長い食材：波打ったしらたき。横に長く中心が分かりにくい。前後は少しだけ空ける（30人前以降は他の野菜と同じ） */
-    const SHIRATAKI = { name: 'しらた〜〜〜き', svg: '<svg viewBox="0 0 128 64"><g fill="none" stroke-linecap="round"><path d="M5 20 C18 8 30 32 44 20 C58 8 70 32 84 20 C98 8 110 30 123 18" stroke="#cfcfc2" stroke-width="8"/><path d="M5 20 C18 8 30 32 44 20 C58 8 70 32 84 20 C98 8 110 30 123 18" stroke="#fffffa" stroke-width="5"/><path d="M5 36 C19 25 31 47 47 36 C63 25 75 47 89 36 C101 27 112 44 123 34" stroke="#cfcfc2" stroke-width="8"/><path d="M5 36 C19 25 31 47 47 36 C63 25 75 47 89 36 C101 27 112 44 123 34" stroke="#fcfcf4" stroke-width="5"/><path d="M12 50 C26 41 38 57 54 49 C70 41 82 57 96 49 C106 43 114 53 120 47" stroke="#d8d8cc" stroke-width="7"/><path d="M12 50 C26 41 38 57 54 49 C70 41 82 57 96 49 C106 43 114 53 120 47" stroke="#fffffa" stroke-width="4.2"/><path d="M54 27 C47 18 60 12 64 19 C68 26 58 32 53 28 M70 43 C63 35 76 29 80 36 C84 43 74 49 69 44" stroke="#e9e9dd" stroke-width="4.2"/><path d="M30 14 C44 24 52 12 66 20 M62 52 C76 42 88 54 102 44" stroke="#ffffff" stroke-width="3.4" opacity=".85"/></g></svg>' };
+    const SHIRATAKI = { name: 'しらた〜〜〜き', svg: '<svg viewBox="0 0 160 64"><g fill="none" stroke-linecap="round"><path d="M3 21 Q19 7 35 21 T67 21 T99 21 T131 21 T163 21" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 33 Q19 19 35 33 T67 33 T99 33 T131 33 T163 33" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 45 Q19 31 35 45 T67 45 T99 45 T131 45 T163 45" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 21 Q19 7 35 21 T67 21 T99 21 T131 21 T163 21" stroke="#fdfcf4" stroke-width="3.5"/><path d="M-3 27 Q13 40 29 27 T61 27 T93 27 T125 27 T157 27" stroke="#f4f1e4" stroke-width="3.5"/><path d="M3 33 Q19 19 35 33 T67 33 T99 33 T131 33 T163 33" stroke="#fdfcf4" stroke-width="3.5"/><path d="M-3 39 Q13 52 29 39 T61 39 T93 39 T125 39 T157 39" stroke="#f4f1e4" stroke-width="3.5"/><path d="M3 45 Q19 31 35 45 T67 45 T99 45 T131 45 T163 45" stroke="#fdfcf4" stroke-width="3.5"/></g></svg>' };
     /* 25人前完成後に出る超ロングしらたき：さらに横に長く、中心はもっと分かりにくい */
-    const SHIRATAKI_XL = { name: 'しらた〜〜〜〜〜〜〜き', svg: '<svg viewBox="0 0 200 64"><g fill="none" stroke-linecap="round"><path d="M4 20 C14 8 24 32 36 20 C48 8 58 32 70 20 C82 8 92 32 104 20 C116 8 126 32 138 20 C150 8 160 32 172 20 C182 10 190 28 196 18" stroke="#cfcfc2" stroke-width="7.5"/><path d="M4 20 C14 8 24 32 36 20 C48 8 58 32 70 20 C82 8 92 32 104 20 C116 8 126 32 138 20 C150 8 160 32 172 20 C182 10 190 28 196 18" stroke="#fffffa" stroke-width="4.6"/><path d="M4 36 C15 25 25 47 38 36 C51 25 61 47 74 36 C87 25 97 47 110 36 C123 25 133 47 146 36 C159 25 169 47 182 36 C189 30 193 38 196 34" stroke="#cfcfc2" stroke-width="7.5"/><path d="M4 36 C15 25 25 47 38 36 C51 25 61 47 74 36 C87 25 97 47 110 36 C123 25 133 47 146 36 C159 25 169 47 182 36 C189 30 193 38 196 34" stroke="#fcfcf4" stroke-width="4.6"/><path d="M10 50 C22 41 32 57 46 49 C60 41 70 57 84 49 C98 41 108 57 122 49 C136 41 146 57 160 49 C172 42 182 53 190 47" stroke="#d8d8cc" stroke-width="6.5"/><path d="M10 50 C22 41 32 57 46 49 C60 41 70 57 84 49 C98 41 108 57 122 49 C136 41 146 57 160 49 C172 42 182 53 190 47" stroke="#fffffa" stroke-width="3.8"/><path d="M84 27 C77 18 90 12 94 19 C98 26 88 32 83 28 M102 43 C95 35 108 29 112 36 C116 43 106 49 101 44 M150 27 C143 18 156 12 160 19 C164 26 154 32 149 28" stroke="#e9e9dd" stroke-width="3.8"/><path d="M44 14 C58 24 66 12 82 20 M96 52 C110 42 122 54 138 44" stroke="#ffffff" stroke-width="3" opacity=".85"/></g></svg>' };
+    const SHIRATAKI_XL = { name: 'しらた〜〜〜〜〜〜〜き', svg: '<svg viewBox="0 0 240 64"><g fill="none" stroke-linecap="round"><path d="M3 21 Q19 7 35 21 T67 21 T99 21 T131 21 T163 21 T195 21 T227 21 T243 21" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 33 Q19 19 35 33 T67 33 T99 33 T131 33 T163 33 T195 33 T227 33 T243 33" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 45 Q19 31 35 45 T67 45 T99 45 T131 45 T163 45 T195 45 T227 45 T243 45" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 21 Q19 7 35 21 T67 21 T99 21 T131 21 T163 21 T195 21 T227 21 T243 21" stroke="#fdfcf4" stroke-width="3.5"/><path d="M-3 27 Q13 40 29 27 T61 27 T93 27 T125 27 T157 27 T189 27 T221 27 T237 27" stroke="#f4f1e4" stroke-width="3.5"/><path d="M3 33 Q19 19 35 33 T67 33 T99 33 T131 33 T163 33 T195 33 T227 33 T243 33" stroke="#fdfcf4" stroke-width="3.5"/><path d="M-3 39 Q13 52 29 39 T61 39 T93 39 T125 39 T157 39 T189 39 T221 39 T237 39" stroke="#f4f1e4" stroke-width="3.5"/><path d="M3 45 Q19 31 35 45 T67 45 T99 45 T131 45 T163 45 T195 45 T227 45 T243 45" stroke="#fdfcf4" stroke-width="3.5"/></g></svg>' };
     const SFX_WORDS = ['トン！', 'ザクッ！', 'シャキッ！', 'トン！', 'スパッ！'];
     /* 切るとハートが減る危険アイテム（22人前完成後から低確率で出現、スルーでボーナス） */
     const HAZARDS = [
@@ -1441,6 +1434,7 @@
       perfect: 0, good: 0, miss: 0,
       potChops: 0, pots: 0, level: 1,
       tempoResetDone: false, tempoResetBar: -1, tempoDrop: 0, tempoLevel: 1,
+      densityResetDone: false, densityResetBar: -1, densityDrop: 0,
       chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, lastFoodWidth: 62, rafId: 0, schedTimer: 0, lastChopAt: -Infinity,
       blackoutUntil: 0, warnTimer: 0
     };
@@ -1636,6 +1630,17 @@
       if (G.tempoResetBar >= 0 && bar >= G.tempoResetBar) return Math.max(1, lv - G.tempoDrop);
       return lv;
     };
+    /* 譜面の密度（8分音符パターンの5段階ティア）専用の計算：21人前完成で一度だけ
+       ティアを一番下（0＝最もまばらな段階）に戻す。ティアはレベルから
+       tierForLevel（上限4）で決まるため、ティアそのものを引くと上限に張り付いて
+       二度と上がらなくなる。そこでテンポと同じく「密度用のレベル」をリセット時点の
+       レベルとの差（densityDrop）だけ下げてからティアを求める：発動小節では密度レベルが
+       1に戻ってティア0になり、その後は通常どおりレベルアップに合わせて再び段階が
+       上がっていく。判定幅は通常のレベルで決まるため、これはパターン選択だけに使う */
+    const densityTierForBar = (bar, lv) => {
+      if (G.densityResetBar >= 0 && bar >= G.densityResetBar) return tierForLevel(Math.max(1, lv - G.densityDrop));
+      return tierForLevel(lv);
+    };
     const bpmForBar = (bar) => bpmForLevel(tempoLevelForBar(bar));
     const eighthDurForBar = (bar) => 60 / bpmForBar(bar) / 2;
     const travelForBar = (bar) => clamp(4 * 60 / bpmForBar(bar), 1.15, 2.7);
@@ -1647,7 +1652,7 @@
       if (bar === 0) { G.banners.push({ time: t0, text: 'リズムに のって…' }); return; }
       if (bar === 1) G.banners.push({ time: t0, text: 'スタート！' });
       if (bar > 1 && lv > levelForBar(bar - 1)) G.banners.push({ time: t0, text: 'レベルアップ！ テンポアップ！', jingle: true });
-      const tier = tierForLevel(lv);
+      const tier = densityTierForBar(bar, lv);
       let slots;
       const restChance = Math.max(0, 0.22 - lv * 0.02);
       if (Math.random() < restChance) slots = pick([[0], [0, 4], [0, 2]]);
@@ -2101,6 +2106,16 @@
           G.tempoResetBar = G.nextBarToGen;
           G.tempoDrop = Math.max(0, levelForBar(G.tempoResetBar) - 7);
         }
+        /* 21人前到達で一度だけ、テンポのリセットとあわせて譜面の密度
+           （8分音符パターンの5段階ティア）も一番下に戻す（1プレイにつき1回だけ）。
+           まだ生成されていない次の小節から適用し、その小節で密度用のレベルが1に
+           戻るよう現在のレベルとの差を記録する。以後はレベルアップに合わせて
+           ティアが再び上がっていく */
+        if (G.pots === 21 && !G.densityResetDone) {
+          G.densityResetDone = true;
+          G.densityResetBar = G.nextBarToGen;
+          G.densityDrop = Math.max(0, levelForBar(G.densityResetBar) - 1);
+        }
         /* 21人前到達の最初に、食べられない食材への注意を一度だけ警告表示する
            （停電警告と同じ目立つバナー。ゲームは止めない） */
         if (G.pots === 21) {
@@ -2183,6 +2198,7 @@
         score: 0, combo: 0, maxCombo: 0, hearts: 3,
         perfect: 0, good: 0, miss: 0, potChops: 0, pots: 0, level: 1,
         tempoResetDone: false, tempoResetBar: -1, tempoDrop: 0, tempoLevel: 1,
+        densityResetDone: false, densityResetBar: -1, densityDrop: 0,
         chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, lastFoodWidth: 62, lastChopAt: -Infinity,
         blackoutUntil: 0, warnTimer: 0
       });
