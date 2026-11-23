@@ -615,6 +615,28 @@
       .bgm-btn.selected .bgm-desc{ color:#ffe3ec; }
       .bgm-note{ font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:8px 0 0; }
 
+      /* ---------- タイミング微調整 ---------- */
+      .offset-box{
+        background:var(--card); border:2px solid var(--line); border-radius:16px;
+        padding:12px 16px 10px; margin:0 auto 18px; max-width:430px;
+        box-shadow:var(--shadow); text-align:left;
+      }
+      .offset-title{ font-family:"Mochiy Pop One",sans-serif; font-size:14px; color:var(--red); margin:0 0 8px; }
+      .offset-row{ display:flex; align-items:center; justify-content:center; gap:14px; }
+      .offset-btn{
+        font-family:"Zen Maru Gothic",sans-serif; font-weight:900; font-size:22px; line-height:1;
+        width:52px; height:52px; border-radius:50%; cursor:pointer;
+        background:var(--bg); color:var(--ink); border:2px solid var(--line); box-shadow:0 3px 0 var(--line);
+      }
+      .offset-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 var(--line); }
+      .offset-btn:disabled{ opacity:.35; cursor:default; }
+      .offset-btn:disabled:active{ transform:none; box-shadow:0 3px 0 var(--line); }
+      .offset-val{
+        font-family:"Mochiy Pop One",sans-serif; font-size:24px; color:var(--ink);
+        min-width:110px; text-align:center; font-variant-numeric:tabular-nums;
+      }
+      .offset-note{ font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:8px 0 0; }
+
       /* ---------- 結果画面のランキング登録表示 ---------- */
       .submit-box{ background:var(--bg); border:2px solid var(--line); border-radius:14px; padding:12px 14px; margin:4px 0 10px; }
       .submit-box .submit-title{ font-family:"Mochiy Pop One",sans-serif; font-size:15px; color:var(--red); margin:0 0 8px; }
@@ -668,6 +690,15 @@
             <button type="button" class="bgm-btn" data-track="horror" aria-pressed="false"><span class="bgm-name">ホラー</span><span class="bgm-desc">不気味なオルゴール</span></button>
           </div>
           <p class="bgm-note">タップすると、その場で試聴が始まるよ。選んだ曲でゲームが始まるよ。</p>
+        </div>
+        <div class="offset-box">
+          <p class="offset-title">⏱️ タイミング微調整</p>
+          <div class="offset-row">
+            <button type="button" class="offset-btn" id="offsetMinus" aria-label="タイミングを10ミリ秒早める">−</button>
+            <span class="offset-val" id="offsetVal">0ms</span>
+            <button type="button" class="offset-btn" id="offsetPlus" aria-label="タイミングを10ミリ秒遅くする">＋</button>
+          </div>
+          <p class="offset-note">音楽に合わせて押して「遅い」と感じたら＋、「早い」と感じたら−に調整してね。設定はこの端末に保存されるよ。</p>
         </div>
         <div class="howto">
           <h2>あそびかた</h2>
@@ -919,9 +950,14 @@
     const tierForLevel = (lv) => clamp(Math.floor(lv / 2), 0, 4);
     const perfectWin = (lv) => clamp(0.048 - (lv - 1) * 0.002, 0.032, 0.048);
     const goodWin = (lv) => clamp(0.110 - (lv - 1) * 0.004, 0.075, 0.110);
-    /* 判定タイミング微調整（秒）：BGMのビートに合わせて切ると早切りに感じる分、
-       判定の基準時刻をこの値だけ前倒しする。体感に合わせて調整する場合はこの1か所だけ変更する */
-    const JUDGE_OFFSET = 0;
+    /* 判定タイミング微調整（秒）：タイトル画面で10ms単位（−200ms〜+200ms）で調整でき、
+       localStorage（mai-judge-offset）に保存される。判定では「タップ時刻−目標時刻」の差から
+       この値を差し引く（プラス＝タップが遅れ気味でもPERFECT側に寄る補正） */
+    let JUDGE_OFFSET = 0;
+    try {
+      const savedOffset = parseInt(localStorage.getItem('mai-judge-offset'), 10);
+      if (!isNaN(savedOffset)) JUDGE_OFFSET = clamp(savedOffset, -200, 200) / 1000;
+    } catch (e) { /* 保存が無い・使えない環境では0msのまま */ }
     const PATTERNS = [
       [[0,2,4,6],[0,2,4],[0,4,6],[0,2,6],[2,4,6],[0,4]],
       [[0,2,4,6],[0,2,4,7],[0,3,4,6],[0,2,5,6],[0,1,4,6],[0,2,4,6]],
@@ -1803,7 +1839,7 @@
         }
         if (n.judged) continue;
         const dt = n.hitTime - now;
-        if (dt - JUDGE_OFFSET < -n.gw) {
+        if (dt + JUDGE_OFFSET < -n.gw) {
           if (n.hazard) { judgeDodge(n); continue; }
           judgeMiss(n); if (G.over) return; continue;
         }
@@ -2022,11 +2058,12 @@
       if (AC.currentTime - G.lastChopAt < cooldown) return;
       G.lastChopAt = AC.currentTime;
       G.chopAnimStart = performance.now();
-      const now = AC.currentTime + JUDGE_OFFSET;
+      const now = AC.currentTime;
       let best = null, bestAbs = Infinity;
       for (const n of G.notes) {
         if (n.judged || n.falling) continue;
-        const d = Math.abs(now - n.hitTime);
+        /* 目標時刻との差から微調整オフセットを差し引いて判定する */
+        const d = Math.abs(now - n.hitTime - JUDGE_OFFSET);
         if (d < bestAbs) { bestAbs = d; best = n; }
       }
       if (best && bestAbs <= best.gw) {
@@ -2170,7 +2207,32 @@
     });
     selectTrack(currentTrack, false);
     $('rankingRefresh').addEventListener('click', loadRanking);
-    $('rankingNameInput').addEventListener('input', (e) => { playerName = e.target.value; });
+    /* 名前は入力のたびにこの端末へ保存し、次回起動時に復元する */
+    try {
+      const savedName = localStorage.getItem('mai-player-name');
+      if (savedName) { playerName = savedName; $('rankingNameInput').value = savedName; }
+    } catch (e) { /* 保存が無い・使えない環境では従来の初期値のまま */ }
+    $('rankingNameInput').addEventListener('input', (e) => {
+      playerName = e.target.value;
+      try { localStorage.setItem('mai-player-name', playerName); } catch (err) { /* 保存できない環境では今回だけ適用 */ }
+    });
+    /* タイミング微調整：−／＋ボタンで10ms単位、−200ms〜+200ms。変更のたびに保存する */
+    const offsetValEl = $('offsetVal');
+    function renderOffset() {
+      const ms = Math.round(JUDGE_OFFSET * 1000);
+      offsetValEl.textContent = (ms > 0 ? '+' : ms < 0 ? '−' : '') + Math.abs(ms) + 'ms';
+      $('offsetMinus').disabled = ms <= -200;
+      $('offsetPlus').disabled = ms >= 200;
+    }
+    function stepOffset(deltaMs) {
+      const ms = clamp(Math.round(JUDGE_OFFSET * 1000) + deltaMs, -200, 200);
+      JUDGE_OFFSET = ms / 1000;
+      try { localStorage.setItem('mai-judge-offset', String(ms)); } catch (e) { /* 保存できない環境では今回だけ適用 */ }
+      renderOffset();
+    }
+    $('offsetMinus').addEventListener('click', () => stepOffset(-10));
+    $('offsetPlus').addEventListener('click', () => stepOffset(10));
+    renderOffset();
     loadRanking();
     knifeArm.setAttribute('transform', 'rotate(-26 99 90)');
     </script>
