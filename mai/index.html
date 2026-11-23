@@ -609,11 +609,12 @@
         box-shadow:var(--shadow); text-align:left;
       }
       .bgm-title{ font-family:"Mochiy Pop One",sans-serif; font-size:14px; color:var(--red); margin:0 0 8px; }
-      .bgm-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+      .bgm-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:1fr; gap:8px; }
       .bgm-btn{
         font-family:"Zen Maru Gothic",sans-serif; text-align:left; cursor:pointer;
         background:var(--bg); color:var(--ink); border:2px solid var(--line); border-radius:12px;
-        padding:9px 12px; min-height:52px; box-shadow:0 3px 0 var(--line);
+        padding:9px 12px; width:100%; height:100%; min-height:64px; box-shadow:0 3px 0 var(--line);
+        display:flex; flex-direction:column; justify-content:center;
       }
       .bgm-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 var(--line); }
       .bgm-btn .bgm-name{ display:block; font-family:"Mochiy Pop One",sans-serif; font-size:14.5px; }
@@ -681,6 +682,10 @@
             <button type="button" class="bgm-btn" data-track="omatsuri" aria-pressed="false"><span class="bgm-name">お祭り</span><span class="bgm-desc">篠笛と太鼓のお囃子</span></button>
             <button type="button" class="bgm-btn" data-track="tokyoso" aria-pressed="false"><span class="bgm-name">徒競走</span><span class="bgm-desc">速く弾む運動会マーチ</span></button>
             <button type="button" class="bgm-btn" data-track="horror" aria-pressed="false"><span class="bgm-name">ホラー</span><span class="bgm-desc">不気味なオルゴール</span></button>
+            <button type="button" class="bgm-btn" data-track="battle" aria-pressed="false"><span class="bgm-name">バトル</span><span class="bgm-desc">FF風の戦闘BGM</span></button>
+            <button type="button" class="bgm-btn" data-track="beethoven" aria-pressed="false"><span class="bgm-name">ベートーベン</span><span class="bgm-desc">交響曲第5番「運命」</span></button>
+            <button type="button" class="bgm-btn" data-track="sakura" aria-pressed="false"><span class="bgm-name">さくら</span><span class="bgm-desc">さくらさくら</span></button>
+            <button type="button" class="bgm-btn" data-track="musunde" aria-pressed="false"><span class="bgm-name">むすんでひらいて</span><span class="bgm-desc">童謡</span></button>
           </div>
           <p class="bgm-note">タップすると、その場で試聴が始まるよ。選んだ曲でゲームが始まるよ。</p>
         </div>
@@ -1132,6 +1137,62 @@
           [0, 0, 81, 0, 0, 80, 0, 0],
           [84, 0, 0, 0, 88, 0, 87, 0],
           [81, 0, 0, 76, 0, 0, 0, 0]
+        ]
+      },
+      /* バトル：FF風の戦闘BGM（8小節ループ）。演奏はデフォルト（いつもの）と同じキック／ハット／スネア／ベース／プラック */
+      battle: {
+        chords: [50, 50, 46, 45, 50, 50, 46, 45],
+        melody: [
+          [74, 0, 77, 81, 86, 81, 77, 81],
+          [74, 0, 77, 81, 84, 81, 77, 74],
+          [82, 0, 77, 74, 70, 74, 77, 82],
+          [81, 0, 76, 73, 69, 73, 76, 81],
+          [86, 0, 81, 77, 74, 77, 81, 86],
+          [84, 0, 81, 77, 81, 84, 88, 84],
+          [82, 0, 77, 74, 70, 74, 77, 82],
+          [81, 0, 76, 73, 76, 81, 0, 0]
+        ]
+      },
+      /* ベートーベン：交響曲第5番「運命」（8小節ループ）。演奏はデフォルト（いつもの）と同じキック／ハット／スネア／ベース／プラック */
+      beethoven: {
+        chords: [48, 48, 53, 48, 48, 48, 51, 43],
+        melody: [
+          [67, 67, 67, 63, 0, 0, 0, 0],
+          [65, 65, 65, 62, 0, 0, 0, 0],
+          [67, 67, 67, 63, 0, 65, 67, 68],
+          [70, 70, 70, 67, 0, 0, 63, 62],
+          [63, 0, 0, 0, 65, 0, 0, 0],
+          [67, 67, 67, 63, 0, 0, 0, 0],
+          [65, 65, 65, 62, 0, 0, 0, 0],
+          [63, 0, 62, 0, 60, 0, 0, 0]
+        ]
+      },
+      /* さくら：さくらさくら（8小節ループ）。演奏はデフォルト（いつもの）と同じキック／ハット／スネア／ベース／プラック */
+      sakura: {
+        chords: [45, 45, 40, 45, 45, 45, 40, 45],
+        melody: [
+          [69, 0, 71, 72, 0, 71, 69, 71],
+          [69, 0, 64, 0, 69, 0, 0, 0],
+          [69, 0, 71, 72, 0, 74, 72, 71],
+          [69, 71, 69, 64, 0, 69, 0, 0],
+          [72, 0, 71, 72, 0, 71, 69, 71],
+          [69, 0, 64, 0, 69, 0, 0, 0],
+          [71, 0, 69, 71, 0, 72, 71, 69],
+          [64, 0, 69, 0, 69, 0, 0, 0]
+        ]
+      },
+      /* むすんでひらいて：童謡（8小節ループ）。演奏はデフォルト（いつもの）と同じキック／ハット／スネア／ベース／プラック */
+      musunde: {
+        chords: [48, 55, 53, 48, 48, 55, 53, 48],
+        melody: [
+          [67, 72, 76, 72, 74, 71, 72, 0],
+          [67, 72, 76, 72, 74, 72, 0, 0],
+          [69, 0, 69, 74, 72, 71, 72, 74],
+          [76, 74, 71, 72, 0, 0, 0, 0],
+          [67, 72, 76, 72, 74, 71, 72, 0],
+          [67, 72, 76, 72, 74, 72, 0, 0],
+          [69, 0, 69, 74, 72, 71, 72, 74],
+          [76, 74, 71, 72, 0, 72, 74, 76]
         ]
       }
     };
