@@ -338,7 +338,20 @@
         filter:drop-shadow(0 0 2px rgba(255,255,255,.9));
       }
       #notes.guided .note .centerGuide{ display:block; }
-      .note.hazard .foodName{ background:rgba(74,32,86,.88); color:#ffd9f4; }
+      /* 危険アイテムの名前ラベル：背景は通常食材と統一し、文字の色だけ紫色にする */
+      .note.hazard .foodName{ background:rgba(255,250,238,.85); color:#8e44ad; }
+      /* 大きさバリエーション（25人前〜の通常食材の一部）：1.5倍／0.5倍。
+         移動速度・判定タイミングは通常食材とまったく同じで、見た目の大きさだけが変わる */
+      .note.big{ width:93px; height:104px; margin:-56px 0 0 -46.5px; }
+      .note.big .foodSvg{ width:84px; height:84px; }
+      .note.big .foodName{ font-size:13px; }
+      .note.small{ width:31px; height:48px; margin:-26px 0 0 -15.5px; }
+      .note.small .foodSvg{ width:28px; height:28px; }
+      .note.small .foodName{ font-size:9.5px; padding:0 3px; }
+      .half.big{ width:93px; height:104px; margin:-56px 0 0 -46.5px; }
+      .half.big .foodSvg{ width:84px; height:84px; }
+      .half.small{ width:31px; height:48px; margin:-26px 0 0 -15.5px; }
+      .half.small .foodSvg{ width:28px; height:28px; }
       /* 長いしらたき（8人前〜）：横に長く、中心が分かりにくい。前後は少し間をあける（30人前〜は他の野菜と同じ） */
       .note.long{ width:136px; margin-left:-68px; }
       .note.long .foodSvg{ width:130px; height:50px; opacity:.96; }
@@ -1428,7 +1441,7 @@
       perfect: 0, good: 0, miss: 0,
       potChops: 0, pots: 0, level: 1,
       tempoResetDone: false, tempoResetBar: -1, tempoDrop: 0, tempoLevel: 1,
-      chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, rafId: 0, schedTimer: 0, lastChopAt: -Infinity,
+      chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, lastFoodWidth: 62, rafId: 0, schedTimer: 0, lastChopAt: -Infinity,
       blackoutUntil: 0, warnTimer: 0
     };
     const els = {};
@@ -1614,7 +1627,7 @@
       return G.barStarts[i];
     }
     const levelForBar = (bar) => 1 + Math.floor(Math.max(0, bar - 1) / 8);
-    /* テンポ専用のレベル：21人前完成で一度だけテンポを初期値（♪=92）に戻す。
+    /* テンポ専用のレベル：21人前完成で一度だけテンポを♪=128に戻す。
        リセットが発動する小節以降は、その時点のレベルとの差（tempoDrop）だけ
        テンポ用レベルを下げ、その後のレベルアップに合わせて再び上がっていく（上限158は従来どおり）。
        判定幅・密度などの難易度は通常のレベルで決まるため、これはテンポ計算だけに使う */
@@ -1643,13 +1656,15 @@
         if (tier < 4 && Math.random() < 0.18) slots = pick(PATTERNS[tier + 1]);
       }
       const pw = perfectWin(lv), gw = goodWin(lv);
-      /* 食材同士が重なって見分けられなくなるのを防ぐ最低間隔（秒）。
+      /* 食材同士が重なって見分けられなくなるのを防ぐ最低間隔。
          食材は「レーンの長さ ÷ travel（秒）」の速さで流れるため、画面が狭いほど
-         同じ拍間隔でもピクセル間隔が詰まる。アイコン幅62px＋余白6px＝68pxぶんの
-         時間に換算し、これを下回る間隔の音符は出さない（間引く）。
-         テンポが変わっても（21人前で♪=92に戻った後も）ピクセル基準なので常に効く */
+         同じ拍間隔でもピクセル間隔が詰まる。間隔チェックは前後の食材の実際の
+         表示幅（半分ずつ＋余白6px）をピクセルで求め、流れる速さで時間に換算する。
+         大きい食材の前後では間隔が広く、小さい食材では狭くなるので、大きさが
+         変わっても重なり防止が効く。テンポが変わっても（21人前で♪=128に戻った
+         後も）ピクセル基準なので常に効く */
       const lanePx = (layoutCache.spawnX > layoutCache.targetX) ? (layoutCache.spawnX - layoutCache.targetX) : 320;
-      const minGapSec = 68 / (lanePx / travel);
+      const pxPerSec = lanePx / travel;
       slots.forEach((s) => {
         const hitTime = t0 + s * ed;
         /* 30人前以降は、しらたきも他の野菜と同様にかぶって出てくる（間隔の制限なし）。
@@ -1661,25 +1676,39 @@
         /* 20人前完成後、まれに危険アイテムがまぎれる */
         const hazard = G.pots >= 20 && Math.random() < 0.12;
         /* 8人前完成後、長いしらたきがまぎれる（中心が分かりにくい難関食材）。
-           25人前完成後は、さらに長い超ロングしらたきもまぎれる。
+           （25人前からの超ロングしらたきは廃止。通常の長いしらたきだけが残る）
            30人前までは前後に他の食材が近すぎるときだけ通常食材に戻す（少しのかぶりは許容）。
            30人前以降は間隔チェックなしで、他の野菜と同じ密度でかぶって出る */
         let shiraType = null;
         if (!hazard && G.pots >= 8 && Math.random() < 0.24) {
-          shiraType = (G.pots >= 25 && Math.random() < 0.45) ? 'xl' : 'normal';
+          shiraType = 'normal';
           if (!overlapMode) {
-            const iso = shiraType === 'xl' ? 0.55 : 0.45;
+            const iso = 0.45;
             if (G.notes.some((n) => Math.abs(n.hitTime - hitTime) < iso)) shiraType = null;
           }
         }
         const shirataki = !!shiraType;
-        const xlong = shiraType === 'xl';
-        /* 最低間隔の確保：直前の食材（小節をまたぐ場合も含む）から68pxぶん
-           空いていない音符は間引いて、アイコンも名前ラベルも重ならないようにする。
+        const xlong = false;
+        /* 25人前以降は、通常食材の20%に大きさのバリエーションを付ける
+           （10%は1.5倍の大きさ、10%は0.5倍の大きさ）。移動速度・判定タイミングは
+           通常食材とまったく同じ（ビート通り）で、見た目の大きさだけが変わる */
+        let size = 1;
+        if (!hazard && !shirataki && G.pots >= 25) {
+          const sr = Math.random();
+          if (sr < 0.10) size = 1.5;
+          else if (sr < 0.20) size = 0.5;
+        }
+        /* 最低間隔の確保：直前の食材（小節をまたぐ場合も含む）との間隔が、
+           前後の食材の実際の表示幅（半分ずつ＋余白6px）に満たない音符は間引いて、
+           アイコンも名前ラベルも重ならないようにする。大きい食材が続くときは
+           間隔が広く必要になり、小さい食材では詰めて出せる。
            しらたきは従来どおりの特殊な出現のまま（この間引きの対象外） */
         if (!shirataki) {
-          if (hitTime - G.lastFoodTime < minGapSec) return;
+          const thisW = 62 * size;
+          const needGapSec = ((G.lastFoodWidth + thisW) / 2 + 6) / pxPerSec;
+          if (hitTime - G.lastFoodTime < needGapSec) return;
           G.lastFoodTime = hitTime;
+          G.lastFoodWidth = thisW;
         }
         let item;
         if (hazard) item = pick(HAZARDS);
@@ -1692,11 +1721,11 @@
           item = FOODS[fi];
         }
         const el = document.createElement('div');
-        el.className = 'note' + (hazard ? ' hazard' : '') + (shirataki ? ' long shirataki' + (xlong ? ' xlong' : '') : '');
+        el.className = 'note' + (hazard ? ' hazard' : '') + (shirataki ? ' long shirataki' + (xlong ? ' xlong' : '') : '') + (size === 1.5 ? ' big' : size === 0.5 ? ' small' : '');
         el.innerHTML = '<div class="centerGuide"></div><div class="foodSvg">' + item.svg + '</div><div class="foodName">' + item.name + '</div>';
         el.style.display = 'none';
         els.notes.appendChild(el);
-        G.notes.push({ hitTime: hitTime, el: el, svg: item.svg, hazard: hazard, long: shirataki, xlong: xlong, shirataki: shirataki, judged: false, falling: false, fallStart: 0, travel: travel, pw: pw, gw: gw, level: lv });
+        G.notes.push({ hitTime: hitTime, el: el, svg: item.svg, hazard: hazard, long: shirataki, xlong: xlong, shirataki: shirataki, judged: false, falling: false, fallStart: 0, travel: travel, size: size, pw: pw, gw: gw, level: lv });
       });
     }
 
@@ -1933,6 +1962,14 @@
       els.warnBanner.className = 'show';
       sfxSiren();
     }
+    /* 21人前到達時に一度だけ出す、食べられない食材への注意警告（停電警告と同じ見た目） */
+    function showHazardWarning() {
+      els.warnBanner.className = '';
+      void els.warnBanner.offsetWidth;
+      els.warnBanner.textContent = '⚠️食べられない食材に注意⚠️';
+      els.warnBanner.className = 'show';
+      sfxSiren();
+    }
     /* 一瞬だけ真っ暗に。まいちゃんの目だけが見える */
     function triggerBlackout() {
       if (!AC) return;
@@ -1999,7 +2036,7 @@
       const x = parseFloat(n.el.style.left) || layoutCache.targetX;
       ['left', 'right'].forEach((side) => {
         const h = document.createElement('div');
-        h.className = 'half ' + side + (n.long ? ' long' : '') + (n.xlong ? ' xlong' : '');
+        h.className = 'half ' + side + (n.long ? ' long' : '') + (n.xlong ? ' xlong' : '') + (n.size === 1.5 ? ' big' : n.size === 0.5 ? ' small' : '');
         h.innerHTML = '<div class="foodSvg">' + n.svg + '</div>';
         h.style.left = x + 'px';
         els.stage.appendChild(h);
@@ -2052,19 +2089,22 @@
         if (G.pots === 8) {
           setTimeout(() => { if (G.playing && !G.over) showBanner('しらた〜〜〜き 登場！'); }, 1750);
         }
-        if (G.pots === 25) {
-          setTimeout(() => { if (G.playing && !G.over) showBanner('しらた〜〜〜〜〜〜〜き 登場！'); }, 1750);
-        }
         if (G.pots === 30) {
           setTimeout(() => { if (G.playing && !G.over) showBanner('しらたきも かぶって登場！'); }, 1750);
         }
-        /* 21人前到達で一度だけテンポを初期値（♪=92）に戻す（1プレイにつき1回だけ）。
-           まだ生成されていない次の小節から適用し、その小節のテンポが♪=92になるよう
-           現在のレベルとの差を記録する。以後はレベルアップに合わせて再び上がっていく */
+        /* 21人前到達で一度だけテンポを♪=128に戻す（1プレイにつき1回だけ）。
+           まだ生成されていない次の小節から適用し、その小節のテンポが♪=128になるよう
+           現在のレベルとの差を記録する（テンポレベル7＝92＋6×6＝128）。
+           以後はレベルアップに合わせて+6ずつ再び上がっていく（上限158は従来どおり） */
         if (G.pots === 21 && !G.tempoResetDone) {
           G.tempoResetDone = true;
           G.tempoResetBar = G.nextBarToGen;
-          G.tempoDrop = Math.max(0, levelForBar(G.tempoResetBar) - 1);
+          G.tempoDrop = Math.max(0, levelForBar(G.tempoResetBar) - 7);
+        }
+        /* 21人前到達の最初に、食べられない食材への注意を一度だけ警告表示する
+           （停電警告と同じ目立つバナー。ゲームは止めない） */
+        if (G.pots === 21) {
+          setTimeout(() => { if (G.playing && !G.over && !G.paused) showHazardWarning(); }, 1750);
         }
       }
       if (G.combo > 0 && G.combo % 50 === 0) celebrateCombo(G.combo);
@@ -2143,7 +2183,7 @@
         score: 0, combo: 0, maxCombo: 0, hearts: 3,
         perfect: 0, good: 0, miss: 0, potChops: 0, pots: 0, level: 1,
         tempoResetDone: false, tempoResetBar: -1, tempoDrop: 0, tempoLevel: 1,
-        chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, lastChopAt: -Infinity,
+        chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, lastFoodWidth: 62, lastChopAt: -Infinity,
         blackoutUntil: 0, warnTimer: 0
       });
       clearTimeout(G.warnTimer);
