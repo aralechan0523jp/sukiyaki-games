@@ -174,6 +174,23 @@
       /* A案：豪華ポディウム（1位 金＋王冠／2位 銀／3位 銅） */
       .ranking-list li.rank-1, .ranking-list li.rank-2, .ranking-list li.rank-3{
         border-bottom:none; border-radius:14px; margin:0 0 7px; padding:10px 12px;
+        flex-direction:column; align-items:stretch; gap:2px;
+      }
+      /* 上位3位のレイアウト：1行目＝順位バッジ＋大きな得点、2行目＝名前（全文）＋最大コンボ＋人前。
+         行背景・王冠／メダル・得点の色付けなどのデザインは従来のまま */
+      .ranking-list .rk-row1{ display:flex; align-items:center; gap:10px; width:100%; }
+      .ranking-list .rk-row1 .rk-badge{ flex:0 0 auto; flex-direction:row; align-items:center; gap:4px; }
+      .ranking-list .rk-row1 .rk-crown{ margin-bottom:0; }
+      .ranking-list li.rank-1 .rk-row1 .rk-rank, .ranking-list li.rank-2 .rk-row1 .rk-rank, .ranking-list li.rank-3 .rk-row1 .rk-rank{ margin-top:0; }
+      .ranking-list .rk-row1 .rk-score{ margin-left:auto; }
+      .ranking-list .rk-row2{ display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 10px; width:100%; margin-top:2px; line-height:1.45; }
+      .ranking-list .rk-row2 .rk-name{ flex:0 1 auto; overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; }
+      .ranking-list .rk-row2 .rk-meta{ font-size:11.5px; font-weight:700; white-space:nowrap; }
+      .ranking-list li.rank-1 .rk-row2 .rk-meta{ color:#7a5200; }
+      .ranking-list li.rank-2 .rk-row2 .rk-meta{ color:#5b6b7a; }
+      .ranking-list li.rank-3 .rk-row2 .rk-meta{ color:#7a4312; }
+      @media (max-width:420px){
+        .ranking-list .rk-row2 .rk-meta{ font-size:11px; }
       }
       .ranking-list li.rank-1{
         background:linear-gradient(120deg, #fff7c2 0%, #ffe45e 32%, #ffc400 58%, #ffdf6b 82%, #fff3a6 100%);
@@ -2128,8 +2145,6 @@
           const rk = document.createElement('span'); rk.className = 'rk-rank'; rk.textContent = (i + 1) + '位';
           badge.appendChild(rk);
         }
-        const main = document.createElement('span'); main.className = 'rk-main';
-        const top = document.createElement('span'); top.className = 'rk-top'; top.style.display = 'flex';
         const nm = document.createElement('span'); nm.className = 'rk-name'; nm.textContent = e.name != null ? String(e.name) : 'ななし';
         const sc = document.createElement('span'); sc.className = 'rk-score';
         if (fancyScore && i < 3) {
@@ -2140,13 +2155,27 @@
         } else {
           sc.textContent = score.toLocaleString('ja-JP') + '点';
         }
-        top.appendChild(nm); top.appendChild(sc);
-        const sb = document.createElement('span'); sb.className = 'rk-sub';
-        const comboPart = document.createElement('span'); comboPart.textContent = '最大コンボ ' + entryCombo(e);
-        const potsPart = document.createElement('span'); potsPart.textContent = entryPots(e) + '人前';
-        sb.appendChild(comboPart); sb.appendChild(potsPart);
-        main.appendChild(top); main.appendChild(sb);
-        li.appendChild(badge); li.appendChild(main);
+        if (i < 3) {
+          /* 上位3位：1行目＝順位バッジ＋大きな得点、2行目＝名前（全文）＋最大コンボ＋人前 */
+          const row1 = document.createElement('span'); row1.className = 'rk-row1';
+          row1.appendChild(badge); row1.appendChild(sc);
+          const row2 = document.createElement('span'); row2.className = 'rk-row2';
+          const comboPart = document.createElement('span'); comboPart.className = 'rk-meta'; comboPart.textContent = '最大コンボ ' + entryCombo(e);
+          const potsPart = document.createElement('span'); potsPart.className = 'rk-meta'; potsPart.textContent = entryPots(e) + '人前';
+          row2.appendChild(nm); row2.appendChild(comboPart); row2.appendChild(potsPart);
+          li.appendChild(row1); li.appendChild(row2);
+        } else {
+          /* 4位以下は従来レイアウトのまま */
+          const main = document.createElement('span'); main.className = 'rk-main';
+          const top = document.createElement('span'); top.className = 'rk-top'; top.style.display = 'flex';
+          top.appendChild(nm); top.appendChild(sc);
+          const sb = document.createElement('span'); sb.className = 'rk-sub';
+          const comboPart = document.createElement('span'); comboPart.textContent = '最大コンボ ' + entryCombo(e);
+          const potsPart = document.createElement('span'); potsPart.textContent = entryPots(e) + '人前';
+          sb.appendChild(comboPart); sb.appendChild(potsPart);
+          main.appendChild(top); main.appendChild(sb);
+          li.appendChild(badge); li.appendChild(main);
+        }
         listEl.appendChild(li);
       });
     }
