@@ -526,7 +526,20 @@
         filter:drop-shadow(0 0 2px rgba(255,255,255,.9));
       }
       #notes.guided .note .centerGuide{ display:block; }
-      .note.hazard .foodName{ background:rgba(74,32,86,.88); color:#ffd9f4; }
+      /* 危険アイテムの名前ラベル：背景は通常食材と統一し、文字の色だけ紫色にする */
+      .note.hazard .foodName{ background:rgba(255,250,238,.85); color:#8e44ad; }
+      /* 大きさバリエーション（25人前〜の通常食材の一部）：1.5倍／0.5倍。
+         移動速度・判定タイミングは通常食材とまったく同じで、見た目の大きさだけが変わる */
+      .note.big{ width:93px; height:104px; margin:-56px 0 0 -46.5px; }
+      .note.big .foodSvg{ width:84px; height:84px; }
+      .note.big .foodName{ font-size:13px; }
+      .note.small{ width:31px; height:48px; margin:-26px 0 0 -15.5px; }
+      .note.small .foodSvg{ width:28px; height:28px; }
+      .note.small .foodName{ font-size:9.5px; padding:0 3px; }
+      .half.big{ width:93px; height:104px; margin:-56px 0 0 -46.5px; }
+      .half.big .foodSvg{ width:84px; height:84px; }
+      .half.small{ width:31px; height:48px; margin:-26px 0 0 -15.5px; }
+      .half.small .foodSvg{ width:28px; height:28px; }
       /* 長いしらたき（8人前以降）：横に長く波打って中心が分かりにくい。
          30人前までは前後に少しだけ間をあけて流れる（周りの食材と少し重なることもある）。
          30人前以降は他の野菜と同じように、野菜と重なって流れてくる。
@@ -667,6 +680,14 @@
       .result-img{ width:100%; height:auto; border-radius:14px; border:3px solid var(--wood); margin-top:12px; display:block; }
       .result-bonus{ margin:14px 0 0; font-family:"Mochiy Pop One",sans-serif; font-size:16px; color:var(--red); }
       .result-bonus[hidden]{ display:none; }
+      /* ---------- テストプレイ表示（?test=N のときだけ画面の隅に出る） ---------- */
+      #testBadge{
+        position:fixed; right:10px; bottom:10px; z-index:60; pointer-events:none;
+        font-size:11px; font-weight:900; letter-spacing:.08em;
+        color:#fff; background:rgba(40,25,15,.72);
+        border-radius:999px; padding:4px 10px;
+      }
+      #testBadge[hidden]{ display:none; }
       @media (prefers-reduced-motion: reduce){
         #judgePop.show, #sfxPop.show, #banner.show, #potSvgWrap.bounce, #warnBanner.show, #comboAnnounce.show, #servingAnnounce.show{ animation-duration:.01s; }
         #crackers.show .cracker.left, #crackers.show .cracker.right{ animation-duration:.01s; }
@@ -898,6 +919,8 @@
       </div>
     </div>
 
+    <div id="testBadge" hidden>テスト</div>
+
     <script>
     'use strict';
     const $ = (id) => document.getElementById(id);
@@ -930,7 +953,7 @@
        30人前以降は他の野菜と同じ扱いで、間をあけずに野菜と重なって出てくる。
        麺は細めにして、重なっても他の食材を覆い隠さないようにする */
     const SHIRATAKI = { name: 'しらた〜〜〜き', svg: '<svg viewBox="0 0 160 64"><g fill="none" stroke-linecap="round"><path d="M3 21 Q19 7 35 21 T67 21 T99 21 T131 21 T163 21" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 33 Q19 19 35 33 T67 33 T99 33 T131 33 T163 33" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 45 Q19 31 35 45 T67 45 T99 45 T131 45 T163 45" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 21 Q19 7 35 21 T67 21 T99 21 T131 21 T163 21" stroke="#fdfcf4" stroke-width="3.5"/><path d="M-3 27 Q13 40 29 27 T61 27 T93 27 T125 27 T157 27" stroke="#f4f1e4" stroke-width="3.5"/><path d="M3 33 Q19 19 35 33 T67 33 T99 33 T131 33 T163 33" stroke="#fdfcf4" stroke-width="3.5"/><path d="M-3 39 Q13 52 29 39 T61 39 T93 39 T125 39 T157 39" stroke="#f4f1e4" stroke-width="3.5"/><path d="M3 45 Q19 31 35 45 T67 45 T99 45 T131 45 T163 45" stroke="#fdfcf4" stroke-width="3.5"/></g></svg>' };
-    /* さらに長いしらたき（25人前完成後から出現）：通常のしらたきよりさらに横長で中心がもっと分かりにくい */
+    /* さらに長いしらたき：25人前からの超ロング版は廃止したため未使用（通常のしらたきだけが出現する） */
     const SHIRATAKI_XL = { name: 'しらた〜〜〜〜〜〜〜き', svg: '<svg viewBox="0 0 240 64"><g fill="none" stroke-linecap="round"><path d="M3 21 Q19 7 35 21 T67 21 T99 21 T131 21 T163 21 T195 21 T227 21 T243 21" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 33 Q19 19 35 33 T67 33 T99 33 T131 33 T163 33 T195 33 T227 33 T243 33" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 45 Q19 31 35 45 T67 45 T99 45 T131 45 T163 45 T195 45 T227 45 T243 45" stroke="#d9d2bd" stroke-width="5.5"/><path d="M3 21 Q19 7 35 21 T67 21 T99 21 T131 21 T163 21 T195 21 T227 21 T243 21" stroke="#fdfcf4" stroke-width="3.5"/><path d="M-3 27 Q13 40 29 27 T61 27 T93 27 T125 27 T157 27 T189 27 T221 27 T237 27" stroke="#f4f1e4" stroke-width="3.5"/><path d="M3 33 Q19 19 35 33 T67 33 T99 33 T131 33 T163 33 T195 33 T227 33 T243 33" stroke="#fdfcf4" stroke-width="3.5"/><path d="M-3 39 Q13 52 29 39 T61 39 T93 39 T125 39 T157 39 T189 39 T221 39 T237 39" stroke="#f4f1e4" stroke-width="3.5"/><path d="M3 45 Q19 31 35 45 T67 45 T99 45 T131 45 T163 45 T195 45 T227 45 T243 45" stroke="#fdfcf4" stroke-width="3.5"/></g></svg>' };
 
     /* ================= 難易度 ================= */
@@ -1292,6 +1315,20 @@
       tone(104, t + 0.05, 0.7, 'sawtooth', 0.045);
     }
 
+    /* ================= テストプレイ（URLパラメータ ?test=N） =================
+       ?test=18 のように付けて開いたときだけ有効。ゲーム開始時に「完成したすき焼き」が
+       N人前から始まり、その人前数に見合うレベル／テンポからスタートする。
+       パラメータが無い通常プレイには一切影響しない。テスト中はランキングに登録しない */
+    const TEST_START_POTS = (() => {
+      try {
+        const v = parseInt(new URLSearchParams(window.location.search).get('test'), 10);
+        if (Number.isFinite(v) && v >= 1 && v <= 99) return v;
+      } catch (e) { /* パラメータが読めない環境では通常プレイ */ }
+      return 0;
+    })();
+    const TEST_MODE = TEST_START_POTS > 0;
+    if (TEST_MODE) $('testBadge').hidden = false;
+
     /* ================= ゲーム状態 ================= */
     const G = {
       playing: false, over: false, paused: false,
@@ -1300,6 +1337,7 @@
       score: 0, combo: 0, maxCombo: 0, hearts: 3,
       perfect: 0, good: 0, miss: 0,
       potChops: 0, pots: 0, level: 1,
+      tempoResetDone: false, tempoResetBar: -1, tempoDrop: 0, tempoLevel: 1,
       chopAnimStart: -1, faceUntil: 0, lastFood: -1, rafId: 0, schedTimer: 0,
       blackoutUntil: 0, warnTimer: 0,
       lastLongHitTime: -999, longClearUntil: -999, lastChopTime: -999
@@ -1316,15 +1354,24 @@
       while (G.barStarts.length <= i) {
         const idx = G.barStarts.length;
         if (idx === 0) { G.barStarts.push(G.startTime); continue; }
-        const prevLv = 1 + Math.floor((idx - 2) / 8);
-        const prevBpm = bpmForLevel(Math.max(1, prevLv));
+        const prevBpm = bpmForBar(idx - 1);
         G.barStarts.push(G.barStarts[idx - 1] + 8 * (60 / prevBpm / 2));
       }
       return G.barStarts[i];
     }
     const levelForBar = (bar) => 1 + Math.floor(Math.max(0, bar - 1) / 8);
-    const eighthDurForBar = (bar) => 60 / bpmForLevel(levelForBar(bar)) / 2;
-    const travelForBar = (bar) => clamp(4 * 60 / bpmForLevel(levelForBar(bar)), 1.15, 2.7);
+    /* テンポ専用のレベル：21人前完成で一度だけテンポを♪=128に戻す。
+       リセットが発動する小節以降は、その時点のレベルとの差（tempoDrop）だけ
+       テンポ用レベルを下げ、その後のレベルアップに合わせて再び上がっていく（上限158は従来どおり）。
+       判定幅・密度などの難易度は通常のレベルで決まるため、これはテンポ計算だけに使う */
+    const tempoLevelForBar = (bar) => {
+      const lv = levelForBar(bar);
+      if (G.tempoResetBar >= 0 && bar >= G.tempoResetBar) return Math.max(1, lv - G.tempoDrop);
+      return lv;
+    };
+    const bpmForBar = (bar) => bpmForLevel(tempoLevelForBar(bar));
+    const eighthDurForBar = (bar) => 60 / bpmForBar(bar) / 2;
+    const travelForBar = (bar) => clamp(4 * 60 / bpmForBar(bar), 1.15, 2.7);
 
     /* ================= 譜面生成 ================= */
     function generateBar(bar) {
@@ -1351,17 +1398,15 @@
         if (!longFree && hitTime <= G.longClearUntil) continue;
         /* 20人前完成後、まれに危険アイテムがまぎれる */
         const hazard = G.pots >= 20 && Math.random() < 0.12;
-        /* しらたき：8人前完成後から通常版、25人前完成後からはさらに長い版も（中心ガイドなし）。
+        /* しらたき：8人前完成後から出現（中心ガイドなし）。25人前からの超ロング版は廃止し、通常版だけが残る。
            30人前までは前回のしらたきから少し間をあけて出すが、30人前以降は他の野菜と同じ間隔で出る */
         let longKind = null;
         if (!hazard && G.pots >= 8 && (longFree || hitTime - G.lastLongHitTime > 2.0)) {
-          if (G.pots >= 25 && Math.random() < 0.10) longKind = 'xlong';
-          else if (Math.random() < 0.15) longKind = 'long';
+          if (Math.random() < 0.15) longKind = 'long';
         }
         const longItem = !!longKind;
         let item;
         if (hazard) item = pick(HAZARDS);
-        else if (longKind === 'xlong') item = SHIRATAKI_XL;
         else if (longKind === 'long') item = SHIRATAKI;
         else {
           let fi = Math.floor(Math.random() * FOODS.length);
@@ -1382,13 +1427,22 @@
           }
           /* 30人前以降は取り除きも間の確保もなし：他の野菜と完全に同じ出方で重なって流れる */
         }
+        /* 25人前以降は、通常食材の20%に大きさのバリエーションを付ける
+           （10%は1.5倍の大きさ、10%は0.5倍の大きさ）。移動速度・判定タイミングは
+           通常食材とまったく同じ（ビート通り）で、見た目の大きさだけが変わる */
+        let size = 1;
+        if (!hazard && !longItem && G.pots >= 25) {
+          const sr = Math.random();
+          if (sr < 0.10) size = 1.5;
+          else if (sr < 0.20) size = 0.5;
+        }
         const el = document.createElement('div');
-        el.className = 'note' + (hazard ? ' hazard' : '') + (longItem ? ' long' : '') + (longKind === 'xlong' ? ' xlong' : '');
+        el.className = 'note' + (hazard ? ' hazard' : '') + (longItem ? ' long' : '') + (size === 1.5 ? ' big' : size === 0.5 ? ' small' : '');
         /* しらたきは中心が分かりにくい仕様なので、中心ガイド線は付けない */
         el.innerHTML = (longItem ? '' : '<div class="centerGuide"></div>') + '<div class="foodSvg">' + item.svg + '</div><div class="foodName">' + item.name + '</div>';
         el.style.display = 'none';
         els.notes.appendChild(el);
-        G.notes.push({ hitTime: hitTime, el: el, svg: item.svg, hazard: hazard, long: longItem, xlong: longKind === 'xlong', judged: false, falling: false, fallStart: 0, travel: travel, pw: pw, pwe: pwe, gw: gw, level: lv });
+        G.notes.push({ hitTime: hitTime, el: el, svg: item.svg, hazard: hazard, long: longItem, xlong: false, size: size, judged: false, falling: false, fallStart: 0, travel: travel, pw: pw, pwe: pwe, gw: gw, level: lv });
       }
     }
 
@@ -1517,7 +1571,8 @@
       const cb = currentBarAt(now);
       const lv = levelForBar(Math.max(1, cb));
       if (lv !== G.level) { G.level = lv; }
-      els.levelVal.textContent = 'Lv.' + lv + ' ♪=' + bpmForLevel(lv);
+      G.tempoLevel = tempoLevelForBar(Math.max(1, cb));
+      els.levelVal.textContent = 'Lv.' + lv + ' ♪=' + bpmForLevel(G.tempoLevel);
       /* ビートパルス */
       const bs = barStart(Math.max(0, cb)), ed = eighthDurForBar(Math.max(0, cb));
       const beatFloat = (now - bs) / (ed * 2);
@@ -1769,6 +1824,14 @@
       els.warnBanner.className = 'show';
       sfxSiren();
     }
+    /* 21人前到達時に一度だけ出す、食べられない食材への注意警告（停電警告と同じ見た目） */
+    function showHazardWarning() {
+      els.warnBanner.className = '';
+      void els.warnBanner.offsetWidth;
+      els.warnBanner.textContent = '⚠️食べられない食材に注意⚠️';
+      els.warnBanner.className = 'show';
+      sfxSiren();
+    }
     /* 一瞬だけ真っ暗に。リッキーの目だけが見える */
     function triggerBlackout() {
       if (!AC) return;
@@ -1805,7 +1868,7 @@
       const x = parseFloat(n.el.style.left) || layoutCache.targetX;
       ['left', 'right'].forEach((side) => {
         const h = document.createElement('div');
-        h.className = 'half ' + side + (n.long ? ' long' : '') + (n.xlong ? ' xlong' : '');
+        h.className = 'half ' + side + (n.long ? ' long' : '') + (n.size === 1.5 ? ' big' : n.size === 0.5 ? ' small' : '');
         h.innerHTML = '<div class="foodSvg">' + n.svg + '</div>';
         h.style.left = x + 'px';
         els.stage.appendChild(h);
@@ -1864,13 +1927,23 @@
         if (G.pots === 8) {
           setTimeout(() => { if (G.playing && !G.over && !G.paused) showBanner('しらた〜〜〜き 登場！'); }, 1900);
         }
-        /* 25人前到達で、さらに長いしらたきの登場をお知らせ */
-        if (G.pots === 25) {
-          setTimeout(() => { if (G.playing && !G.over && !G.paused) showBanner('しらた〜〜〜〜〜〜〜き 登場！'); }, 1900);
-        }
         /* 30人前到達で、しらたきが他の野菜と重なって出るようになることをお知らせ */
         if (G.pots === 30) {
           setTimeout(() => { if (G.playing && !G.over && !G.paused) showBanner('しらたきが野菜と一緒に流れてくる！'); }, 1900);
+        }
+        /* 21人前到達で一度だけテンポを♪=128に戻す（1プレイにつき1回だけ）。
+           まだ生成されていない次の小節から適用し、その小節のテンポが♪=128になるよう
+           現在のレベルとの差を記録する（テンポレベル7＝92＋6×6＝128）。
+           以後はレベルアップに合わせて+6ずつ再び上がっていく（上限158は従来どおり） */
+        if (G.pots === 21 && !G.tempoResetDone) {
+          G.tempoResetDone = true;
+          G.tempoResetBar = G.nextBarToGen;
+          G.tempoDrop = Math.max(0, levelForBar(G.tempoResetBar) - 7);
+        }
+        /* 21人前到達の最初に、食べられない食材への注意を一度だけ警告表示する
+           （停電警告と同じ目立つバナー。ゲームは止めない） */
+        if (G.pots === 21) {
+          setTimeout(() => { if (G.playing && !G.over && !G.paused) showHazardWarning(); }, 1750);
         }
       }
       /* 50コンボごとの節目は大きなアナウンス＋花火＋SE。それ以外は30コンボごとのバナー */
@@ -1952,6 +2025,7 @@
         nextEighth: 0, nextBarToGen: 0, barStarts: [], notes: [], banners: [],
         score: 0, combo: 0, maxCombo: 0, hearts: 3,
         perfect: 0, good: 0, miss: 0, potChops: 0, pots: 0, level: 1,
+        tempoResetDone: false, tempoResetBar: -1, tempoDrop: 0, tempoLevel: 1,
         chopAnimStart: -1, faceUntil: 0, lastFood: -1,
         blackoutUntil: 0, warnTimer: 0,
         lastLongHitTime: -999, longClearUntil: -999, lastChopTime: -999
@@ -1971,6 +2045,26 @@
       buildPotDots();
       updateHud(); updatePot();
       els.levelVal.textContent = 'Lv.1 ♪=92';
+      if (TEST_MODE) {
+        /* テストプレイ：指定の人前数から始め、その人前数に見合うレベル／テンポにする。
+           レベルは小節番号から決まるため、開始小節をそのレベルの先頭まで進め、
+           小節の開始時刻を今に詰め直すことで「途中から遊んでいる」状態を作る。
+           人前数に連動する仕様（しらたき・危険アイテム・停電など）は G.pots を
+           初期値にするだけで通常プレイと同じ条件になる */
+        G.pots = TEST_START_POTS;
+        const startLevel = clamp(1 + Math.floor(TEST_START_POTS / 2), 1, 12);
+        const startBar = 1 + (startLevel - 1) * 8;
+        G.nextEighth = startBar * 8;
+        G.nextBarToGen = startBar;
+        barStart(startBar);
+        const shift = G.barStarts[startBar] - G.startTime;
+        for (let i = 0; i < G.barStarts.length; i++) G.barStarts[i] -= shift;
+        G.startTime -= shift;
+        G.level = startLevel;
+        G.tempoLevel = startLevel;
+        els.levelVal.textContent = 'Lv.' + startLevel + ' ♪=' + bpmForLevel(startLevel);
+        updatePot();
+      }
       measure();
       clearInterval(G.schedTimer);
       G.schedTimer = setInterval(schedulerTick, 25);
@@ -1993,13 +2087,11 @@
       stopServingCelebration();
       stopLoops();
       sfxGameOver();
-      const judged = G.perfect + G.good + G.miss;
-      const acc = judged ? G.perfect / judged : 0;
       let rank = 'D', word = 'まだまだ修行中！';
-      if (acc >= 0.8 && G.pots >= 22) { rank = 'S'; word = 'すき焼きマスター！'; }
-      else if (acc >= 0.7 && G.pots >= 18) { rank = 'A'; word = '見事な包丁さばき！'; }
-      else if (acc >= 0.6) { rank = 'B'; word = 'なかなかの腕前！'; }
-      else if (acc >= 0.5) { rank = 'C'; word = 'もう少しで一人前！'; }
+      if (G.pots >= 30) { rank = 'S'; word = 'すき焼きマスター！'; }
+      else if (G.pots >= 18) { rank = 'A'; word = '見事な包丁さばき！'; }
+      else if (G.pots >= 10) { rank = 'B'; word = 'なかなかの腕前！'; }
+      else if (G.pots >= 5) { rank = 'C'; word = 'もう少しで一人前！'; }
       els.rankBig.textContent = rank;
       els.rankWord.textContent = word;
       els.stScore.textContent = G.score.toLocaleString('ja-JP');
@@ -2018,8 +2110,14 @@
         els.resultIllust.alt = 'すき焼き鍋とリッキー';
       }
       els.resultBonusMsg.hidden = !over20;
-      /* ゲームオーバーと同時に、オンラインランキングへ自動で登録する（失敗してもゲームは止めない） */
-      submitScoreToRanking();
+      /* ゲームオーバーと同時に、オンラインランキングへ自動で登録する（失敗してもゲームは止めない）。
+         テストプレイの記録はオンラインランキングに登録しない */
+      if (TEST_MODE) {
+        const st = $('submitStatus');
+        if (st) st.textContent = 'テストプレイのため、ランキングには登録されません';
+      } else {
+        submitScoreToRanking();
+      }
       setTimeout(() => { els.resultOverlay.hidden = false; }, 650);
     }
     function setPaused(p) {
