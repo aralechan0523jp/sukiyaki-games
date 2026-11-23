@@ -615,28 +615,6 @@
       .bgm-btn.selected .bgm-desc{ color:#ffe3ec; }
       .bgm-note{ font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:8px 0 0; }
 
-      /* ---------- タイミング微調整 ---------- */
-      .offset-box{
-        background:var(--card); border:2px solid var(--line); border-radius:16px;
-        padding:12px 16px 10px; margin:0 auto 18px; max-width:430px;
-        box-shadow:var(--shadow); text-align:left;
-      }
-      .offset-title{ font-family:"Mochiy Pop One",sans-serif; font-size:14px; color:var(--red); margin:0 0 8px; }
-      .offset-row{ display:flex; align-items:center; justify-content:center; gap:14px; }
-      .offset-btn{
-        font-family:"Zen Maru Gothic",sans-serif; font-weight:900; font-size:22px; line-height:1;
-        width:52px; height:52px; border-radius:50%; cursor:pointer;
-        background:var(--bg); color:var(--ink); border:2px solid var(--line); box-shadow:0 3px 0 var(--line);
-      }
-      .offset-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 var(--line); }
-      .offset-btn:disabled{ opacity:.35; cursor:default; }
-      .offset-btn:disabled:active{ transform:none; box-shadow:0 3px 0 var(--line); }
-      .offset-val{
-        font-family:"Mochiy Pop One",sans-serif; font-size:24px; color:var(--ink);
-        min-width:110px; text-align:center; font-variant-numeric:tabular-nums;
-      }
-      .offset-note{ font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:8px 0 0; }
-
       /* ---------- 結果画面のランキング登録表示 ---------- */
       .submit-box{ background:var(--bg); border:2px solid var(--line); border-radius:14px; padding:12px 14px; margin:4px 0 10px; }
       .submit-box .submit-title{ font-family:"Mochiy Pop One",sans-serif; font-size:15px; color:var(--red); margin:0 0 8px; }
@@ -690,15 +668,6 @@
             <button type="button" class="bgm-btn" data-track="horror" aria-pressed="false"><span class="bgm-name">ホラー</span><span class="bgm-desc">不気味なオルゴール</span></button>
           </div>
           <p class="bgm-note">タップすると、その場で試聴が始まるよ。選んだ曲でゲームが始まるよ。</p>
-        </div>
-        <div class="offset-box">
-          <p class="offset-title">⏱️ タイミング微調整</p>
-          <div class="offset-row">
-            <button type="button" class="offset-btn" id="offsetMinus" aria-label="タイミングを10ミリ秒早める">−</button>
-            <span class="offset-val" id="offsetVal">0ms</span>
-            <button type="button" class="offset-btn" id="offsetPlus" aria-label="タイミングを10ミリ秒遅くする">＋</button>
-          </div>
-          <p class="offset-note">音楽に合わせて押して「遅い」と感じたら＋、「早い」と感じたら−に調整してね。設定はこの端末に保存されるよ。</p>
         </div>
         <div class="howto">
           <h2>あそびかた</h2>
@@ -950,14 +919,9 @@
     const tierForLevel = (lv) => clamp(Math.floor(lv / 2), 0, 4);
     const perfectWin = (lv) => clamp(0.048 - (lv - 1) * 0.002, 0.032, 0.048);
     const goodWin = (lv) => clamp(0.110 - (lv - 1) * 0.004, 0.075, 0.110);
-    /* 判定タイミング微調整（秒）：タイトル画面で10ms単位（−200ms〜+200ms）で調整でき、
-       localStorage（mai-judge-offset）に保存される。判定では「タップ時刻−目標時刻」の差から
+    /* 判定タイミングオフセット（秒）：−50ms固定。判定では「タップ時刻−目標時刻」の差から
        この値を差し引く（プラス＝タップが遅れ気味でもPERFECT側に寄る補正） */
-    let JUDGE_OFFSET = 0;
-    try {
-      const savedOffset = parseInt(localStorage.getItem('mai-judge-offset'), 10);
-      if (!isNaN(savedOffset)) JUDGE_OFFSET = clamp(savedOffset, -200, 200) / 1000;
-    } catch (e) { /* 保存が無い・使えない環境では0msのまま */ }
+    const JUDGE_OFFSET = -0.05;
     const PATTERNS = [
       [[0,2,4,6],[0,2,4],[0,4,6],[0,2,6],[2,4,6],[0,4]],
       [[0,2,4,6],[0,2,4,7],[0,3,4,6],[0,2,5,6],[0,1,4,6],[0,2,4,6]],
@@ -1749,7 +1713,36 @@
     }
 
     /* ================= 描画ループ ================= */
-    let layoutCache = { w: 0, h: 0, targetX: 0, spawnX: 0, potX: 0, potY: 0 };
+    let layoutCache = { w: 0, h: 0, targetX: 0, spawnX: 0, potX: 0, potY: 0, ringX: 0, maskBaseX: null, maskBaseY: 0 };
+    /* ターゲットリングの中心X：基準位置（targetX＋従来の+2px右シフト）に、タイミング
+       微調整ぶんの横ずれを加えたもの。PERFECTになるタップ時刻は「目標時刻＋オフセット」
+       で、その瞬間に食材は中心から「移動速度(px/秒)×オフセット(秒)」だけ左へ進んでいる
+       ため、輪も同じだけ左へずらす（オフセットがプラス＝輪は左、マイナス＝輪は右）。
+       移動速度は現在のレベル（テンポ）でのスクロール速度から算出する。
+       白い輪・アプローチリング・中央の点線ガイド・炎のマスク穴は、必ずこの同じ中心で
+       一体に動かし、点線が常に輪の中心を通るようにする */
+    function ringCenterX() {
+      if (!layoutCache.w) return layoutCache.targetX + 2;
+      const travel = clamp(4 * 60 / bpmForLevel(G.level || 1), 1.15, 2.7);
+      const speed = (layoutCache.spawnX - layoutCache.targetX) / travel;
+      return layoutCache.targetX + 2 - speed * JUDGE_OFFSET;
+    }
+    function updateRingPos() {
+      const x = ringCenterX();
+      layoutCache.ringX = x;
+      els.targetRing.style.left = x + 'px';
+      els.apRing.style.left = x + 'px';
+      els.guideLine.style.left = x + 'px';
+    }
+    /* 炎のマスク穴もリング中心に追随させる（measureで基準オフセットをキャッシュ済み） */
+    function updateFlameMask() {
+      if (layoutCache.maskBaseX == null) return;
+      const hx = layoutCache.maskBaseX + (layoutCache.ringX || layoutCache.targetX + 2);
+      const hy = layoutCache.maskBaseY;
+      const hole = 'radial-gradient(circle 58px at ' + hx.toFixed(1) + 'px ' + hy.toFixed(1) + 'px, transparent 0px, transparent 50px, #000 62px)';
+      els.flames.style.webkitMaskImage = hole;
+      els.flames.style.maskImage = hole;
+    }
     function measure() {
       const w = els.stage.clientWidth;
       layoutCache.w = w;
@@ -1760,22 +1753,20 @@
       fwCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       layoutCache.targetX = Math.max(118, w * 0.27);
       layoutCache.spawnX = w + 46;
-      els.targetRing.style.left = (layoutCache.targetX + 2) + 'px';
-      els.apRing.style.left = (layoutCache.targetX + 2) + 'px';
-      els.guideLine.style.left = layoutCache.targetX + 'px';
+      /* 輪と点線ガイドは一体で配置する（中心は固定オフセット−50ms分ずらす） */
+      updateRingPos();
       const sr = els.stage.getBoundingClientRect();
       const pr = els.potSvgWrap.getBoundingClientRect();
       layoutCache.potX = pr.left - sr.left + pr.width / 2;
       layoutCache.potY = -46;
       /* 炎が判定サークル（ターゲットリング）に重ならないよう、
-         #flames にリング位置の円形マスク穴を開ける（円の内側と円周付近には炎を描かない） */
+         #flames にリング位置の円形マスク穴を開ける（円の内側と円周付近には炎を描かない）。
+         穴の位置はリング中心（オフセットで動く）に追随させるため、基準オフセットを保存する */
       const fr = els.flames.getBoundingClientRect();
       if (fr.width > 0 && fr.height > 0) {
-        const hx = (sr.left + layoutCache.targetX + 2) - fr.left;
-        const hy = (sr.top + layoutCache.h * 0.56) - fr.top;
-        const hole = 'radial-gradient(circle 58px at ' + hx.toFixed(1) + 'px ' + hy.toFixed(1) + 'px, transparent 0px, transparent 50px, #000 62px)';
-        els.flames.style.webkitMaskImage = hole;
-        els.flames.style.maskImage = hole;
+        layoutCache.maskBaseX = sr.left - fr.left;
+        layoutCache.maskBaseY = (sr.top + layoutCache.h * 0.56) - fr.top;
+        updateFlameMask();
       }
     }
     function currentBarAt(now) {
@@ -1803,6 +1794,11 @@
       const cb = currentBarAt(now);
       const lv = levelForBar(Math.max(1, cb));
       if (lv !== G.level) { G.level = lv; }
+      /* テンポ上昇で食材の移動速度が変わると、オフセットぶんの輪のずれ量も変わるため、
+         輪と点線ガイドを毎フレーム一体で追随させる（炎のマスク穴もずれたら追随） */
+      const prevRingX = layoutCache.ringX;
+      updateRingPos();
+      if (Math.abs(layoutCache.ringX - prevRingX) >= 2) updateFlameMask();
       els.levelVal.textContent = 'Lv.' + lv + ' ♪=' + bpmForLevel(lv);
       /* ビートパルス */
       const bs = barStart(Math.max(0, cb)), ed = eighthDurForBar(Math.max(0, cb));
@@ -1870,7 +1866,7 @@
       els.sfxPop.className = '';
       void els.sfxPop.offsetWidth;
       els.sfxPop.textContent = perfect ? 'スパッ！' : pick(SFX_WORDS);
-      els.sfxPop.style.left = (layoutCache.targetX + rand(-16, 26)) + 'px';
+      els.sfxPop.style.left = ((layoutCache.ringX || layoutCache.targetX) + rand(-16, 26)) + 'px';
       els.sfxPop.className = 'show';
     }
     function showBanner(text) {
@@ -2216,23 +2212,6 @@
       playerName = e.target.value;
       try { localStorage.setItem('mai-player-name', playerName); } catch (err) { /* 保存できない環境では今回だけ適用 */ }
     });
-    /* タイミング微調整：−／＋ボタンで10ms単位、−200ms〜+200ms。変更のたびに保存する */
-    const offsetValEl = $('offsetVal');
-    function renderOffset() {
-      const ms = Math.round(JUDGE_OFFSET * 1000);
-      offsetValEl.textContent = (ms > 0 ? '+' : ms < 0 ? '−' : '') + Math.abs(ms) + 'ms';
-      $('offsetMinus').disabled = ms <= -200;
-      $('offsetPlus').disabled = ms >= 200;
-    }
-    function stepOffset(deltaMs) {
-      const ms = clamp(Math.round(JUDGE_OFFSET * 1000) + deltaMs, -200, 200);
-      JUDGE_OFFSET = ms / 1000;
-      try { localStorage.setItem('mai-judge-offset', String(ms)); } catch (e) { /* 保存できない環境では今回だけ適用 */ }
-      renderOffset();
-    }
-    $('offsetMinus').addEventListener('click', () => stepOffset(-10));
-    $('offsetPlus').addEventListener('click', () => stepOffset(10));
-    renderOffset();
     loadRanking();
     knifeArm.setAttribute('transform', 'rotate(-26 99 90)');
     </script>
