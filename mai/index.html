@@ -8,7 +8,7 @@
     <title>まいちゃんのすき焼き天国 ブラウザ版</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@500;700;900&family=M+PLUS+Rounded+1c:wght@800&display=swap" rel="stylesheet" />
     <style>
       button, [role="button"], select, summary, input:not([type="checkbox"], [type="radio"]) { min-height: 2rem; }
       * { box-sizing: border-box; }
@@ -199,7 +199,7 @@
         background:rgba(110,66,20,.35);
       }
       #rikki{ position:absolute; left:2px; bottom:4px; width:clamp(104px, 27%, 136px); z-index:5; pointer-events:none; }
-      #rikki svg{ width:100%; height:auto; display:block; overflow:visible; }
+      #rikki canvas{ width:100%; height:auto; display:block; }
       /* ---------- コンボ50超え：まいちゃんの炎（メラメラ） ---------- */
       #flames{
         position:absolute; left:-17%; right:-17%; top:-15%; bottom:-3%;
@@ -708,13 +708,13 @@
       }
       #stage.coop #targetRing2, #stage.coop #apRing2{ display:block; }
       #stage.coop #guideLine{ display:none; }
-      #stage.coop #rikki{ bottom:auto; top:calc(33% - 54px); width:clamp(84px, 22%, 110px); }
+      #stage.coop #rikki{ bottom:auto; top:calc(33% - 59px); width:clamp(84px, 22%, 110px); }
       #rikki2{
-        display:none; position:absolute; left:2px; top:calc(73% - 54px);
+        display:none; position:absolute; left:2px; top:calc(73% - 59px);
         width:clamp(84px, 22%, 110px); z-index:5; pointer-events:none;
       }
       #stage.coop #rikki2{ display:block; }
-      #rikki2 svg{ width:100%; height:auto; display:block; overflow:visible; }
+      #rikki2 canvas{ width:100%; height:auto; display:block; }
       .lane-tag{
         display:none; position:absolute; left:8px; z-index:6; pointer-events:none;
         font-family:"Mochiy Pop One",sans-serif; font-size:12.5px; color:#fff;
@@ -850,115 +850,10 @@
           <div class="lane-tag" id="tagBottom">2P・下段</div>
           <div id="rikki" aria-hidden="true">
             <div id="flames"></div>
-            <svg viewBox="0 0 142 150">
-              <!-- 後ろ髪：サンプル版ちびまいちゃんの黒に近い焦げ茶ボブ -->
-              <path d="M71 2 C40 2 18 24 18 56 C18 78 22 96 30 104 L112 104 C120 96 124 78 124 56 C124 24 102 2 71 2Z" fill="#2b2320"/>
-              <!-- 体：グレーのピンストライプジャケット -->
-              <path d="M38 148 L41 112 C42 102 52 97 71 97 C90 97 100 102 101 112 L104 148 Z" fill="#6d7078" stroke="#54575e" stroke-width="2.5"/>
-              <path d="M48 104 L49 146 M58 100 L59 146 M84 100 L83 146 M94 104 L93 146" stroke="rgba(255,255,255,.35)" stroke-width="2" fill="none"/>
-              <!-- 白いレースのインナー -->
-              <path d="M62 98 L80 98 L71 122 Z" fill="#fff7fa"/>
-              <path d="M62 98 L71 122 L80 98" stroke="#f3c3d4" stroke-width="1.6" fill="none" stroke-dasharray="3 3"/>
-              <!-- 紫のストラップとIDカード -->
-              <path d="M57 99 L85 139" stroke="#8e44ad" stroke-width="5" stroke-linecap="round"/>
-              <g transform="rotate(-4 88 140)">
-                <rect x="79" y="130" width="18" height="20" rx="2.5" fill="#ffffff" stroke="#c9ced6" stroke-width="1.6"/>
-                <rect x="79" y="130" width="18" height="5" fill="#8e44ad"/>
-                <rect x="82.5" y="138.5" width="11" height="2.6" fill="#c9ced6"/>
-                <rect x="82.5" y="143.5" width="11" height="2.6" fill="#c9ced6"/>
-              </g>
-              <!-- 大きく丸い顔 -->
-              <circle cx="71" cy="58" r="30" fill="#ffdfc9"/>
-              <!-- サイドの髪 -->
-              <path d="M43 38 C39 56 39 78 43 95 L52 95 C48 76 48 57 51 40 Z" fill="#2b2320"/>
-              <path d="M99 38 C103 56 103 78 99 95 L90 95 C94 76 94 57 91 40 Z" fill="#2b2320"/>
-              <!-- 前髪（目の上までの浅いライン） -->
-              <path d="M41 58 A30 30 0 0 1 101 58 C93 48 83 45 71 45 C59 45 48 48 41 58 Z" fill="#2b2320"/>
-              <!-- 大きな茶色の目（ハイライト多め） -->
-              <ellipse cx="59" cy="65" rx="5" ry="8" fill="#5a3421"/>
-              <ellipse cx="83" cy="65" rx="5" ry="8" fill="#5a3421"/>
-              <ellipse cx="59" cy="66" rx="3.2" ry="5.4" fill="#2e1a0e"/>
-              <ellipse cx="83" cy="66" rx="3.2" ry="5.4" fill="#2e1a0e"/>
-              <circle cx="57.4" cy="62.2" r="1.8" fill="#ffffff"/>
-              <circle cx="81.4" cy="62.2" r="1.8" fill="#ffffff"/>
-              <circle cx="60.7" cy="68.6" r="1" fill="#ffffff"/>
-              <circle cx="84.7" cy="68.6" r="1" fill="#ffffff"/>
-              <path d="M53 60 Q59 55 65 60 M77 60 Q83 55 89 60" stroke="#2b1a0e" stroke-width="2.4" fill="none" stroke-linecap="round"/>
-              <!-- ほっぺ -->
-              <ellipse cx="48" cy="75" rx="5.5" ry="3.2" fill="rgba(244,130,160,.55)"/>
-              <ellipse cx="94" cy="75" rx="5.5" ry="3.2" fill="rgba(244,130,160,.55)"/>
-              <!-- ちいさな鼻 -->
-              <path d="M71.6 71 Q73 73 71.6 75" stroke="#dd9c66" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-              <!-- 小さく開いた笑口 -->
-              <path id="rikkiMouth" d="M63 76 Q71 73.5 79 76 Q79 84 71 85 Q63 84 63 76 Z" fill="#c9506b" stroke="#a03a50" stroke-width="1.6" stroke-linejoin="round"/>
-              <path id="rikkiTeeth" d="M66 75.4 Q71 73.9 76 75.4 Q71 77 66 75.4 Z" fill="#ffffff"/>
-              <path id="rikkiTongue" d="M67.5 82.6 Q71 81.4 74.5 82.6 Q71 84 67.5 82.6 Z" fill="#ff9eb0" opacity=".9"/>
-              <!-- 汗（ミス時） -->
-              <path id="rikkiSweat" d="M20 8 C24 16 26 20 26 24 A6 6 0 1 1 14 24 C14 20 16 16 20 8Z" fill="#7ec8f7" opacity="0"/>
-              <!-- リボン -->
-              <g transform="translate(101 15) rotate(14)">
-                <path d="M0 0 L-12 -7 L-12 7 Z" fill="#e91e63"/>
-                <path d="M0 0 L12 -7 L12 7 Z" fill="#e91e63"/>
-                <circle cx="0" cy="0" r="4" fill="#d81b60"/>
-              </g>
-              <!-- 包丁を持つ腕 -->
-              <g id="knifeArm">
-                <path d="M96 100 C108 94 116 87 121 79" stroke="#ffdfc9" stroke-width="8" fill="none" stroke-linecap="round"/>
-                <circle cx="122" cy="77" r="5.5" fill="#ffdfc9"/>
-                <g transform="rotate(38 123 76)">
-                  <rect x="119" y="55" width="8" height="21" rx="3" fill="#8a5a33"/>
-                  <path d="M115 33 L131 33 L131 57 C131 63 115 63 115 55 Z" fill="#dfe5ec" stroke="#aeb8c4" stroke-width="1.6"/>
-                </g>
-              </g>
-            </svg>
+            <canvas id="maiCanvas" width="240" height="300"></canvas>
           </div>
           <div id="rikki2" aria-hidden="true">
-            <svg viewBox="0 0 142 150">
-              <path d="M71 2 C40 2 18 24 18 56 C18 78 22 96 30 104 L112 104 C120 96 124 78 124 56 C124 24 102 2 71 2Z" fill="#2b2320"/>
-              <path d="M38 148 L41 112 C42 102 52 97 71 97 C90 97 100 102 101 112 L104 148 Z" fill="#6d7078" stroke="#54575e" stroke-width="2.5"/>
-              <path d="M48 104 L49 146 M58 100 L59 146 M84 100 L83 146 M94 104 L93 146" stroke="rgba(255,255,255,.35)" stroke-width="2" fill="none"/>
-              <path d="M62 98 L80 98 L71 122 Z" fill="#fff7fa"/>
-              <path d="M62 98 L71 122 L80 98" stroke="#f3c3d4" stroke-width="1.6" fill="none" stroke-dasharray="3 3"/>
-              <path d="M57 99 L85 139" stroke="#8e44ad" stroke-width="5" stroke-linecap="round"/>
-              <g transform="rotate(-4 88 140)">
-                <rect x="79" y="130" width="18" height="20" rx="2.5" fill="#ffffff" stroke="#c9ced6" stroke-width="1.6"/>
-                <rect x="79" y="130" width="18" height="5" fill="#8e44ad"/>
-                <rect x="82.5" y="138.5" width="11" height="2.6" fill="#c9ced6"/>
-                <rect x="82.5" y="143.5" width="11" height="2.6" fill="#c9ced6"/>
-              </g>
-              <circle cx="71" cy="58" r="30" fill="#ffdfc9"/>
-              <path d="M43 38 C39 56 39 78 43 95 L52 95 C48 76 48 57 51 40 Z" fill="#2b2320"/>
-              <path d="M99 38 C103 56 103 78 99 95 L90 95 C94 76 94 57 91 40 Z" fill="#2b2320"/>
-              <path d="M41 58 A30 30 0 0 1 101 58 C93 48 83 45 71 45 C59 45 48 48 41 58 Z" fill="#2b2320"/>
-              <ellipse cx="59" cy="65" rx="5" ry="8" fill="#5a3421"/>
-              <ellipse cx="83" cy="65" rx="5" ry="8" fill="#5a3421"/>
-              <ellipse cx="59" cy="66" rx="3.2" ry="5.4" fill="#2e1a0e"/>
-              <ellipse cx="83" cy="66" rx="3.2" ry="5.4" fill="#2e1a0e"/>
-              <circle cx="57.4" cy="62.2" r="1.8" fill="#ffffff"/>
-              <circle cx="81.4" cy="62.2" r="1.8" fill="#ffffff"/>
-              <circle cx="60.7" cy="68.6" r="1" fill="#ffffff"/>
-              <circle cx="84.7" cy="68.6" r="1" fill="#ffffff"/>
-              <path d="M53 60 Q59 55 65 60 M77 60 Q83 55 89 60" stroke="#2b1a0e" stroke-width="2.4" fill="none" stroke-linecap="round"/>
-              <ellipse cx="48" cy="75" rx="5.5" ry="3.2" fill="rgba(244,130,160,.55)"/>
-              <ellipse cx="94" cy="75" rx="5.5" ry="3.2" fill="rgba(244,130,160,.55)"/>
-              <path d="M71.6 71 Q73 73 71.6 75" stroke="#dd9c66" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-              <path d="M63 76 Q71 73.5 79 76 Q79 84 71 85 Q63 84 63 76 Z" fill="#c9506b" stroke="#a03a50" stroke-width="1.6" stroke-linejoin="round"/>
-              <path d="M66 75.4 Q71 73.9 76 75.4 Q71 77 66 75.4 Z" fill="#ffffff"/>
-              <path d="M67.5 82.6 Q71 81.4 74.5 82.6 Q71 84 67.5 82.6 Z" fill="#ff9eb0" opacity=".9"/>
-              <g transform="translate(101 15) rotate(14)">
-                <path d="M0 0 L-12 -7 L-12 7 Z" fill="#7b6fd0"/>
-                <path d="M0 0 L12 -7 L12 7 Z" fill="#7b6fd0"/>
-                <circle cx="0" cy="0" r="4" fill="#6a5fb8"/>
-              </g>
-              <g id="knifeArm2">
-                <path d="M96 100 C108 94 116 87 121 79" stroke="#ffdfc9" stroke-width="8" fill="none" stroke-linecap="round"/>
-                <circle cx="122" cy="77" r="5.5" fill="#ffdfc9"/>
-                <g transform="rotate(38 123 76)">
-                  <rect x="119" y="55" width="8" height="21" rx="3" fill="#8a5a33"/>
-                  <path d="M115 33 L131 33 L131 57 C131 63 115 63 115 55 Z" fill="#dfe5ec" stroke="#aeb8c4" stroke-width="1.6"/>
-                </g>
-              </g>
-            </svg>
+            <canvas id="maiCanvas2" width="240" height="300"></canvas>
           </div>
           <div id="guideLine"></div>
           <div id="apRing"></div>
@@ -978,14 +873,7 @@
           <div id="warnBanner"></div>
           <div id="blackout" aria-hidden="true">
             <div class="bo-rikki">
-              <svg viewBox="0 0 142 150">
-                <circle cx="59" cy="65" r="12" fill="#fffbe8" style="filter:drop-shadow(0 0 6px #ffe45e) drop-shadow(0 0 14px #ffd83d)"/>
-                <circle cx="83" cy="65" r="12" fill="#fffbe8" style="filter:drop-shadow(0 0 6px #ffe45e) drop-shadow(0 0 14px #ffd83d)"/>
-                <circle cx="59" cy="66" r="6.5" fill="#22252a"/>
-                <circle cx="83" cy="66" r="6.5" fill="#22252a"/>
-                <circle cx="56.5" cy="61.5" r="2.2" fill="#ffffff"/>
-                <circle cx="80.5" cy="61.5" r="2.2" fill="#ffffff"/>
-              </svg>
+              <svg viewBox="0 0 120 150"><circle cx="36" cy="44" r="10" fill="#fffbe8" style="filter:drop-shadow(0 0 6px #ffe45e) drop-shadow(0 0 14px #ffd83d)"/><circle cx="58" cy="44" r="10" fill="#fffbe8" style="filter:drop-shadow(0 0 6px #ffe45e) drop-shadow(0 0 14px #ffd83d)"/><ellipse cx="36" cy="45" rx="3.2" ry="5.4" fill="#22252a"/><ellipse cx="58" cy="45" rx="3.2" ry="5.4" fill="#22252a"/><circle cx="34.6" cy="41.4" r="1.7" fill="#ffffff"/><circle cx="56.6" cy="41.4" r="1.7" fill="#ffffff"/></svg>
             </div>
           </div>
         </div>
@@ -1780,13 +1668,8 @@
     };
     const els = {};
     ['titleScreen','gameScreen','scoreVal','comboVal','comboBox','levelVal','heartsVal','stage','notes','targetRing','apRing','targetRing2','apRing2','rikki','judgePop','sfxPop','banner','warnBanner','blackout','guideLine','potDots','potMsg','potCount','potSvgWrap','pauseOverlay','resultOverlay','rankBig','rankWord','stScore','stLevel','stCombo','stPot','stPerfect','stGoodMiss','muteBtn','fwCanvas','comboBanner','flames','potBanner','crackers'].forEach((id) => els[id] = $(id));
-    const knifeArm = document.querySelector('#knifeArm');
-    const knifeArm2 = document.querySelector('#knifeArm2');
-    if (knifeArm2) knifeArm2.setAttribute('transform', 'rotate(-26 99 90)');
-    const rikkiSweat = document.querySelector('#rikkiSweat');
-    const rikkiMouth = document.querySelector('#rikkiMouth');
-    const rikkiTeeth = document.querySelector('#rikkiTeeth');
-    const rikkiTongue = document.querySelector('#rikkiTongue');
+    const maiCanvas = $('maiCanvas');
+    const maiCanvas2 = $('maiCanvas2');
 
     /* ================= コンボ演出：炎＆花火 ================= */
     /* 炎の舌をまいちゃんの周りに並べる（CSSアニメでメラメラ揺れる） */
@@ -2220,6 +2103,127 @@
       while (G.barStarts.length > b + 1 && G.barStarts[b + 1] <= now) b++;
       return b;
     }
+    /* =========================================================
+       キャラクター描画：協力プレイサンプル（maitiyanxie-li-purei-onrainsanpuru）の
+       drawMai をそのまま移植。1P（上段・1人用）＝赤リボン＋グレーのピンストライプ、
+       2P（下段）＝紫リボン＋紺色のピンストライプで見分けられるようにしている。
+       ========================================================= */
+    function roundRect(g, x, y, w, h, r) {
+      g.beginPath();
+      g.moveTo(x + r, y);
+      g.arcTo(x + w, y, x + w, y + h, r);
+      g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r);
+      g.arcTo(x, y, x + w, y, r);
+      g.closePath();
+    }
+
+    /* ---- ちびまいちゃん（中心x, 足元y, スケールsc） ---- */
+    function drawMai(g, x, baseY, sc, ribbonColor, chopT, label, isMine, bodyColor) {
+      g.save();
+      g.translate(x, baseY); g.scale(sc, sc);
+      var chop = 0;
+      if (chopT) { var p = (performance.now() - chopT) / 190; if (p < 1) chop = Math.sin(p * Math.PI); }
+      /* 体：グレーのピンストライプジャケット */
+      g.fillStyle = bodyColor || "#6d7078";
+      roundRect(g, -25, -52, 50, 54, 12); g.fill();
+      g.save(); roundRect(g, -25, -52, 50, 54, 12); g.clip();
+      g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 2;
+      for (var sx = -18; sx <= 20; sx += 9) { g.beginPath(); g.moveTo(sx, -54); g.lineTo(sx, 4); g.stroke(); }
+      /* 白レースインナー */
+      g.fillStyle = "#fff7fa"; g.beginPath(); g.moveTo(-9, -52); g.lineTo(9, -52); g.lineTo(0, -22); g.closePath(); g.fill();
+      g.strokeStyle = "#f3c3d4"; g.lineWidth = 1.4; g.setLineDash([3, 3]);
+      g.beginPath(); g.moveTo(-9, -52); g.lineTo(0, -22); g.lineTo(9, -52); g.stroke(); g.setLineDash([]);
+      /* 紫ストラップ＋IDカード */
+      g.strokeStyle = "#8e44ad"; g.lineWidth = 5; g.beginPath(); g.moveTo(-16, -50); g.lineTo(14, -8); g.stroke();
+      g.fillStyle = "#ffffff"; roundRect(g, 6, -20, 15, 19, 2.5); g.fill();
+      g.fillStyle = "#8e44ad"; g.fillRect(6, -20, 15, 5);
+      g.fillStyle = "#c9ced6"; g.fillRect(9, -11, 9, 2.4); g.fillRect(9, -6.5, 9, 2.4);
+      g.restore();
+      /* 頭：黒髪ボブ */
+      g.fillStyle = "#2b2320";
+      g.beginPath(); g.arc(0, -82, 34, 0, Math.PI * 2); g.fill();
+      g.fillRect(-34, -84, 68, 26);
+      /* 顔 */
+      g.fillStyle = "#ffdfc9";
+      g.beginPath(); g.arc(2, -78, 26.5, 0, Math.PI * 2); g.fill();
+      /* 前髪（目の上までの浅いライン） */
+      g.fillStyle = "#2b2320";
+      g.beginPath();
+      g.arc(2, -78, 26.9, Math.PI, Math.PI * 2);
+      g.quadraticCurveTo(2, -91, -24.9, -78);
+      g.closePath(); g.fill();
+      /* 大きな茶色の目 */
+      var eyes = [[-8, -74], [14, -74]];
+      for (var i = 0; i < 2; i++) {
+        g.fillStyle = "#5a3421"; g.beginPath(); g.ellipse(eyes[i][0], eyes[i][1], 4.6, 7.6, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#2e1a0e"; g.beginPath(); g.ellipse(eyes[i][0], eyes[i][1] + 1, 3.1, 5.2, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#fff"; g.beginPath(); g.arc(eyes[i][0] - 1.4, eyes[i][1] - 2.6, 1.7, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.arc(eyes[i][0] + 1.6, eyes[i][1] + 2.4, 1, 0, Math.PI * 2); g.fill();
+      }
+      /* 口・ほっぺ */
+      g.strokeStyle = "#b3543f"; g.lineWidth = 2; g.lineCap = "round";
+      g.beginPath(); g.arc(3, -63, 5.5, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke();
+      g.fillStyle = "rgba(244,130,160,.5)";
+      g.beginPath(); g.ellipse(-15, -64, 5, 3, 0, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.ellipse(21, -64, 5, 3, 0, 0, Math.PI * 2); g.fill();
+      /* リボン */
+      g.fillStyle = ribbonColor;
+      g.save(); g.translate(22, -108); g.rotate(0.25);
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(-11, -6); g.lineTo(-11, 6); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(11, -6); g.lineTo(11, 6); g.closePath(); g.fill();
+      g.beginPath(); g.arc(0, 0, 3.6, 0, Math.PI * 2); g.fill();
+      g.restore();
+      /* 右腕＋包丁（チョップで振り下ろす） */
+      g.save();
+      g.translate(24, -40); g.rotate(-0.35 + chop * 0.95);
+      g.strokeStyle = "#ffdfc9"; g.lineWidth = 7; g.lineCap = "round";
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(13, 3); g.stroke();
+      g.fillStyle = "#8a5a33"; roundRect(g, 11, -2.5, 11, 6, 3); g.fill();
+      g.fillStyle = "#dfe5ec"; g.beginPath();
+      g.moveTo(22, -3); g.lineTo(42, -6); g.quadraticCurveTo(46, 2, 40, 6); g.lineTo(22, 4); g.closePath(); g.fill();
+      g.strokeStyle = "#aeb8c4"; g.lineWidth = 1.2; g.stroke();
+      g.restore();
+      /* 名札 */
+      g.font = "800 12px 'M PLUS Rounded 1c', sans-serif";
+      g.textAlign = "center";
+      var tw = g.measureText(label).width + 14;
+      g.fillStyle = isMine ? "#e91e63" : "rgba(90,70,80,.75)";
+      roundRect(g, -tw / 2, 8, tw, 19, 9.5); g.fill();
+      g.fillStyle = "#fff"; g.fillText(label, 0, 22);
+      g.restore();
+    }
+
+    /* 上段（1P・1人用）と下段（2P）のまいちゃんを各キャンバスへ描く。
+       キャンバスの内部座標系は 120x150、キャラは x=44 / 足元y=118 / スケール1 で配置 */
+    function drawMaiChars(now) {
+      if (maiCanvas) {
+        const g1 = maiCanvas.getContext('2d');
+        g1.clearRect(0, 0, maiCanvas.width, maiCanvas.height);
+        g1.save(); g1.scale(maiCanvas.width / 120, maiCanvas.height / 150);
+        const mineTop = G.mode !== 'coop' || COOP.role === 'host';
+        drawMai(g1, 44, 118, 1, '#e91e63', G.chopAnimStart > 0 ? G.chopAnimStart : 0, '1P まい', mineTop, '#6d7078');
+        /* ミス直後だけ汗マーク（従来の表情変化の名残） */
+        if (now < G.faceUntil) {
+          g1.fillStyle = '#7ec8f7';
+          g1.beginPath();
+          g1.moveTo(9, 1);
+          g1.quadraticCurveTo(16, 13, 16, 18);
+          g1.arc(9, 18, 7, 0, Math.PI, false);
+          g1.quadraticCurveTo(2, 13, 9, 1);
+          g1.fill();
+        }
+        g1.restore();
+      }
+      if (maiCanvas2 && G.mode === 'coop') {
+        const g2 = maiCanvas2.getContext('2d');
+        g2.clearRect(0, 0, maiCanvas2.width, maiCanvas2.height);
+        g2.save(); g2.scale(maiCanvas2.width / 120, maiCanvas2.height / 150);
+        drawMai(g2, 44, 118, 1, '#7b6fd0', G.chopAnimStartB > 0 ? G.chopAnimStartB : 0, '2P まい', COOP.role === 'guest', '#3f4c77');
+        g2.restore();
+      }
+    }
+
     function render() {
       if (!G.playing || G.over) return;
       const now = AC.currentTime;
@@ -2255,30 +2259,9 @@
       els.targetRing.style.transform = 'scale(' + (1 + 0.13 * pulse) + ')';
       if (els.targetRing2) els.targetRing2.style.transform = els.targetRing.style.transform;
       els.rikki.style.transform = 'translateY(' + (-3 * pulse) + 'px)';
-      /* 包丁アニメ */
-      if (G.chopAnimStart > 0) {
-        const p = (performance.now() - G.chopAnimStart) / 190;
-        if (p >= 1) { knifeArm.setAttribute('transform', 'rotate(-26 99 90)'); G.chopAnimStart = -1; }
-        else {
-          const a = p < 0.32 ? -26 + (62 * (p / 0.32)) : 36 - (62 * ((p - 0.32) / 0.68));
-          knifeArm.setAttribute('transform', 'rotate(' + a.toFixed(1) + ' 99 90)');
-        }
-      }
-      /* 包丁アニメ（下段キャラ・協力プレイ用） */
-      if (knifeArm2 && G.chopAnimStartB > 0) {
-        const p = (performance.now() - G.chopAnimStartB) / 190;
-        if (p >= 1) { knifeArm2.setAttribute('transform', 'rotate(-26 99 90)'); G.chopAnimStartB = -1; }
-        else {
-          const a = p < 0.32 ? -26 + (62 * (p / 0.32)) : 36 - (62 * ((p - 0.32) / 0.68));
-          knifeArm2.setAttribute('transform', 'rotate(' + a.toFixed(1) + ' 99 90)');
-        }
-      }
-      /* 表情 */
-      const face = now < G.faceUntil;
-      rikkiSweat.setAttribute('opacity', face ? '1' : '0');
-      rikkiMouth.setAttribute('d', face ? 'M65 82 Q71 80 77 82 Q71 84 65 82 Z' : 'M63 76 Q71 73.5 79 76 Q79 84 71 85 Q63 84 63 76 Z');
-      rikkiTeeth.setAttribute('opacity', face ? '0' : '1');
-      rikkiTongue.setAttribute('opacity', face ? '0' : '0.9');
+      /* キャラクター描画（協力プレイサンプルから移植した drawMai で毎フレーム描く。
+         包丁の振り下ろしとミス時の汗もここで反映する） */
+      drawMaiChars(now);
       /* ノート */
       let nextNote = null;
       for (let i = G.notes.length - 1; i >= 0; i--) {
@@ -3455,7 +3438,6 @@
       try { localStorage.setItem('mai-player-name', playerName); } catch (err) { /* 保存できない環境では今回だけ適用 */ }
     });
     loadRanking();
-    knifeArm.setAttribute('transform', 'rotate(-26 99 90)');
     </script>
   </body>
 </html>
