@@ -2241,13 +2241,11 @@
       clearFireworks();
       stopLoops();
       sfxGameOver();
-      const judged = G.perfect + G.good + G.miss;
-      const acc = judged ? G.perfect / judged : 0;
       let rank = 'D', word = 'まだまだ修行中！';
-      if (acc >= 0.8 && G.pots >= 22) { rank = 'S'; word = 'すき焼きマスター！'; }
-      else if (acc >= 0.7 && G.pots >= 18) { rank = 'A'; word = '見事な包丁さばき！'; }
-      else if (acc >= 0.6) { rank = 'B'; word = 'なかなかの腕前！'; }
-      else if (acc >= 0.5) { rank = 'C'; word = 'もう少しで一人前！'; }
+      if (G.pots >= 30) { rank = 'S'; word = 'すき焼きマスター！'; }
+      else if (G.pots >= 18) { rank = 'A'; word = '見事な包丁さばき！'; }
+      else if (G.pots >= 10) { rank = 'B'; word = 'なかなかの腕前！'; }
+      else if (G.pots >= 5) { rank = 'C'; word = 'もう少しで一人前！'; }
       els.rankBig.textContent = rank;
       els.rankWord.textContent = word;
       els.stScore.textContent = G.score.toLocaleString('ja-JP');
