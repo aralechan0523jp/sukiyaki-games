@@ -149,6 +149,27 @@
       .bgm-btn.selected .bgm-desc{ color:#ffe3ec; }
       .bgm-note{ font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:8px 0 0; }
 
+      /* ---------- タイミング微調整 ---------- */
+      .offset-box{
+        background:var(--card); border:2px solid var(--line); border-radius:16px;
+        padding:12px 16px 10px; margin:0 auto 18px; max-width:430px;
+        box-shadow:var(--shadow); text-align:left;
+      }
+      .offset-title{ font-family:"Mochiy Pop One",sans-serif; font-size:14px; color:var(--red); margin:0 0 8px; }
+      .offset-row{ display:flex; align-items:center; justify-content:center; gap:16px; }
+      .offset-btn{
+        font-family:"Mochiy Pop One",sans-serif; font-size:22px; line-height:1;
+        width:56px; height:52px; border-radius:14px; cursor:pointer;
+        background:var(--bg); color:var(--ink); border:2px solid var(--line);
+        box-shadow:0 3px 0 var(--line);
+      }
+      .offset-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 var(--line); }
+      .offset-val{
+        font-family:"Mochiy Pop One",sans-serif; font-size:24px; color:var(--red);
+        min-width:118px; text-align:center; font-variant-numeric:tabular-nums;
+      }
+      .offset-note{ font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:8px 0 0; line-height:1.55; }
+
       /* ---------- オンラインランキング ---------- */
       .ranking-board{
         background:var(--card); border:2px solid var(--line); border-radius:16px;
@@ -686,6 +707,15 @@
           </div>
           <p class="bgm-note">タップすると、その場で試聴が始まるよ。選んだ曲でゲームが始まるよ。</p>
         </div>
+        <div class="offset-box">
+          <p class="offset-title">⏱ タイミング微調整</p>
+          <div class="offset-row">
+            <button type="button" class="offset-btn" id="offsetMinus" aria-label="タイミングを10ミリ秒早める">−</button>
+            <span class="offset-val" id="offsetVal">0ms</span>
+            <button type="button" class="offset-btn" id="offsetPlus" aria-label="タイミングを10ミリ秒遅くする">＋</button>
+          </div>
+          <p class="offset-note">端末やイヤホンで音とタイミングがズレると感じたら調整してね。音楽に合わせて押して「遅い」と感じたら＋、「早い」と感じたら−に。設定はこの端末に保存されるよ。</p>
+        </div>
         <div class="howto">
           <h2>あそびかた</h2>
           <ul>
@@ -1110,6 +1140,23 @@
       const savedTrack = localStorage.getItem('rikki-bgm-track');
       if (savedTrack && TRACKS[savedTrack]) currentTrack = savedTrack;
     } catch (e) { /* localStorageが使えない環境ではデフォルト曲のまま */ }
+
+    /* ================= タイミング微調整 =================
+       判定オフセット（ミリ秒）。10ms単位で −200〜+200。localStorageに保存し次回復元する。
+       判定では（タップ時刻 − 目標時刻）からこの値を差し引くので、
+       プラスの値ほど「遅めに押しても」PERFECT側に寄る補正になる */
+    let judgeOffsetMs = 0;
+    try {
+      const savedOffset = parseInt(localStorage.getItem('rikki-judge-offset'), 10);
+      if (Number.isFinite(savedOffset)) judgeOffsetMs = Math.max(-200, Math.min(200, Math.round(savedOffset / 10) * 10));
+    } catch (e) { /* localStorageが使えない環境ではデフォルト0msのまま */ }
+    function formatOffset(ms) { return (ms > 0 ? '+' : '') + ms + 'ms'; }
+    function setJudgeOffset(ms) {
+      judgeOffsetMs = Math.max(-200, Math.min(200, ms));
+      try { localStorage.setItem('rikki-judge-offset', String(judgeOffsetMs)); } catch (e) { /* 保存できない環境では今回だけ適用 */ }
+      const valEl = $('offsetVal');
+      if (valEl) valEl.textContent = formatOffset(judgeOffsetMs);
+    }
 
     /* 1つの8分音符ぶんの演奏。ゲーム本体とタイトルのプレビューで共用する */
     function playTrackEighth(trackId, bar, slot, t, lv, eighthDur) {
@@ -1884,14 +1931,16 @@
       G.lastChopTime = now;
       G.chopAnimStart = performance.now();
       let best = null, bestAbs = Infinity;
+      /* タイミング微調整：符号付きの差からオフセット（秒）を差し引いて判定する */
+      const offsetSec = judgeOffsetMs / 1000;
       for (const n of G.notes) {
         if (n.judged || n.falling) continue;
-        const d = Math.abs(now - n.hitTime);
+        const d = Math.abs((now - n.hitTime) - offsetSec);
         if (d < bestAbs) { bestAbs = d; best = n; }
       }
       if (best && bestAbs <= best.gw) {
         if (best.hazard) judgeHazardHit(best);
-        else judgeHit(best, now - best.hitTime);
+        else judgeHit(best, (now - best.hitTime) - offsetSec);
       }
       else sfxWhiff();
     }
@@ -2052,6 +2101,12 @@
       b.addEventListener('click', () => selectTrack(b.getAttribute('data-track'), true));
     });
     selectTrack(currentTrack, false);
+    /* タイミング微調整のボタン：10ms単位で増減し、その場で保存＆表示更新 */
+    const offsetMinusBtn = $('offsetMinus');
+    const offsetPlusBtn = $('offsetPlus');
+    if (offsetMinusBtn) offsetMinusBtn.addEventListener('click', () => setJudgeOffset(judgeOffsetMs - 10));
+    if (offsetPlusBtn) offsetPlusBtn.addEventListener('click', () => setJudgeOffset(judgeOffsetMs + 10));
+    setJudgeOffset(judgeOffsetMs);
     knifeArm.setAttribute('transform', 'rotate(-26 99 90)');
 
     /* ================= オンラインランキング（Firebase Realtime Database） ================= */
@@ -2228,6 +2283,17 @@
           if (st) st.textContent = 'ランキング登録に失敗しました';
           loadRanking();
         });
+    }
+    /* ランキング用のお名前：入力が変わるたびに端末へ保存し、次回起動時に復元する */
+    const playerNameInput = $('playerName');
+    if (playerNameInput) {
+      try {
+        const savedName = localStorage.getItem('rikki-player-name');
+        if (savedName) playerNameInput.value = savedName;
+      } catch (e) { /* localStorageが使えない環境では従来どおり空欄のまま */ }
+      playerNameInput.addEventListener('input', () => {
+        try { localStorage.setItem('rikki-player-name', playerNameInput.value); } catch (e) { /* 保存できない環境では無視 */ }
+      });
     }
     const rankingRefreshBtn = $('rankingRefreshBtn');
     if (rankingRefreshBtn) rankingRefreshBtn.addEventListener('click', () => { loadRanking(); });
