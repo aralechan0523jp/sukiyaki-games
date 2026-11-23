@@ -2089,10 +2089,10 @@
       const judged = G.perfect + G.good + G.miss;
       const acc = judged ? G.perfect / judged : 0;
       let rank = 'D', word = 'まだまだ修行中！';
-      if (acc >= 0.9 && G.pots >= 21) { rank = 'S'; word = 'すき焼きマスター！'; }
-      else if (acc >= 0.88) { rank = 'A'; word = '見事な包丁さばき！'; }
-      else if (acc >= 0.86) { rank = 'B'; word = 'なかなかの腕前！'; }
-      else if (acc >= 0.84) { rank = 'C'; word = 'もう少しで一人前！'; }
+      if (acc >= 0.7 && G.pots >= 21) { rank = 'S'; word = 'すき焼きマスター！'; }
+      else if (acc >= 0.6) { rank = 'A'; word = '見事な包丁さばき！'; }
+      else if (acc >= 0.5) { rank = 'B'; word = 'なかなかの腕前！'; }
+      else if (acc >= 0.4) { rank = 'C'; word = 'もう少しで一人前！'; }
       els.rankBig.textContent = rank;
       els.rankWord.textContent = word;
       els.stScore.textContent = G.score.toLocaleString('ja-JP');
