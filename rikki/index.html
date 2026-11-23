@@ -1338,6 +1338,7 @@
       perfect: 0, good: 0, miss: 0,
       potChops: 0, pots: 0, level: 1,
       tempoResetDone: false, tempoResetBar: -1, tempoDrop: 0, tempoLevel: 1,
+      densityResetBar: -1, densityDrop: 0,
       chopAnimStart: -1, faceUntil: 0, lastFood: -1, rafId: 0, schedTimer: 0,
       blackoutUntil: 0, warnTimer: 0,
       lastLongHitTime: -999, longClearUntil: -999, lastChopTime: -999
@@ -1369,6 +1370,16 @@
       if (G.tempoResetBar >= 0 && bar >= G.tempoResetBar) return Math.max(1, lv - G.tempoDrop);
       return lv;
     };
+    /* 譜面の密度専用のレベル：21人前完成で一度だけ、8分音符パターンの密度ティアを
+       一番下（ティア0＝最もまばら）に戻す。リセットが発動する小節以降は、その時点の
+       レベルとの差（densityDrop）だけ密度用レベルを下げ（＝レベル1相当）、その後は
+       通常どおりレベルアップに合わせて再び段階が上がっていく。
+       テンポ・判定幅は通常のレベル／テンポ用レベルで決まるため、これはティア計算だけに使う */
+    const densityLevelForBar = (bar) => {
+      const lv = levelForBar(bar);
+      if (G.densityResetBar >= 0 && bar >= G.densityResetBar) return Math.max(1, lv - G.densityDrop);
+      return lv;
+    };
     const bpmForBar = (bar) => bpmForLevel(tempoLevelForBar(bar));
     const eighthDurForBar = (bar) => 60 / bpmForBar(bar) / 2;
     const travelForBar = (bar) => clamp(4 * 60 / bpmForBar(bar), 1.15, 2.7);
@@ -1380,7 +1391,7 @@
       if (bar === 0) { G.banners.push({ time: t0, text: 'リズムに のって…' }); return; }
       if (bar === 1) G.banners.push({ time: t0, text: 'スタート！' });
       if (bar > 1 && lv > levelForBar(bar - 1)) G.banners.push({ time: t0, text: 'レベルアップ！ テンポアップ！', jingle: true });
-      const tier = tierForLevel(lv);
+      const tier = tierForLevel(densityLevelForBar(bar));
       let slots;
       const restChance = Math.max(0, 0.22 - lv * 0.02);
       if (Math.random() < restChance) slots = pick([[0], [0, 4], [0, 2]]);
@@ -1939,6 +1950,12 @@
           G.tempoResetDone = true;
           G.tempoResetBar = G.nextBarToGen;
           G.tempoDrop = Math.max(0, levelForBar(G.tempoResetBar) - 7);
+          /* あわせて譜面の密度ティアも一度だけ一番下（ティア0）に戻す。
+             テンポと同じく、まだ生成されていない次の小節から適用し、その小節の
+             密度用レベルが1（＝ティア0）になるよう現在のレベルとの差を記録する。
+             以後はレベルアップに合わせて再び段階が上がっていく */
+          G.densityResetBar = G.tempoResetBar;
+          G.densityDrop = Math.max(0, levelForBar(G.densityResetBar) - 1);
         }
         /* 21人前到達の最初に、食べられない食材への注意を一度だけ警告表示する
            （停電警告と同じ目立つバナー。ゲームは止めない） */
@@ -2026,6 +2043,7 @@
         score: 0, combo: 0, maxCombo: 0, hearts: 3,
         perfect: 0, good: 0, miss: 0, potChops: 0, pots: 0, level: 1,
         tempoResetDone: false, tempoResetBar: -1, tempoDrop: 0, tempoLevel: 1,
+        densityResetBar: -1, densityDrop: 0,
         chopAnimStart: -1, faceUntil: 0, lastFood: -1,
         blackoutUntil: 0, warnTimer: 0,
         lastLongHitTime: -999, longClearUntil: -999, lastChopTime: -999
