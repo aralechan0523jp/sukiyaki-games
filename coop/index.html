@@ -1,0 +1,1169 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>まいちゃん協力プレイ オンラインサンプル</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap" rel="stylesheet" />
+    <style>
+      :root{
+        color-scheme: light dark;
+        --bg:#fff3f7;
+        --bg2:#ffe3ee;
+        --card:#ffffff;
+        --ink:#4a2436;
+        --ink-soft:#8a5a6e;
+        --pink:#e91e63;
+        --pink-deep:#c2185b;
+        --pink-soft:#ffd7e6;
+        --pink-pale:#fff0f5;
+        --gold:#f5a623;
+        --gray-btn:#b9a7b0;
+        --line:#f3c3d4;
+        --lane1:#fff7fa;
+        --lane2:#ffeef5;
+        --shadow:0 6px 0 rgba(194,24,91,.18), 0 14px 28px rgba(194,24,91,.12);
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --bg:#2a1620;
+          --bg2:#3a1c2b;
+          --card:#3d2130;
+          --ink:#ffe9f2;
+          --ink-soft:#e8b7cb;
+          --pink:#f06292;
+          --pink-deep:#ec407a;
+          --pink-soft:#6e3350;
+          --pink-pale:#462636;
+          --line:#6e4157;
+          --lane1:#432633;
+          --lane2:#4a2a3a;
+          --shadow:0 6px 0 rgba(0,0,0,.35), 0 14px 28px rgba(0,0,0,.35);
+        }
+      }
+      *{ box-sizing:border-box; }
+      html,body{ margin:0; padding:0; }
+      body{
+        font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif;
+        background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);
+        color:var(--ink);
+        min-height:100vh;
+        -webkit-tap-highlight-color:transparent;
+      }
+      button, input{ font-family:inherit; }
+      button{ min-height:3rem; cursor:pointer; }
+      .wrap{ max-width:980px; margin:0 auto; padding:14px 14px 40px; }
+      .hidden{ display:none !important; }
+
+      /* ---------- top / lobby ---------- */
+      .hero{ text-align:center; padding:18px 6px 4px; }
+      .hero .pot{ font-size:15px; font-weight:800; color:var(--pink-deep); letter-spacing:.14em; }
+      .hero h1{ margin:6px 0 4px; font-size:clamp(26px,6vw,40px); font-weight:800; line-height:1.25; }
+      .hero h1 .accent{ color:var(--pink); }
+      .hero p.sub{ margin:4px auto 0; max-width:560px; color:var(--ink-soft); font-weight:700; font-size:14px; line-height:1.7; }
+      .card{
+        background:var(--card); border:2px solid var(--line); border-radius:20px;
+        box-shadow:var(--shadow); padding:18px; margin-top:16px;
+      }
+      .card h2{ margin:0 0 10px; font-size:18px; font-weight:800; color:var(--pink-deep); }
+      .btn{
+        display:block; width:100%; border:none; border-radius:16px; padding:14px 16px;
+        font-size:19px; font-weight:800; color:#fff; background:var(--pink);
+        box-shadow:0 5px 0 var(--pink-deep); transition:transform .05s, box-shadow .05s, opacity .15s;
+        touch-action:manipulation; user-select:none; -webkit-user-select:none;
+      }
+      .btn:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--pink-deep); }
+      .btn:disabled{ background:var(--gray-btn); box-shadow:0 5px 0 #8f7d86; opacity:.75; cursor:not-allowed; }
+      .btn.sub-btn{ background:#fff; color:var(--pink-deep); border:2px solid var(--pink); box-shadow:0 5px 0 var(--pink-soft); }
+      .btn.sub-btn:active{ box-shadow:0 2px 0 var(--pink-soft); }
+      .btn.ghost{ background:transparent; color:var(--ink-soft); border:2px solid var(--line); box-shadow:none; font-size:15px; }
+      .join-row{ display:flex; gap:10px; }
+      .join-row input{
+        flex:1; min-width:0; font-size:26px; font-weight:800; text-align:center; letter-spacing:.35em;
+        padding:10px 6px 10px 14px; border-radius:14px; border:2px solid var(--line);
+        background:var(--pink-pale); color:var(--ink);
+      }
+      .join-row .btn{ width:auto; flex:0 0 42%; font-size:17px; }
+      .msg{ min-height:1.5em; margin-top:10px; font-weight:800; font-size:14px; color:var(--pink-deep); text-align:center; }
+      .msg.err{ color:#d32f2f; }
+      .rules{ font-size:14px; line-height:1.9; font-weight:700; color:var(--ink); }
+      .rules li{ margin:2px 0; }
+      .rules .hl{ color:var(--pink-deep); }
+      .practice-note{ text-align:center; margin-top:14px; }
+      .practice-note button{
+        background:none; border:none; color:var(--ink-soft); font-weight:800; font-size:14px;
+        text-decoration:underline; min-height:2.75rem; padding:8px 14px;
+      }
+
+      /* ---------- waiting room ---------- */
+      .code-big{
+        text-align:center; font-size:56px; font-weight:800; letter-spacing:.3em; padding-left:.3em;
+        color:var(--pink-deep); line-height:1.2;
+      }
+      .wait-status{ text-align:center; font-weight:800; font-size:16px; margin:10px 0 4px; }
+      .wait-sub{ text-align:center; color:var(--ink-soft); font-weight:700; font-size:13px; margin:0 0 14px; }
+      .dots::after{ content:""; animation:dots 1.2s steps(4) infinite; }
+      @keyframes dots{ 0%{content:""} 25%{content:"・"} 50%{content:"・・"} 75%{content:"・・・"} }
+
+      /* ---------- game ---------- */
+      .hud{
+        display:flex; flex-wrap:wrap; gap:8px; align-items:stretch; margin-bottom:10px;
+      }
+      .hud .stat{
+        flex:1 1 0; min-width:86px; background:var(--card); border:2px solid var(--line);
+        border-radius:14px; padding:6px 10px; text-align:center;
+      }
+      .hud .stat .label{ font-size:11px; font-weight:800; color:var(--ink-soft); letter-spacing:.08em; }
+      .hud .stat .value{ font-size:22px; font-weight:800; line-height:1.25; color:var(--ink); }
+      .hud .stat .value.combo{ color:var(--pink); }
+      .hud .hearts{ font-size:20px; letter-spacing:2px; line-height:1.45; }
+      .hud .hearts .on{ color:#e91e63; }
+      .hud .hearts .off{ color:var(--line); }
+      .stage{
+        position:relative; background:var(--card); border:2px solid var(--line);
+        border-radius:20px; box-shadow:var(--shadow); overflow:hidden;
+      }
+      canvas#game{ display:block; width:100%; height:360px; touch-action:none; }
+      @media (max-width:560px){ canvas#game{ height:330px; } }
+      .overlay{
+        position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+        background:rgba(255,240,245,.88); text-align:center; padding:14px 20px; z-index:5; overflow-y:auto;
+      }
+      @media (prefers-color-scheme: dark){ .overlay{ background:rgba(42,22,32,.9); } }
+      .overlay .big{ font-size:clamp(24px,6vw,36px); font-weight:800; color:var(--pink-deep); line-height:1.4; }
+      .overlay .mid{ font-size:16px; font-weight:800; margin-top:8px; }
+      .overlay .btn{ max-width:320px; margin-top:16px; }
+      #countOverlay{ background:transparent; pointer-events:none; }
+      #countNum{
+        font-size:110px; font-weight:800; color:var(--pink);
+        text-shadow:0 4px 0 #fff, 0 0 26px rgba(233,30,99,.35); line-height:1;
+      }
+      @media (prefers-color-scheme: dark){ #countNum{ text-shadow:0 4px 0 #2a1620, 0 0 26px rgba(233,30,99,.5); } }
+      .result-grid{ display:flex; gap:8px; margin-top:10px; flex-wrap:nowrap; justify-content:center; }
+      .result-grid .stat{ background:var(--pink-pale); border:2px solid var(--line); border-radius:14px; padding:6px 12px; min-width:92px; }
+      .result-grid .label{ font-size:11px; font-weight:800; color:var(--ink-soft); }
+      .result-grid .value{ font-size:24px; font-weight:800; }
+      #resultOverlay .big{ font-size:clamp(22px,5.4vw,32px); }
+      #resultOverlay .btn{ margin-top:10px; }
+      .cut-row{ display:flex; gap:10px; margin-top:12px; }
+      .cut-btn{
+        flex:1; border:none; border-radius:18px; padding:16px 8px 13px; color:#fff;
+        font-weight:800; touch-action:manipulation; user-select:none; -webkit-user-select:none;
+        background:var(--pink); box-shadow:0 6px 0 var(--pink-deep);
+      }
+      .cut-btn .main{ font-size:26px; display:block; line-height:1.15; }
+      .cut-btn .sub{ font-size:12px; font-weight:800; opacity:.92; display:block; margin-top:2px; }
+      .cut-btn:active:not(:disabled){ transform:translateY(4px); box-shadow:0 2px 0 var(--pink-deep); }
+      .cut-btn:disabled{ background:var(--gray-btn); box-shadow:0 6px 0 #8f7d86; opacity:.8; cursor:not-allowed; }
+      .cut-btn.mine2{ background:#7b6fd0; box-shadow:0 6px 0 #57489f; }
+      .cut-btn.mine2:active:not(:disabled){ box-shadow:0 2px 0 #57489f; }
+      .conn-banner{
+        margin-top:10px; text-align:center; font-weight:800; font-size:13px; color:#b26a00;
+        background:#fff3d6; border:2px solid #f0d48a; border-radius:12px; padding:8px;
+      }
+      @media (prefers-color-scheme: dark){ .conn-banner{ background:#4a3a14; color:#ffd98a; border-color:#8a6d1f; } }
+      .foot-note{ text-align:center; color:var(--ink-soft); font-size:12px; font-weight:700; margin-top:12px; line-height:1.7; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+
+      <!-- ======== トップ / ロビー ======== -->
+      <section id="screenTop">
+        <div class="hero">
+          <div class="pot">まいちゃんのすき焼き天国</div>
+          <h1>ふたりで協力！<br /><span class="accent">すき焼きリズム包丁</span></h1>
+          <p class="sub">オンライン協力プレイの試遊サンプルです。1Pが上段、2Pが下段を担当。1Pが切り逃した食材は、下段の右から流れ直してくるので、2Pがカバーしよう！</p>
+        </div>
+
+        <div class="card">
+          <h2>🏠 部屋を作る（1P・ホスト）</h2>
+          <button class="btn" id="btnCreate">部屋を作る</button>
+          <div class="msg" id="msgCreate"></div>
+        </div>
+
+        <div class="card">
+          <h2>🔑 コードで入る（2P・ゲスト）</h2>
+          <div class="join-row">
+            <input id="inputCode" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="1234" aria-label="部屋コード（4桁の数字）" />
+            <button class="btn" id="btnJoin">入る</button>
+          </div>
+          <div class="msg" id="msgJoin"></div>
+        </div>
+
+        <div class="card">
+          <h2>あそびかた</h2>
+          <ul class="rules">
+            <li>食材が白い輪に重なった瞬間に<span class="hl">「切る！」</span>をタップ（キーボード：1P＝<span class="hl">Fキー</span>、2P＝<span class="hl">Jキー</span>）</li>
+            <li>1Pが切り逃すと、その食材は<span class="hl">下段の右端から流れ直して</span>きます（金色の輪が目印）</li>
+            <li>2Pが切れれば<span class="hl">「ナイスカバー！」</span>でハートは減らず、コンボも続きます</li>
+            <li>2人とも逃すとハート−1＆コンボリセット。ハート3つが無くなったらゲームオーバー</li>
+            <li>食材を12個切ると<span class="hl">1人前</span>完成！</li>
+          </ul>
+          <div class="practice-note">
+            <button id="btnPractice" type="button">ひとりで練習する（両レーンを自分で操作）</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== 待機室 ======== -->
+      <section id="screenRoom" class="hidden">
+        <div class="hero">
+          <div class="pot">部屋コード</div>
+        </div>
+        <div class="card">
+          <div class="code-big" id="roomCodeBig">----</div>
+          <p class="wait-status" id="waitStatus">相手を待っています<span class="dots"></span></p>
+          <p class="wait-sub" id="waitSub">このコードを相手に伝えてね</p>
+          <button class="btn hidden" id="btnStart">▶ スタート！</button>
+          <div class="msg" id="msgRoom"></div>
+          <button class="btn ghost" id="btnLeaveRoom" style="margin-top:10px;">トップへ戻る</button>
+        </div>
+      </section>
+
+      <!-- ======== ゲーム ======== -->
+      <section id="screenGame" class="hidden">
+        <div class="hud">
+          <div class="stat"><div class="label">ハート</div><div class="hearts" id="hudHearts"></div></div>
+          <div class="stat"><div class="label">スコア</div><div class="value" id="hudScore">0</div></div>
+          <div class="stat"><div class="label">コンボ</div><div class="value combo" id="hudCombo">0</div></div>
+          <div class="stat"><div class="label">すき焼き</div><div class="value" id="hudServings">0人前</div></div>
+        </div>
+
+        <div class="stage">
+          <canvas id="game" width="960" height="360"></canvas>
+          <div class="overlay hidden" id="countOverlay"><div id="countNum">3</div></div>
+          <div class="overlay hidden" id="noticeOverlay">
+            <div class="big" id="noticeTitle">接続が切れました</div>
+            <div class="mid" id="noticeText"></div>
+            <button class="btn" id="btnNoticeTop">トップへ戻る</button>
+          </div>
+          <div class="overlay hidden" id="resultOverlay">
+            <div class="big">🍲 ゲームオーバー</div>
+            <div class="result-grid">
+              <div class="stat"><div class="label">スコア</div><div class="value" id="resScore">0</div></div>
+              <div class="stat"><div class="label">最大コンボ</div><div class="value" id="resCombo">0</div></div>
+              <div class="stat"><div class="label">完成</div><div class="value" id="resServings">0人前</div></div>
+            </div>
+            <button class="btn hidden" id="btnRematch">もう一度あそぶ</button>
+            <div class="mid hidden" id="rematchWait">ホストが再戦を始めるのを待っています<span class="dots"></span></div>
+            <button class="btn sub-btn" id="btnResultTop">トップへ戻る</button>
+          </div>
+        </div>
+
+        <div class="conn-banner hidden" id="connBanner">⚠ 通信が切れています。再接続を待っています…</div>
+
+        <div class="cut-row">
+          <button class="cut-btn" id="btnCutTop">
+            <span class="main">切る！</span>
+            <span class="sub" id="btnCutTopSub">上段・1P（Fキー）</span>
+          </button>
+          <button class="cut-btn" id="btnCutBottom">
+            <span class="main">切る！</span>
+            <span class="sub" id="btnCutBottomSub">下段・2P（Jキー）</span>
+          </button>
+        </div>
+        <p class="foot-note" id="gameFootNote"></p>
+      </section>
+
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <script>
+    "use strict";
+    /* =========================================================
+       まいちゃん協力プレイ オンラインサンプル
+       Firebase Realtime Database (sukiyaki-ranking) で部屋同期
+       ========================================================= */
+    var DB_URL = "https://sukiyaki-ranking-default-rtdb.firebaseio.com";
+    var db = null, serverOffset = 0, fbReady = false;
+    try {
+      if (typeof firebase !== "undefined") {
+        firebase.initializeApp({ databaseURL: DB_URL, projectId: "sukiyaki-ranking" });
+        db = firebase.database();
+        fbReady = true;
+        db.ref(".info/serverTimeOffset").on("value", function (s) { serverOffset = s.val() || 0; });
+        db.ref(".info/connected").on("value", function (s) {
+          var b = document.getElementById("connBanner");
+          if (b) b.classList.toggle("hidden", s.val() !== false);
+        });
+      }
+    } catch (e) { fbReady = false; }
+    function serverNow() { return Date.now() + serverOffset; }
+
+    /* ---------------- 定数 ---------------- */
+    var TRAVEL = 2600;        // 右端→輪までの移動時間(ms)
+    var PERFECT_WIN = 95;     // PERFECT判定幅
+    var GOOD_WIN = 195;       // GOOD判定幅
+    var RESCUE_DELAY = 550;   // 切り逃し→下段に流れ直すまでの間
+    var TYPES = ["hakusai", "negi", "shiitake", "enoki", "niku", "ninjin", "tofu"];
+    var TYPE_NAMES = { hakusai: "白菜", negi: "ねぎ", shiitake: "しいたけ", enoki: "えのき", niku: "肉", ninjin: "にんじん", tofu: "豆腐" };
+
+    /* ---------------- 乱数（シード付き） ---------------- */
+    function mulberry32(a) {
+      return function () {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        var t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    /* ---------------- 譜面生成（両端末で同一） ---------------- */
+    var chart = null;
+    function chartInit(seed) {
+      chart = { notes: [], rng: mulberry32(seed >>> 0), nextId: 0, nextHit: 3200 };
+    }
+    function chartEnsure(upTo) {
+      while (chart.nextHit < upTo) {
+        var type = (chart.rng() * 7) | 0;
+        chart.notes.push({ id: chart.nextId++, hit: chart.nextHit, type: type });
+        var r = chart.rng();
+        chart.nextHit += r < 0.28 ? 500 : (r < 0.82 ? 1000 : 1500);
+      }
+    }
+
+    /* ---------------- 効果音（WebAudio合成） ---------------- */
+    var AC = null;
+    function ac() {
+      if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+      if (AC && AC.state === "suspended") AC.resume();
+      return AC;
+    }
+    function tone(freq, dur, type, vol, delay, slideTo) {
+      var c = ac(); if (!c) return;
+      var t0 = c.currentTime + (delay || 0);
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = type || "sine"; o.frequency.setValueAtTime(freq, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+      g.gain.setValueAtTime(vol || 0.18, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      o.connect(g); g.connect(c.destination);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    function noiseBurst(dur, vol) {
+      var c = ac(); if (!c) return;
+      var len = Math.floor(c.sampleRate * dur);
+      var buf = c.createBuffer(1, len, c.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      var src = c.createBufferSource(); src.buffer = buf;
+      var f = c.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 1800;
+      var g = c.createGain(); g.gain.value = vol || 0.25;
+      src.connect(f); f.connect(g); g.connect(c.destination);
+      src.start();
+    }
+    function sndCut(perfect) { noiseBurst(0.09, 0.3); tone(perfect ? 1320 : 880, 0.12, "triangle", 0.2); if (perfect) tone(1760, 0.16, "sine", 0.14, 0.05); }
+    function sndMiss() { tone(196, 0.28, "sawtooth", 0.12, 0, 110); }
+    function sndCover() { tone(523, 0.1, "triangle", 0.18); tone(659, 0.1, "triangle", 0.18, 0.07); tone(784, 0.18, "triangle", 0.2, 0.14); }
+    function sndCountGo() { tone(1046, 0.25, "triangle", 0.2); }
+
+    /* ---------------- DOM参照 ---------------- */
+    function $(id) { return document.getElementById(id); }
+    var els = {
+      top: $("screenTop"), room: $("screenRoom"), game: $("screenGame"),
+      msgCreate: $("msgCreate"), msgJoin: $("msgJoin"), msgRoom: $("msgRoom"),
+      inputCode: $("inputCode"), roomCodeBig: $("roomCodeBig"),
+      waitStatus: $("waitStatus"), waitSub: $("waitSub"), btnStart: $("btnStart"),
+      hudHearts: $("hudHearts"), hudScore: $("hudScore"), hudCombo: $("hudCombo"), hudServings: $("hudServings"),
+      countOverlay: $("countOverlay"), countNum: $("countNum"),
+      noticeOverlay: $("noticeOverlay"), noticeTitle: $("noticeTitle"), noticeText: $("noticeText"),
+      resultOverlay: $("resultOverlay"), resScore: $("resScore"), resCombo: $("resCombo"), resServings: $("resServings"),
+      btnRematch: $("btnRematch"), rematchWait: $("rematchWait"),
+      btnCutTop: $("btnCutTop"), btnCutBottom: $("btnCutBottom"),
+      btnCutTopSub: $("btnCutTopSub"), btnCutBottomSub: $("btnCutBottomSub"),
+      gameFootNote: $("gameFootNote")
+    };
+    function showScreen(name) {
+      els.top.classList.toggle("hidden", name !== "top");
+      els.room.classList.toggle("hidden", name !== "room");
+      els.game.classList.toggle("hidden", name !== "game");
+    }
+    function setMsg(el, text, isErr) { el.textContent = text || ""; el.classList.toggle("err", !!isErr); }
+
+    /* ---------------- ゲーム状態 ---------------- */
+    var role = null;            // 'host' | 'guest' | 'solo'
+    var roomRef = null, roomCode = "";
+    var curStartAt = 0, joinedOnce = false, leaving = false;
+    var G = null;               // 対局中の状態
+    var lastAgg = { score: 0, combo: 0, maxCombo: 0, hearts: 3, cuts: 0, servings: 0 };
+
+    function nowMs() { return role === "solo" ? performance.now() : serverNow(); }
+
+    function newGameState(startAt) {
+      return {
+        running: true, over: false, startAt: startAt,
+        resolvedTop: new Map(),   // id -> 'PERFECT'|'GOOD'|'miss'
+        rescue: new Map(),        // id -> {hitServer, type, state:'active'|'covered'|'failed'|'pending'}
+        effects: [], popups: [],
+        chopTop: 0, chopBottom: 0,
+        topPtr: 0,
+        agg: { score: 0, combo: 0, maxCombo: 0, hearts: 3, cuts: 0, servings: 0 },
+        raf: 0, lastCount: -1, stateSeq: 0
+      };
+    }
+
+    /* ---------------- HUD ---------------- */
+    function updateHUD(a) {
+      lastAgg = a;
+      var h = "";
+      for (var i = 0; i < 3; i++) h += '<span class="' + (i < a.hearts ? "on" : "off") + '">♥</span>';
+      els.hudHearts.innerHTML = h;
+      els.hudScore.textContent = a.score.toLocaleString("ja-JP");
+      els.hudCombo.textContent = a.combo;
+      els.hudServings.textContent = a.servings + "人前";
+    }
+
+    /* ---------------- 集計（ホスト／ソロのみが実行） ---------------- */
+    function aggApplyCut(judge) {
+      var a = G.agg;
+      a.combo++; if (a.combo > a.maxCombo) a.maxCombo = a.combo;
+      a.cuts++; a.score += judge === "PERFECT" ? 300 : 100;
+      a.servings = Math.floor(a.cuts / 12);
+      pushAgg();
+    }
+    function aggApplyFail() {
+      var a = G.agg;
+      a.hearts--; a.combo = 0;
+      pushAgg();
+      if (a.hearts <= 0) hostGameOver();
+    }
+    function pushAgg() {
+      updateHUD(G.agg);
+      if (role === "host" && roomRef) {
+        G.stateSeq++;
+        roomRef.child("state").set({
+          score: G.agg.score, combo: G.agg.combo, maxCombo: G.agg.maxCombo,
+          hearts: G.agg.hearts, cuts: G.agg.cuts, servings: G.agg.servings, seq: G.stateSeq
+        });
+      }
+    }
+    function hostGameOver() {
+      if (!G || G.over) return;
+      G.over = true;
+      if (role === "host" && roomRef) roomRef.update({ status: "over" });
+      if (role === "solo") setTimeout(showResult, 650);
+    }
+
+    /* ---------------- ポップアップ＆演出 ---------------- */
+    function addPopup(lane, text, color, big) {
+      if (!G) return;
+      G.popups.push({ lane: lane, text: text, color: color, big: !!big, t0: performance.now() });
+    }
+    function addEffect(lane, x, type, kind) {
+      if (!G) return;
+      G.effects.push({ lane: lane, x: x, type: type, kind: kind, t0: performance.now() });
+    }
+
+    /* =========================================================
+       描画（Canvas）
+       ========================================================= */
+    var canvas = $("game"), ctx = canvas.getContext("2d");
+    var CW = 960, CH = 360, DPR = 1;
+    function fitCanvas() {
+      var w = canvas.clientWidth || 960;
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      CW = w; CH = canvas.clientHeight || 360;
+      canvas.width = Math.round(CW * DPR);
+      canvas.height = Math.round(CH * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    window.addEventListener("resize", fitCanvas);
+
+    function laneGeom() {
+      var laneH = (CH - 24) / 2;
+      return {
+        laneH: laneH,
+        y1: 8, y2: 16 + laneH,
+        targetX: CW < 560 ? 124 : 168,
+        spawnX: CW + 60,
+        sc: Math.max(0.62, Math.min(1, CW / 760))
+      };
+    }
+    function xForTop(note, gt, geo) {
+      return geo.targetX + (note.hit - gt) / TRAVEL * (geo.spawnX - geo.targetX);
+    }
+    function xForRescue(r, now, geo) {
+      return geo.targetX + (r.hitServer - now) / TRAVEL * (geo.spawnX - geo.targetX);
+    }
+
+    function roundRect(g, x, y, w, h, r) {
+      g.beginPath();
+      g.moveTo(x + r, y);
+      g.arcTo(x + w, y, x + w, y + h, r);
+      g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r);
+      g.arcTo(x, y, x + w, y, r);
+      g.closePath();
+    }
+
+    /* ---- 食材（中心 0,0 / 半径 s） ---- */
+    function drawIngredient(g, type, s) {
+      g.save();
+      if (type === "hakusai") {
+        g.rotate(-0.5);
+        g.fillStyle = "#8fce62"; g.beginPath(); g.ellipse(0, 0, s * 0.95, s * 0.62, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#cdeeae"; g.beginPath(); g.ellipse(2, 0, s * 0.68, s * 0.42, 0, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = "#f4fbe9"; g.lineWidth = s * 0.14; g.beginPath(); g.moveTo(-s * 0.6, 0); g.lineTo(s * 0.62, 0); g.stroke();
+      } else if (type === "negi") {
+        g.rotate(-0.7);
+        g.fillStyle = "#f6fbf0"; roundRect(g, -s * 0.95, -s * 0.2, s * 0.85, s * 0.4, s * 0.2); g.fill();
+        g.fillStyle = "#57b34a"; roundRect(g, -s * 0.15, -s * 0.2, s * 1.1, s * 0.4, s * 0.2); g.fill();
+        g.strokeStyle = "#3f9440"; g.lineWidth = 2; g.beginPath(); g.moveTo(s * 0.2, -s * 0.2); g.lineTo(s * 0.2, s * 0.2); g.moveTo(s * 0.55, -s * 0.2); g.lineTo(s * 0.55, s * 0.2); g.stroke();
+      } else if (type === "shiitake") {
+        g.fillStyle = "#a4713e"; g.beginPath(); g.ellipse(0, -s * 0.12, s * 0.95, s * 0.62, 0, Math.PI, Math.PI * 2); g.closePath(); g.fill();
+        g.fillStyle = "#c08b52"; g.beginPath(); g.ellipse(0, -s * 0.16, s * 0.7, s * 0.42, 0, Math.PI, Math.PI * 2); g.closePath(); g.fill();
+        g.fillStyle = "#f3e3c2"; roundRect(g, -s * 0.22, -s * 0.1, s * 0.44, s * 0.62, s * 0.12); g.fill();
+        g.fillStyle = "#e8d3a8"; g.beginPath(); g.arc(-s * 0.45, -s * 0.42, s * 0.1, 0, Math.PI * 2); g.arc(s * 0.3, -s * 0.55, s * 0.08, 0, Math.PI * 2); g.fill();
+      } else if (type === "enoki") {
+        g.strokeStyle = "#f7f1de"; g.lineWidth = s * 0.13; g.lineCap = "round";
+        var offs = [-0.55, -0.28, 0, 0.28, 0.55];
+        for (var i = 0; i < offs.length; i++) {
+          g.beginPath(); g.moveTo(offs[i] * s * 0.8, s * 0.75); g.quadraticCurveTo(offs[i] * s, 0, offs[i] * s * 1.05, -s * 0.55); g.stroke();
+        }
+        g.fillStyle = "#fdf8ea";
+        for (var j = 0; j < offs.length; j++) { g.beginPath(); g.arc(offs[j] * s * 1.05, -s * 0.6, s * 0.17, 0, Math.PI * 2); g.fill(); }
+        g.strokeStyle = "#e5cf9e"; g.lineWidth = s * 0.16; g.beginPath(); g.moveTo(-s * 0.5, s * 0.55); g.lineTo(s * 0.5, s * 0.62); g.stroke();
+      } else if (type === "niku") {
+        g.rotate(-0.18);
+        g.fillStyle = "#e2574c"; roundRect(g, -s * 0.95, -s * 0.62, s * 1.9, s * 1.24, s * 0.4); g.fill();
+        g.strokeStyle = "#f6c9c2"; g.lineWidth = s * 0.13; g.lineCap = "round";
+        g.beginPath(); g.moveTo(-s * 0.7, -s * 0.25); g.quadraticCurveTo(-s * 0.2, s * 0.15, s * 0.3, -s * 0.3); g.stroke();
+        g.beginPath(); g.moveTo(-s * 0.45, s * 0.35); g.quadraticCurveTo(0, s * 0.05, s * 0.6, s * 0.3); g.stroke();
+        g.fillStyle = "#f9ded9"; g.beginPath(); g.ellipse(s * 0.55, -s * 0.28, s * 0.22, s * 0.14, 0.4, 0, Math.PI * 2); g.fill();
+      } else if (type === "ninjin") {
+        g.rotate(0.5);
+        g.fillStyle = "#f08a2d"; g.beginPath(); g.moveTo(-s * 0.55, -s * 0.45); g.lineTo(s * 0.55, -s * 0.45); g.lineTo(0, s * 0.95); g.closePath(); g.fill();
+        g.strokeStyle = "#d96f14"; g.lineWidth = 2; g.beginPath(); g.moveTo(-s * 0.3, -s * 0.05); g.lineTo(s * 0.22, -s * 0.05); g.moveTo(-s * 0.16, s * 0.3); g.lineTo(s * 0.12, s * 0.3); g.stroke();
+        g.strokeStyle = "#57b34a"; g.lineWidth = s * 0.16; g.lineCap = "round";
+        g.beginPath(); g.moveTo(0, -s * 0.45); g.lineTo(-s * 0.22, -s * 0.85); g.moveTo(0, -s * 0.45); g.lineTo(s * 0.05, -s * 0.92); g.moveTo(0, -s * 0.45); g.lineTo(s * 0.3, -s * 0.8); g.stroke();
+      } else { /* tofu */
+        g.rotate(0.12);
+        g.fillStyle = "#f8f1dc"; roundRect(g, -s * 0.72, -s * 0.62, s * 1.44, s * 1.24, s * 0.16); g.fill();
+        g.strokeStyle = "#e0cda3"; g.lineWidth = 2.5; roundRect(g, -s * 0.72, -s * 0.62, s * 1.44, s * 1.24, s * 0.16); g.stroke();
+        g.strokeStyle = "#eee0bd"; g.lineWidth = 2; roundRect(g, -s * 0.45, -s * 0.36, s * 0.9, s * 0.72, s * 0.1); g.stroke();
+      }
+      g.restore();
+    }
+    function drawIngredientAt(g, type, x, y, s, alpha) {
+      g.save(); g.globalAlpha = alpha == null ? 1 : alpha; g.translate(x, y);
+      drawIngredient(g, type, s); g.restore();
+    }
+    /* 切断エフェクト：上下2つに割れて飛ぶ */
+    function drawSplitAt(g, type, x, y, s, prog, dir) {
+      for (var k = 0; k < 2; k++) {
+        g.save();
+        g.globalAlpha = Math.max(0, 1 - prog);
+        g.beginPath();
+        if (k === 0) g.rect(x - s * 1.4, y - s * 1.4, s * 2.8, s * 1.4);
+        else g.rect(x - s * 1.4, y, s * 2.8, s * 1.4);
+        g.clip();
+        g.translate(x + dir * prog * 26, y + (k === 0 ? -1 : 1) * prog * 30);
+        g.rotate((k === 0 ? -1 : 1) * prog * 0.5);
+        drawIngredient(g, type, s);
+        g.restore();
+      }
+    }
+
+    /* ---- ちびまいちゃん（中心x, 足元y, スケールsc） ---- */
+    function drawMai(g, x, baseY, sc, ribbonColor, chopT, label, isMine) {
+      g.save();
+      g.translate(x, baseY); g.scale(sc, sc);
+      var chop = 0;
+      if (chopT) { var p = (performance.now() - chopT) / 190; if (p < 1) chop = Math.sin(p * Math.PI); }
+      /* 体：グレーのピンストライプジャケット */
+      g.fillStyle = "#6d7078";
+      roundRect(g, -25, -52, 50, 54, 12); g.fill();
+      g.save(); roundRect(g, -25, -52, 50, 54, 12); g.clip();
+      g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 2;
+      for (var sx = -18; sx <= 20; sx += 9) { g.beginPath(); g.moveTo(sx, -54); g.lineTo(sx, 4); g.stroke(); }
+      /* 白レースインナー */
+      g.fillStyle = "#fff7fa"; g.beginPath(); g.moveTo(-9, -52); g.lineTo(9, -52); g.lineTo(0, -22); g.closePath(); g.fill();
+      g.strokeStyle = "#f3c3d4"; g.lineWidth = 1.4; g.setLineDash([3, 3]);
+      g.beginPath(); g.moveTo(-9, -52); g.lineTo(0, -22); g.lineTo(9, -52); g.stroke(); g.setLineDash([]);
+      /* 紫ストラップ＋IDカード */
+      g.strokeStyle = "#8e44ad"; g.lineWidth = 5; g.beginPath(); g.moveTo(-16, -50); g.lineTo(14, -8); g.stroke();
+      g.fillStyle = "#ffffff"; roundRect(g, 6, -20, 15, 19, 2.5); g.fill();
+      g.fillStyle = "#8e44ad"; g.fillRect(6, -20, 15, 5);
+      g.fillStyle = "#c9ced6"; g.fillRect(9, -11, 9, 2.4); g.fillRect(9, -6.5, 9, 2.4);
+      g.restore();
+      /* 頭：黒髪ボブ */
+      g.fillStyle = "#2b2320";
+      g.beginPath(); g.arc(0, -82, 34, 0, Math.PI * 2); g.fill();
+      g.fillRect(-34, -84, 68, 26);
+      /* 顔 */
+      g.fillStyle = "#ffdfc9";
+      g.beginPath(); g.arc(2, -78, 26.5, 0, Math.PI * 2); g.fill();
+      /* 前髪（目の上までの浅いライン） */
+      g.fillStyle = "#2b2320";
+      g.beginPath();
+      g.arc(2, -78, 26.9, Math.PI, Math.PI * 2);
+      g.quadraticCurveTo(2, -91, -24.9, -78);
+      g.closePath(); g.fill();
+      /* 大きな茶色の目 */
+      var eyes = [[-8, -74], [14, -74]];
+      for (var i = 0; i < 2; i++) {
+        g.fillStyle = "#5a3421"; g.beginPath(); g.ellipse(eyes[i][0], eyes[i][1], 4.6, 7.6, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#2e1a0e"; g.beginPath(); g.ellipse(eyes[i][0], eyes[i][1] + 1, 3.1, 5.2, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#fff"; g.beginPath(); g.arc(eyes[i][0] - 1.4, eyes[i][1] - 2.6, 1.7, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.arc(eyes[i][0] + 1.6, eyes[i][1] + 2.4, 1, 0, Math.PI * 2); g.fill();
+      }
+      /* 口・ほっぺ */
+      g.strokeStyle = "#b3543f"; g.lineWidth = 2; g.lineCap = "round";
+      g.beginPath(); g.arc(3, -63, 5.5, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke();
+      g.fillStyle = "rgba(244,130,160,.5)";
+      g.beginPath(); g.ellipse(-15, -64, 5, 3, 0, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.ellipse(21, -64, 5, 3, 0, 0, Math.PI * 2); g.fill();
+      /* リボン */
+      g.fillStyle = ribbonColor;
+      g.save(); g.translate(22, -108); g.rotate(0.25);
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(-11, -6); g.lineTo(-11, 6); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(11, -6); g.lineTo(11, 6); g.closePath(); g.fill();
+      g.beginPath(); g.arc(0, 0, 3.6, 0, Math.PI * 2); g.fill();
+      g.restore();
+      /* 右腕＋包丁（チョップで振り下ろす） */
+      g.save();
+      g.translate(24, -40); g.rotate(-0.35 + chop * 0.95);
+      g.strokeStyle = "#ffdfc9"; g.lineWidth = 7; g.lineCap = "round";
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(13, 3); g.stroke();
+      g.fillStyle = "#8a5a33"; roundRect(g, 11, -2.5, 11, 6, 3); g.fill();
+      g.fillStyle = "#dfe5ec"; g.beginPath();
+      g.moveTo(22, -3); g.lineTo(42, -6); g.quadraticCurveTo(46, 2, 40, 6); g.lineTo(22, 4); g.closePath(); g.fill();
+      g.strokeStyle = "#aeb8c4"; g.lineWidth = 1.2; g.stroke();
+      g.restore();
+      /* 名札 */
+      g.font = "800 12px 'M PLUS Rounded 1c', sans-serif";
+      g.textAlign = "center";
+      var tw = g.measureText(label).width + 14;
+      g.fillStyle = isMine ? "#e91e63" : "rgba(90,70,80,.75)";
+      roundRect(g, -tw / 2, 8, tw, 19, 9.5); g.fill();
+      g.fillStyle = "#fff"; g.fillText(label, 0, 22);
+      g.restore();
+    }
+
+    /* ---- ターゲットの白い輪 ---- */
+    function drawTarget(g, x, y, beatPulse) {
+      g.save();
+      g.beginPath(); g.arc(x, y, 37 + beatPulse * 2.5, 0, Math.PI * 2);
+      g.fillStyle = "rgba(255,255,255,.55)"; g.fill();
+      g.lineWidth = 5; g.strokeStyle = "#ffffff"; g.stroke();
+      g.lineWidth = 2; g.strokeStyle = "rgba(233,30,99,.55)";
+      g.beginPath(); g.arc(x, y, 42 + beatPulse * 2.5, 0, Math.PI * 2); g.stroke();
+      g.restore();
+    }
+
+    /* ---- 救済食材の目印（金の点線リング＋タグ） ---- */
+    function drawRescueMark(g, x, y, s, now) {
+      g.save();
+      g.strokeStyle = "#f5a623"; g.lineWidth = 3.5; g.setLineDash([7, 6]);
+      g.lineDashOffset = -now / 28;
+      g.beginPath(); g.arc(x, y, s + 13 + Math.sin(now / 180) * 2, 0, Math.PI * 2); g.stroke();
+      g.setLineDash([]);
+      g.font = "800 12px 'M PLUS Rounded 1c', sans-serif"; g.textAlign = "center";
+      var label = "救済！";
+      var tw = g.measureText(label).width + 12;
+      g.fillStyle = "#f5a623"; roundRect(g, x - tw / 2, y - s - 34, tw, 19, 9.5); g.fill();
+      g.fillStyle = "#fff"; g.fillText(label, x, y - s - 20);
+      g.restore();
+    }
+
+    /* =========================================================
+       描画メイン
+       ========================================================= */
+    function draw(now, gt) {
+      var geo = laneGeom();
+      var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      ctx.clearRect(0, 0, CW, CH);
+      var lanes = [
+        { y: geo.y1, label: "1P・上段", mine: role !== "guest", fill: dark ? "#432633" : "#fff7fa" },
+        { y: geo.y2, label: "2P・下段", mine: role !== "host", fill: dark ? "#4a2a3a" : "#ffeef5" }
+      ];
+      var i, L, cy;
+      for (i = 0; i < 2; i++) {
+        L = lanes[i]; cy = L.y + geo.laneH / 2;
+        ctx.fillStyle = L.fill;
+        roundRect(ctx, 6, L.y, CW - 12, geo.laneH, 16); ctx.fill();
+        /* 流れるライン */
+        ctx.strokeStyle = dark ? "rgba(255,255,255,.16)" : "rgba(233,30,99,.18)";
+        ctx.lineWidth = 3; ctx.setLineDash([14, 12]); ctx.lineDashOffset = -now / 16;
+        ctx.beginPath(); ctx.moveTo(14, cy + geo.laneH * 0.3); ctx.lineTo(CW - 14, cy + geo.laneH * 0.3); ctx.stroke();
+        ctx.setLineDash([]);
+        /* レーン名 */
+        ctx.font = "800 13px 'M PLUS Rounded 1c', sans-serif"; ctx.textAlign = "left";
+        ctx.fillStyle = dark ? "#e8b7cb" : "#c2185b";
+        ctx.fillText(L.label + (L.mine ? "（あなた）" : "（相手）"), 16, L.y + 22);
+        /* ターゲット */
+        var pulse = gt > 0 ? Math.max(0, 1 - ((gt % 500) / 500)) * 0.9 : 0;
+        drawTarget(ctx, geo.targetX, cy, pulse * 0.6);
+        /* まいちゃん */
+        drawMai(ctx, 62 * geo.sc + 8, cy + geo.laneH * 0.42, geo.sc * 0.94,
+          i === 0 ? "#e91e63" : "#7b6fd0", i === 0 ? G.chopTop : G.chopBottom,
+          i === 0 ? "1P まい" : "2P まい", L.mine);
+      }
+
+      var noteS = 26 * geo.sc + 8;
+      /* 上段の食材 */
+      if (chart) {
+        for (i = 0; i < chart.notes.length; i++) {
+          var n = chart.notes[i];
+          if (G.resolvedTop.has(n.id)) continue;
+          var x = xForTop(n, gt, geo);
+          if (x < -60 || x > geo.spawnX + 40) continue;
+          drawIngredientAt(ctx, TYPES[n.type], x, geo.y1 + geo.laneH / 2, noteS, 1);
+        }
+      }
+      /* 下段の救済食材 */
+      G.rescue.forEach(function (r, id) {
+        if (r.state === "covered" || r.state === "failed") return;
+        var x2 = xForRescue(r, now, geo);
+        if (x2 < -60 || x2 > geo.spawnX + 40) return;
+        var cy2 = geo.y2 + geo.laneH / 2;
+        drawRescueMark(ctx, x2, cy2, noteS, now);
+        drawIngredientAt(ctx, TYPES[r.type], x2, cy2, noteS, 1);
+      });
+
+      /* エフェクト */
+      var nowP = performance.now();
+      G.effects = G.effects.filter(function (e) { return nowP - e.t0 < 480; });
+      for (i = 0; i < G.effects.length; i++) {
+        var e = G.effects[i], prog = (nowP - e.t0) / 480;
+        var ey = (e.lane === "top" ? geo.y1 : geo.y2) + geo.laneH / 2;
+        if (e.kind === "cut") drawSplitAt(ctx, TYPES[e.type], e.x, ey, noteS, prog, 1);
+        else drawIngredientAt(ctx, TYPES[e.type], e.x, ey + prog * 16, noteS, Math.max(0, 0.55 - prog));
+      }
+      /* ポップアップ */
+      G.popups = G.popups.filter(function (p) { return nowP - p.t0 < 950; });
+      for (i = 0; i < G.popups.length; i++) {
+        var p = G.popups[i], pp = (nowP - p.t0) / 950;
+        var py = (p.lane === "top" ? geo.y1 : geo.y2) + geo.laneH / 2 - 8 - pp * 26;
+        ctx.save();
+        ctx.globalAlpha = pp < 0.7 ? 1 : 1 - (pp - 0.7) / 0.3;
+        ctx.font = "800 " + (p.big ? 40 : 30) + "px 'M PLUS Rounded 1c', sans-serif";
+        ctx.textAlign = "center";
+        ctx.lineWidth = 7; ctx.strokeStyle = "#fff";
+        var px = Math.min(CW - 130, Math.max(230, CW * 0.52));
+        ctx.strokeText(p.text, px, py);
+        ctx.fillStyle = p.color; ctx.fillText(p.text, px, py);
+        ctx.restore();
+      }
+    }
+
+    /* =========================================================
+       ゲーム進行ロジック
+       ========================================================= */
+    function frame() {
+      if (!G || !G.running) return;
+      var now = nowMs();
+      var gt = now - G.startAt;
+      /* カウントダウン表示 */
+      if (gt < 0) {
+        var c = Math.ceil(-gt / 1000);
+        if (c !== G.lastCount) { G.lastCount = c; els.countNum.textContent = c; sndCountTick(c); }
+        els.countOverlay.classList.remove("hidden");
+      } else {
+        if (G.lastCount !== 0) { G.lastCount = 0; els.countNum.textContent = "スタート！"; sndCountGo(); }
+        if (gt > 650) els.countOverlay.classList.add("hidden");
+      }
+      if (gt >= 0 && !G.over) {
+        chartEnsure(gt + 9000);
+        if (role === "host" || role === "solo") hostLaneLogic(gt, now);
+        if (role === "guest" || role === "solo") guestLaneLogic(now);
+        if (role === "solo") soloRescueSpawnCheck(now);
+      }
+      draw(now, gt);
+      if (G) G.raf = requestAnimationFrame(frame);
+    }
+    var lastTickSec = -1;
+    function sndCountTick(c) { if (c !== lastTickSec) { lastTickSec = c; tone(660, 0.09, "sine", 0.12); } }
+
+    /* ホスト側：上段の見逃し検出 */
+    function hostLaneLogic(gt, now) {
+      while (G.topPtr < chart.notes.length) {
+        var n = chart.notes[G.topPtr];
+        if (gt <= n.hit + GOOD_WIN) break;
+        G.topPtr++;
+        if (G.resolvedTop.has(n.id)) continue;
+        G.resolvedTop.set(n.id, "miss");
+        onTopMissed(n, now);
+      }
+    }
+    function onTopMissed(n, now) {
+      if (role === "host") {
+        roomRef.child("events/" + n.id).set({ r: "miss", ts: firebase.database.ServerValue.TIMESTAMP });
+        G.rescue.set(n.id, { hitServer: now + RESCUE_DELAY + TRAVEL, type: n.type, state: "pending" });
+      } else if (role === "solo") {
+        G.rescue.set(n.id, { hitServer: now + RESCUE_DELAY + TRAVEL, type: n.type, state: "active" });
+      }
+      addPopup("top", "きりのがし…！", "#8a5a6e", false);
+      sndMiss();
+    }
+    function soloRescueSpawnCheck() { /* ソロは onTopMissed で直接 active 化済み */ }
+
+    /* ゲスト側：救済食材の見逃し検出 */
+    function guestLaneLogic(now) {
+      G.rescue.forEach(function (r, id) {
+        if (r.state !== "active") return;
+        if (now > r.hitServer + GOOD_WIN) {
+          r.state = "failed";
+          onRescueFailed(id, r, now);
+        }
+      });
+    }
+    function onRescueFailed(id, r, now) {
+      var geo = laneGeom();
+      addEffect("bottom", geo.targetX, r.type, "missfade");
+      if (role === "guest") {
+        roomRef.child("covers/" + id).set({ r: "fail" });
+        addPopup("bottom", "ミス…", "#d32f2f", true);
+        sndMiss();
+      } else if (role === "solo") {
+        addPopup("bottom", "ミス…", "#d32f2f", true);
+        sndMiss();
+        aggApplyFail();
+      }
+    }
+
+    /* ---------------- 切る！入力 ---------------- */
+    function cutTop() {
+      if (!G || !G.running || G.over) return;
+      if (role === "guest") return;
+      ac();
+      var now = nowMs(), gt = now - G.startAt;
+      if (gt < 0) return;
+      G.chopTop = performance.now();
+      var best = null, bestAbs = 1e9;
+      for (var i = 0; i < chart.notes.length; i++) {
+        var n = chart.notes[i];
+        if (G.resolvedTop.has(n.id)) continue;
+        var d = Math.abs(gt - n.hit);
+        if (d < bestAbs) { bestAbs = d; best = n; }
+        if (n.hit - gt > GOOD_WIN + 600) break;
+      }
+      if (!best || bestAbs > GOOD_WIN) return; /* 空振り（ペナルティなし） */
+      var judge = bestAbs <= PERFECT_WIN ? "PERFECT" : "GOOD";
+      G.resolvedTop.set(best.id, judge);
+      var geo = laneGeom();
+      addEffect("top", xForTop(best, gt, geo), best.type, "cut");
+      addPopup("top", judge + "!", judge === "PERFECT" ? "#f5a623" : "#e91e63", false);
+      sndCut(judge === "PERFECT");
+      if (role === "host") roomRef.child("events/" + best.id).set({ r: "cut", j: judge });
+      aggApplyCut(judge);
+    }
+    function cutBottom() {
+      if (!G || !G.running || G.over) return;
+      if (role === "host") return;
+      ac();
+      var now = nowMs();
+      if (now < G.startAt) return;
+      G.chopBottom = performance.now();
+      var bestId = -1, best = null, bestAbs = 1e9;
+      G.rescue.forEach(function (r, id) {
+        if (r.state !== "active") return;
+        var d = Math.abs(now - r.hitServer);
+        if (d < bestAbs) { bestAbs = d; best = r; bestId = id; }
+      });
+      if (!best || bestAbs > GOOD_WIN) return;
+      var judge = bestAbs <= PERFECT_WIN ? "PERFECT" : "GOOD";
+      best.state = "covered";
+      var geo = laneGeom();
+      addEffect("bottom", xForRescue(best, now, geo), best.type, "cut");
+      addPopup("bottom", "ナイスカバー！", "#2e9e4f", true);
+      addPopup("bottom", judge + "!", judge === "PERFECT" ? "#f5a623" : "#e91e63", false);
+      sndCover();
+      if (role === "guest") roomRef.child("covers/" + bestId).set({ r: "cover", j: judge });
+      if (role === "solo") aggApplyCut(judge);
+    }
+
+    /* ---------------- Firebaseイベント受信 ---------------- */
+    function attachPlayListeners() {
+      if (role === "guest") {
+        roomRef.child("events").on("child_added", function (snap) {
+          if (!G || !G.running) return;
+          var id = parseInt(snap.key, 10), v = snap.val();
+          if (!v || G.resolvedTop.has(id)) return;
+          var note = chart.notes[id];
+          if (!note) return;
+          if (v.r === "cut") {
+            G.resolvedTop.set(id, v.j || "GOOD");
+            var gt = nowMs() - G.startAt;
+            addEffect("top", xForTop(note, gt, laneGeom()), note.type, "cut");
+            addPopup("top", (v.j || "GOOD") + "!", v.j === "PERFECT" ? "#f5a623" : "#e91e63", false);
+          } else if (v.r === "miss") {
+            G.resolvedTop.set(id, "miss");
+            var ts = typeof v.ts === "number" ? v.ts : serverNow();
+            G.rescue.set(id, { hitServer: ts + RESCUE_DELAY + TRAVEL, type: note.type, state: "active" });
+            addPopup("top", "きりのがし…！", "#8a5a6e", false);
+          }
+        });
+      }
+      if (role === "host") {
+        roomRef.child("covers").on("child_added", function (snap) {
+          if (!G || !G.running || G.over) return;
+          var id = parseInt(snap.key, 10), v = snap.val();
+          if (!v) return;
+          var r = G.rescue.get(id);
+          if (!r || r.state === "covered" || r.state === "failed") return;
+          var geo = laneGeom();
+          if (v.r === "cover") {
+            r.state = "covered";
+            addEffect("bottom", xForRescue(r, serverNow(), geo), r.type, "cut");
+            addPopup("bottom", "ナイスカバー！", "#2e9e4f", true);
+            aggApplyCut(v.j || "GOOD");
+          } else if (v.r === "fail") {
+            r.state = "failed";
+            addEffect("bottom", geo.targetX, r.type, "missfade");
+            addPopup("bottom", "ミス…", "#d32f2f", true);
+            sndMiss();
+            aggApplyFail();
+          }
+        });
+      }
+    }
+    function detachPlayListeners() {
+      if (!roomRef) return;
+      roomRef.child("events").off();
+      roomRef.child("covers").off();
+    }
+
+    /* =========================================================
+       部屋管理・画面遷移
+       ========================================================= */
+    function beginGame(seed, startAt) {
+      detachPlayListeners();
+      if (G && G.raf) cancelAnimationFrame(G.raf);
+      chartInit(seed);
+      G = newGameState(startAt);
+      lastTickSec = -1;
+      updateHUD(G.agg);
+      els.noticeOverlay.classList.add("hidden");
+      els.resultOverlay.classList.add("hidden");
+      els.countOverlay.classList.remove("hidden");
+      els.countNum.textContent = "3";
+      configureCutButtons();
+      showScreen("game");
+      fitCanvas();
+      if (role !== "solo") attachPlayListeners();
+      G.raf = requestAnimationFrame(frame);
+    }
+    function configureCutButtons() {
+      var topMine = role !== "guest", bottomMine = role !== "host";
+      els.btnCutTop.disabled = !topMine;
+      els.btnCutBottom.disabled = !bottomMine;
+      els.btnCutTop.classList.toggle("mine2", false);
+      els.btnCutBottom.classList.toggle("mine2", role !== "host");
+      els.btnCutTopSub.textContent = topMine ? "上段・1P（Fキー）" : "上段・1P（相手の担当）";
+      els.btnCutBottomSub.textContent = bottomMine ? "下段・2P（Jキー）" : "下段・2P（相手の担当）";
+      els.gameFootNote.textContent = role === "solo"
+        ? "練習モード：Fキー＝上段、Jキー＝下段。両レーンを自分でさばこう！"
+        : (role === "host" ? "あなたは1P（上段）。切り逃した食材は2Pが下段でカバーしてくれます。" : "あなたは2P（下段）。1Pが切り逃した食材が右から流れ直してくるので、カバーしよう！");
+    }
+    function showResult() {
+      if (G) { G.running = false; if (G.raf) cancelAnimationFrame(G.raf); draw(nowMs(), nowMs() - G.startAt); }
+      els.resScore.textContent = lastAgg.score.toLocaleString("ja-JP");
+      els.resCombo.textContent = lastAgg.maxCombo;
+      els.resServings.textContent = lastAgg.servings + "人前";
+      var isHost = role === "host";
+      els.btnRematch.classList.toggle("hidden", !isHost);
+      els.rematchWait.classList.toggle("hidden", isHost || role === "solo");
+      if (role === "solo") els.btnRematch.classList.remove("hidden");
+      els.resultOverlay.classList.remove("hidden");
+    }
+    function showNotice(title, text) {
+      if (G) { G.running = false; if (G.raf) cancelAnimationFrame(G.raf); }
+      els.noticeTitle.textContent = title;
+      els.noticeText.textContent = text || "";
+      els.noticeOverlay.classList.remove("hidden");
+      els.countOverlay.classList.add("hidden");
+    }
+    function cleanupToTop() {
+      leaving = true;
+      detachPlayListeners();
+      if (G) { G.running = false; if (G.raf) cancelAnimationFrame(G.raf); G = null; }
+      if (roomRef) {
+        try {
+          roomRef.off();
+          roomRef.child("state").off();
+          if (role === "host") { roomRef.remove(); }
+          else if (role === "guest") {
+            roomRef.child("guest/online").onDisconnect().cancel();
+            roomRef.child("guest").remove();
+          }
+          if (role === "host") roomRef.child("host/online").onDisconnect().cancel();
+        } catch (e) {}
+      }
+      roomRef = null; roomCode = ""; role = null; curStartAt = 0; joinedOnce = false;
+      setMsg(els.msgCreate, ""); setMsg(els.msgJoin, ""); setMsg(els.msgRoom, "");
+      els.noticeOverlay.classList.add("hidden");
+      els.resultOverlay.classList.add("hidden");
+      showScreen("top");
+    }
+
+    /* 部屋の状態監視 */
+    function watchRoom() {
+      roomRef.on("value", function (snap) {
+        if (leaving) return;
+        var v = snap.val();
+        if (!v) {
+          if (joinedOnce) { showNotice("部屋が閉じられました", "ホストが部屋を閉じました。トップに戻って、もう一度部屋を作り直してください。"); showScreen("game"); }
+          return;
+        }
+        joinedOnce = true;
+        /* 待機室の表示 */
+        if (v.status === "waiting") {
+          if (role === "host") {
+            var hasGuest = !!(v.guest && v.guest.online);
+            els.waitStatus.innerHTML = hasGuest ? "相手が入りました！" : "相手を待っています<span class='dots'></span>";
+            els.waitSub.textContent = hasGuest ? "スタートを押すと、3秒後に2台同時に始まります" : "このコードを相手に伝えてね";
+            els.btnStart.classList.toggle("hidden", !hasGuest);
+            els.btnStart.disabled = !hasGuest;
+          } else {
+            els.waitStatus.innerHTML = "ホストのスタート待ちです<span class='dots'></span>";
+            els.waitSub.textContent = "ホストがスタートを押すと始まります";
+          }
+        }
+        /* 相手の切断検知 */
+        if (G && G.running && !G.over) {
+          if (role === "host" && (!v.guest || v.guest.online === false)) {
+            showNotice("相手との接続が切れました", "2Pが退出したか、通信が切れました。");
+            return;
+          }
+          if (role === "guest" && (!v.host || v.host.online === false)) {
+            showNotice("相手との接続が切れました", "1Pが退出したか、通信が切れました。");
+            return;
+          }
+        }
+        /* 対局開始（再戦含む） */
+        if (v.status === "playing" && v.startAt && v.startAt !== curStartAt) {
+          curStartAt = v.startAt;
+          beginGame(v.seed || 1, v.startAt);
+        }
+        /* ゲームオーバー */
+        if (v.status === "over" && G && !G.over) {
+          G.over = true;
+          setTimeout(showResult, 650);
+        } else if (v.status === "over" && G && G.over && els.resultOverlay.classList.contains("hidden")) {
+          setTimeout(showResult, 650);
+        }
+      });
+      roomRef.child("state").on("value", function (snap) {
+        var s = snap.val();
+        if (s) updateHUD({ score: s.score || 0, combo: s.combo || 0, maxCombo: s.maxCombo || 0, hearts: s.hearts == null ? 3 : s.hearts, cuts: s.cuts || 0, servings: s.servings || 0 });
+      });
+    }
+
+    /* ---------------- ボタン配線 ---------------- */
+    $("btnCreate").addEventListener("click", function () {
+      ac();
+      if (!fbReady || !db) { setMsg(els.msgCreate, "オンライン機能を読み込めませんでした。通信環境を確認してください。", true); return; }
+      setMsg(els.msgCreate, "部屋を作っています…");
+      var tries = 0;
+      (function tryCreate() {
+        tries++;
+        var code = String(1000 + Math.floor(Math.random() * 9000));
+        var ref = db.ref("coopRooms/" + code);
+        ref.once("value").then(function (snap) {
+          if (snap.exists() && tries < 8) { tryCreate(); return; }
+          if (snap.exists()) { setMsg(els.msgCreate, "混み合っています。もう一度お試しください。", true); return; }
+          role = "host"; roomCode = code; roomRef = ref; leaving = false; joinedOnce = false;
+          return ref.set({
+            status: "waiting", seed: 0, startAt: 0, round: 0,
+            host: { online: true, joinedAt: firebase.database.ServerValue.TIMESTAMP },
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+          }).then(function () {
+            ref.child("host/online").onDisconnect().set(false);
+            els.roomCodeBig.textContent = code;
+            setMsg(els.msgCreate, "");
+            showScreen("room");
+            watchRoom();
+          });
+        }).catch(function (err) {
+          setMsg(els.msgCreate, "通信に失敗しました（" + (err && err.code ? err.code : "error") + "）。もう一度お試しください。", true);
+        });
+      })();
+    });
+
+    $("btnJoin").addEventListener("click", function () {
+      ac();
+      if (!fbReady || !db) { setMsg(els.msgJoin, "オンライン機能を読み込めませんでした。通信環境を確認してください。", true); return; }
+      var code = (els.inputCode.value || "").replace(/[^0-9]/g, "");
+      if (code.length !== 4) { setMsg(els.msgJoin, "4桁の数字コードを入力してください。", true); return; }
+      setMsg(els.msgJoin, "部屋を探しています…");
+      var ref = db.ref("coopRooms/" + code);
+      ref.once("value").then(function (snap) {
+        var v = snap.val();
+        if (!v) { setMsg(els.msgJoin, "そのコードの部屋は見つかりませんでした。", true); return; }
+        if (v.guest && v.guest.online) { setMsg(els.msgJoin, "その部屋はもう満員です。", true); return; }
+        if (v.status !== "waiting") { setMsg(els.msgJoin, "その部屋は対局中です。", true); return; }
+        role = "guest"; roomCode = code; roomRef = ref; leaving = false; joinedOnce = false;
+        return ref.child("guest").set({ online: true, joinedAt: firebase.database.ServerValue.TIMESTAMP }).then(function () {
+          ref.child("guest/online").onDisconnect().set(false);
+          els.roomCodeBig.textContent = code;
+          els.btnStart.classList.add("hidden");
+          setMsg(els.msgJoin, "");
+          showScreen("room");
+          watchRoom();
+        });
+      }).catch(function (err) {
+        setMsg(els.msgJoin, "通信に失敗しました（" + (err && err.code ? err.code : "error") + "）。もう一度お試しください。", true);
+      });
+    });
+    els.inputCode.addEventListener("input", function () {
+      els.inputCode.value = els.inputCode.value.replace(/[^0-9]/g, "").slice(0, 4);
+    });
+    els.inputCode.addEventListener("keydown", function (e) { if (e.key === "Enter") $("btnJoin").click(); });
+
+    els.btnStart.addEventListener("click", function () {
+      if (role !== "host" || !roomRef) return;
+      ac();
+      startMatch();
+    });
+    function startMatch() {
+      var seed = (Math.random() * 0xffffffff) >>> 0;
+      var startAt = serverNow() + 3200;
+      roomRef.child("events").remove();
+      roomRef.child("covers").remove();
+      roomRef.update({ status: "playing", seed: seed, startAt: startAt });
+      roomRef.child("state").set({ score: 0, combo: 0, maxCombo: 0, hearts: 3, cuts: 0, servings: 0, seq: 0 });
+    }
+    els.btnRematch.addEventListener("click", function () {
+      ac();
+      if (role === "solo") { beginGame((Math.random() * 0xffffffff) >>> 0, performance.now() + 2200); return; }
+      if (role === "host" && roomRef) startMatch();
+    });
+    $("btnLeaveRoom").addEventListener("click", function () {
+      if (role === "guest" && roomRef) { /* ゲスト退出は cleanupToTop で guest を消す */ }
+      cleanupToTop();
+    });
+    $("btnNoticeTop").addEventListener("click", cleanupToTop);
+    $("btnResultTop").addEventListener("click", cleanupToTop);
+    $("btnPractice").addEventListener("click", function () {
+      ac();
+      role = "solo"; roomRef = null; leaving = false;
+      beginGame((Math.random() * 0xffffffff) >>> 0, performance.now() + 2200);
+    });
+
+    /* 切るボタン（pointerdownで即応） */
+    function bindCut(btn, fn) {
+      btn.addEventListener("pointerdown", function (e) { e.preventDefault(); fn(); });
+      btn.addEventListener("click", function (e) { e.preventDefault(); });
+    }
+    bindCut(els.btnCutTop, cutTop);
+    bindCut(els.btnCutBottom, cutBottom);
+    document.addEventListener("keydown", function (e) {
+      if (e.repeat) return;
+      if (!G || !G.running) return;
+      var k = e.key.toLowerCase();
+      if (k === "f") cutTop();
+      else if (k === "j") cutBottom();
+    });
+
+    fitCanvas();
+    updateHUD(lastAgg);
+    </script>
+  </body>
+</html>
