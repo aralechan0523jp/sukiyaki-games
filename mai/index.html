@@ -931,7 +931,7 @@
     /* 25人前完成後に出る超ロングしらたき：さらに横に長く、中心はもっと分かりにくい */
     const SHIRATAKI_XL = { name: 'しらた〜〜〜〜〜〜〜き', svg: '<svg viewBox="0 0 200 64"><g fill="none" stroke-linecap="round"><path d="M4 20 C14 8 24 32 36 20 C48 8 58 32 70 20 C82 8 92 32 104 20 C116 8 126 32 138 20 C150 8 160 32 172 20 C182 10 190 28 196 18" stroke="#cfcfc2" stroke-width="7.5"/><path d="M4 20 C14 8 24 32 36 20 C48 8 58 32 70 20 C82 8 92 32 104 20 C116 8 126 32 138 20 C150 8 160 32 172 20 C182 10 190 28 196 18" stroke="#fffffa" stroke-width="4.6"/><path d="M4 36 C15 25 25 47 38 36 C51 25 61 47 74 36 C87 25 97 47 110 36 C123 25 133 47 146 36 C159 25 169 47 182 36 C189 30 193 38 196 34" stroke="#cfcfc2" stroke-width="7.5"/><path d="M4 36 C15 25 25 47 38 36 C51 25 61 47 74 36 C87 25 97 47 110 36 C123 25 133 47 146 36 C159 25 169 47 182 36 C189 30 193 38 196 34" stroke="#fcfcf4" stroke-width="4.6"/><path d="M10 50 C22 41 32 57 46 49 C60 41 70 57 84 49 C98 41 108 57 122 49 C136 41 146 57 160 49 C172 42 182 53 190 47" stroke="#d8d8cc" stroke-width="6.5"/><path d="M10 50 C22 41 32 57 46 49 C60 41 70 57 84 49 C98 41 108 57 122 49 C136 41 146 57 160 49 C172 42 182 53 190 47" stroke="#fffffa" stroke-width="3.8"/><path d="M84 27 C77 18 90 12 94 19 C98 26 88 32 83 28 M102 43 C95 35 108 29 112 36 C116 43 106 49 101 44 M150 27 C143 18 156 12 160 19 C164 26 154 32 149 28" stroke="#e9e9dd" stroke-width="3.8"/><path d="M44 14 C58 24 66 12 82 20 M96 52 C110 42 122 54 138 44" stroke="#ffffff" stroke-width="3" opacity=".85"/></g></svg>' };
     const SFX_WORDS = ['トン！', 'ザクッ！', 'シャキッ！', 'トン！', 'スパッ！'];
-    /* 切るとハートが減る危険アイテム（20人前完成後から低確率で出現、スルーでボーナス） */
+    /* 切るとハートが減る危険アイテム（22人前完成後から低確率で出現、スルーでボーナス） */
     const HAZARDS = [
       { name: '石', svg: '<svg viewBox="0 0 64 64"><path d="M10 46 L14 26 L28 14 L46 16 L56 30 L52 47 C40 53 20 52 10 46Z" fill="#9aa1a8" stroke="#6e757c" stroke-width="2.5"/><path d="M14 26 L30 30 L46 16 M30 30 L34 48 M30 30 L14 42" stroke="#7c848c" stroke-width="2.5" fill="none"/><path d="M20 22 L26 18" stroke="#c3c9cf" stroke-width="3" stroke-linecap="round"/></svg>' },
       { name: 'どくキノコ', svg: '<svg viewBox="0 0 64 64"><path d="M5 32 C5 16 18 7 32 7 C46 7 59 16 59 32 C59 37 54 39 49 38 L15 38 C10 39 5 37 5 32Z" fill="#8e44ad" stroke="#6c2f86" stroke-width="2.5"/><circle cx="21" cy="20" r="4" fill="#e9d5f5"/><circle cx="40" cy="15" r="3" fill="#e9d5f5"/><circle cx="48" cy="27" r="3" fill="#e9d5f5"/><circle cx="30" cy="28" r="2.4" fill="#e9d5f5"/><path d="M25 38 L39 38 L37 52 C37 57 27 57 27 52Z" fill="#efe3d3" stroke="#c9b28c" stroke-width="2"/><circle cx="29" cy="46" r="1.8" fill="#4a2457"/><circle cx="35" cy="46" r="1.8" fill="#4a2457"/><path d="M29 51 L35 51" stroke="#4a2457" stroke-width="1.8" stroke-linecap="round"/></svg>' },
@@ -1673,8 +1673,8 @@
         const overlapMode = G.pots >= 30;
         const nearShirataki = !overlapMode && G.notes.some((n) => n.shirataki && Math.abs(n.hitTime - hitTime) < (n.xlong ? 0.55 : 0.45));
         if (nearShirataki) return;
-        /* 20人前完成後、まれに危険アイテムがまぎれる */
-        const hazard = G.pots >= 20 && Math.random() < 0.12;
+        /* 22人前完成後、まれに危険アイテムがまぎれる */
+        const hazard = G.pots >= 22 && Math.random() < 0.12;
         /* 8人前完成後、長いしらたきがまぎれる（中心が分かりにくい難関食材）。
            （25人前からの超ロングしらたきは廃止。通常の長いしらたきだけが残る）
            30人前までは前後に他の食材が近すぎるときだけ通常食材に戻す（少しのかぶりは許容）。
