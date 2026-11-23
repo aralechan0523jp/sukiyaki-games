@@ -382,8 +382,10 @@
       }
       /* ---------- 5人前ごとの達成演出（赤い文字＋白い縁取り・両サイドのクラッカー・紙吹雪） ---------- */
       #servingAnnounce{
-        /* 流れてくる食材のレーン（top:56%付近）と被らないよう、画面の下の方に表示する */
-        position:absolute; top:76%; left:50%; transform:translateX(-50%);
+        /* 流れてくる食材のレーン（top:56%付近）と被らないよう、画面の下の方に表示する。
+           中央（left:50%）だと左寄りに見えるため、中心を61%へ右にずらす。
+           左下のリッキー（幅最大27%）には文字の左端が届かない範囲にとどめる */
+        position:absolute; top:76%; left:61%; transform:translateX(-50%);
         z-index:13; pointer-events:none; opacity:0; white-space:nowrap; text-align:center;
         font-family:"Mochiy Pop One",sans-serif; font-size:clamp(28px,8.4vw,46px);
         /* 赤い文字に白い縁取り（白枠） */
@@ -411,7 +413,9 @@
         position:absolute; top:76%; font-size:46px; line-height:1;
         opacity:0; filter:drop-shadow(0 3px 3px rgba(80,40,0,.35));
       }
-      #crackers .cracker.left{ left:4px; }
+      /* 左クラッカーは「○人前達成！！」の右寄せ（中心61%）に合わせて少し右へ寄せる。
+         右クラッカーは画面右端が上限なのでそのまま（文字が近づいた分、文字のすぐ右に来る） */
+      #crackers .cracker.left{ left:7%; }
       #crackers .cracker.right{ right:4px; }
       #crackers.show .cracker.left{ animation:crackerPopL 2.9s ease-out; }
       #crackers.show .cracker.right{ animation:crackerPopR 2.9s ease-out; }
@@ -1636,10 +1640,11 @@
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
       const colors = ['#ff5252', '#ffd83d', '#69f0ae', '#40c4ff', '#ff7ac8', '#ffa726', '#ffffff'];
-      /* 左端と右端のクラッカーから、内側へ向けて噴き出す。
+      /* 両サイドのクラッカーから、内側へ向けて噴き出す。
+         左クラッカーは達成表示の右寄せに合わせて left:7% の位置にあり、噴き出し口もその中心に合わせる。
          噴き出しの高さはクラッカー（top:76%＋絵文字の中心）に合わせる */
       const cy = h * 0.76 + 23;
-      [{ x: 16, dir: 1 }, { x: w - 16, dir: -1 }].forEach((b) => {
+      [{ x: w * 0.07 + 23, dir: 1 }, { x: w - 16, dir: -1 }].forEach((b) => {
         for (let i = 0; i < 75; i++) {
           cf.parts.push({
             x: b.x + rand(-4, 4), y: cy + rand(-14, 14),
@@ -1950,10 +1955,10 @@
       const judged = G.perfect + G.good + G.miss;
       const acc = judged ? G.perfect / judged : 0;
       let rank = 'D', word = 'まだまだ修行中！';
-      if (acc >= 0.7 && G.pots >= 21) { rank = 'S'; word = 'すき焼きマスター！'; }
-      else if (acc >= 0.6) { rank = 'A'; word = '見事な包丁さばき！'; }
-      else if (acc >= 0.5) { rank = 'B'; word = 'なかなかの腕前！'; }
-      else if (acc >= 0.4) { rank = 'C'; word = 'もう少しで一人前！'; }
+      if (acc >= 0.8 && G.pots >= 22) { rank = 'S'; word = 'すき焼きマスター！'; }
+      else if (acc >= 0.7 && G.pots >= 18) { rank = 'A'; word = '見事な包丁さばき！'; }
+      else if (acc >= 0.6) { rank = 'B'; word = 'なかなかの腕前！'; }
+      else if (acc >= 0.5) { rank = 'C'; word = 'もう少しで一人前！'; }
       els.rankBig.textContent = rank;
       els.rankWord.textContent = word;
       els.stScore.textContent = G.score.toLocaleString('ja-JP');
