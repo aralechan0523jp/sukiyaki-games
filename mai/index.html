@@ -907,7 +907,7 @@
       <section id="roomScreen" hidden>
         <div class="room-card">
           <h2 class="room-title">👥 協力プレイ（オンライン）</h2>
-          <p class="room-lead">1P（上段）が切って、切り逃した食材は下段の右から流れ直してくるよ。2P（下段）が切れば「ナイスカバー！」でハートは減らずコンボも続く。2人とも逃したらハート−1。ハート・スコア・コンボ・人前は2人で共有だよ。</p>
+          <p class="room-lead">1P（上段）が切って、切り逃した食材は下段の右から流れ直してくるよ。2P（下段）が切れば「ナイスカバー！」でハートは減らずコンボも続く。2人とも逃したらハート−1。ハート・スコア・コンボ・人前は2人で共有だよ。石・どくキノコ・くさった肉は特別ルール：1Pがスルーしても得点にはならず、下段へ流れ直してくるよ。2Pも切らずにスルーできたら＋150点。どちらの段でも切ってしまったらハート−1だよ。</p>
           <div id="coopEntryPanel">
             <button class="btn green" id="coopCreateBtn" type="button">🏠 部屋を作る（1P・上段）</button>
             <p class="room-msg" id="coopCreateMsg"></p>
@@ -2220,14 +2220,37 @@
       g.moveTo(22, -3); g.lineTo(42, -6); g.quadraticCurveTo(46, 2, 40, 6); g.lineTo(22, 4); g.closePath(); g.fill();
       g.strokeStyle = "#aeb8c4"; g.lineWidth = 1.2; g.stroke();
       g.restore();
-      /* 名札 */
-      g.font = "800 12px 'M PLUS Rounded 1c', sans-serif";
+      /* 名札（協力プレイではランキング用の入力名前が入るため、長い名前は
+         文字を少し小さくして札に収める） */
+      var labelText = label, labelFs = 12;
+      g.font = "800 " + labelFs + "px 'M PLUS Rounded 1c', sans-serif";
       g.textAlign = "center";
-      var tw = g.measureText(label).width + 14;
+      var tw = g.measureText(labelText).width + 14;
+      while (tw > 100 && labelFs > 7) {
+        labelFs--;
+        g.font = "800 " + labelFs + "px 'M PLUS Rounded 1c', sans-serif";
+        tw = g.measureText(labelText).width + 14;
+      }
+      while (tw > 100 && labelText.length > 1) {
+        labelText = labelText.slice(0, -2) + '…';
+        tw = g.measureText(labelText).width + 14;
+      }
       g.fillStyle = isMine ? "#e91e63" : "rgba(90,70,80,.75)";
       roundRect(g, -tw / 2, 8, tw, 19, 9.5); g.fill();
-      g.fillStyle = "#fff"; g.fillText(label, 0, 22);
+      g.fillStyle = "#fff"; g.fillText(labelText, 0, 22);
       g.restore();
+    }
+
+    /* 協力プレイのキャラ下の名札：固定の「1P まい」「2P まい」ではなく、
+       タイトル画面で入力したランキング用の名前を表示する（1P＝ホストの名前、
+       2P＝ゲストの名前。部屋情報で共有される COOP.hostName / guestName を使う）。
+       名前が未入力（空、またはランキングの既定名のまま）のときは従来の
+       「1P まい」「2P まい」を出す。1人用は従来どおり固定表示 */
+    function coopCharLabel(second) {
+      if (G.mode !== 'coop') return second ? '2P まい' : '1P まい';
+      const nm = ((second ? COOP.guestName : COOP.hostName) || '').trim();
+      if (!nm || nm === DEFAULT_NAME) return second ? '2P まい' : '1P まい';
+      return nm;
     }
 
     /* 上段（1P・1人用）と下段（2P）のまいちゃんを各キャンバスへ描く。
@@ -2238,7 +2261,7 @@
         g1.clearRect(0, 0, maiCanvas.width, maiCanvas.height);
         g1.save(); g1.scale(maiCanvas.width / 120, maiCanvas.height / 150);
         const mineTop = G.mode !== 'coop' || COOP.role === 'host';
-        drawMai(g1, 44, 118, 1, '#e91e63', G.chopAnimStart > 0 ? G.chopAnimStart : 0, '1P まい', mineTop, '#6d7078');
+        drawMai(g1, 44, 118, 1, '#e91e63', G.chopAnimStart > 0 ? G.chopAnimStart : 0, coopCharLabel(false), mineTop, '#6d7078');
         /* ミス直後だけ汗マーク（従来の表情変化の名残） */
         if (now < G.faceUntil) {
           g1.fillStyle = '#7ec8f7';
@@ -2255,7 +2278,7 @@
         const g2 = maiCanvas2.getContext('2d');
         g2.clearRect(0, 0, maiCanvas2.width, maiCanvas2.height);
         g2.save(); g2.scale(maiCanvas2.width / 120, maiCanvas2.height / 150);
-        drawMai(g2, 44, 118, 1, '#7b6fd0', G.chopAnimStartB > 0 ? G.chopAnimStartB : 0, '2P まい', COOP.role === 'guest', '#3f4c77');
+        drawMai(g2, 44, 118, 1, '#7b6fd0', G.chopAnimStartB > 0 ? G.chopAnimStartB : 0, coopCharLabel(true), COOP.role === 'guest', '#3f4c77');
         g2.restore();
       }
     }
@@ -2618,17 +2641,20 @@
       if (key.t === 'x') return SHIRATAKI_XL;
       return FOODS[key.i || 0] || FOODS[0];
     }
-    /* 救済食材ノートを作る。srcは元の上段ノート（または同等の情報を持つオブジェクト） */
+    /* 救済食材ノートを作る。srcは元の上段ノート（または同等の情報を持つオブジェクト）。
+       危険食材（石・どくキノコ・くさった肉）が上段をスルーして流れ直してきた場合は
+       hazard フラグを引き継ぐ：下段では「切ったらダメ／スルーで＋150」になる */
     function makeRescueNote(src, hitTime, travel) {
       const item = itemFromKey(src.itemKey);
       const long = !!(src.itemKey && (src.itemKey.t === 's' || src.itemKey.t === 'x'));
+      const hazard = !!src.hazard || !!(src.itemKey && src.itemKey.t === 'h');
       const el = document.createElement('div');
-      el.className = 'note lane-b rescue' + (long ? ' long shirataki' : '') + (src.size === 1.5 ? ' big' : src.size === 0.5 ? ' small' : '');
+      el.className = 'note lane-b rescue' + (hazard ? ' hazard' : '') + (long ? ' long shirataki' : '') + (src.size === 1.5 ? ' big' : src.size === 0.5 ? ' small' : '');
       el.innerHTML = '<div class="rescueTag">救済！</div><div class="foodSvg">' + item.svg + '</div><div class="foodName">' + item.name + '</div>';
       el.style.display = 'none';
       return {
         id: src.id, lane: 'b', itemKey: src.itemKey, hitTime: hitTime, el: el, svg: item.svg,
-        hazard: false, long: long, xlong: false, shirataki: long, judged: false, falling: false,
+        hazard: hazard, long: long, xlong: false, shirataki: long, judged: false, falling: false,
         fallStart: 0, travel: travel, size: src.size || 1, pw: src.pw, gw: src.gw,
         level: src.level || 1, rescue: true
       };
@@ -2636,12 +2662,15 @@
     /* ホスト：上段で切り逃した食材を、下段の右端から救済食材として流れ直させる。
        落下アニメーションではなく、上段で消えたあと下段に新しく流れ直す */
     function spawnRescue(n) {
+      const isHz = !!n.hazard;
       n.judged = true;
       const idx = G.notes.indexOf(n);
       if (idx >= 0) G.notes.splice(idx, 1);
       n.el.remove();
-      showJudge('miss', 'きりのがし！', 't');
-      sfxMiss();
+      /* 危険食材の上段スルーはミスではない（得点にもならない）。
+         そのまま下段へ流れ直したことだけを知らせる */
+      if (isHz) { showJudge('dodge', 'スルー！下段へ', 't'); sfxDodge(); }
+      else { showJudge('miss', 'きりのがし！', 't'); sfxMiss(); }
       /* 出現タイミングはミス時刻（元のノートのターゲット通過時刻）を基準に決める。
          ホストの検出タイミング（判定窓＋フレームのブレ）を基準にすると、その分だけ
          ゲスト側の出現が遅れてカクついて見えるため、検出時刻は使わない */
@@ -2653,14 +2682,26 @@
       els.notes.appendChild(r.el);
       if (COOP.roomRef) {
         COOP.roomRef.child('events/' + n.id).set({
-          r: 'miss', rd: G.round,
+          r: isHz ? 'hzpass' : 'miss', rd: G.round, hz: isHz ? 1 : 0,
           mt: Math.round((n.hitTime - G.startTime) * 1000), tr: travel,
           it: n.itemKey, s: n.size, pw: n.pw, gw: n.gw
         });
       }
     }
-    /* ゲスト：救済食材も逃したとき（ハート等の集計はホストが covers を受けて行う） */
+    /* ゲスト：救済食材も逃したとき（ハート等の集計はホストが covers を受けて行う）。
+       ただし危険食材の下段スルーは成功扱い：ここで初めて＋150点になる
+       （集計はホストが covers の 'dodge' を受けて行う） */
     function judgeRescueFailLocal(n) {
+      if (n.hazard) {
+        n.judged = true;
+        n.el.remove();
+        const hi = G.notes.indexOf(n);
+        if (hi >= 0) G.notes.splice(hi, 1);
+        showJudge('dodge', 'スルー！ ＋150', 'b');
+        sfxDodge();
+        if (COOP.roomRef) COOP.roomRef.child('covers/' + n.id).set({ r: 'dodge', rd: G.round, tm: Math.round((AC.currentTime - G.startTime) * 1000) });
+        return;
+      }
       n.judged = true; n.falling = true; n.fallStart = performance.now();
       showJudge('miss', 'MISS', 'b');
       sfxMiss();
@@ -2690,13 +2731,11 @@
         }
         return;
       }
-      /* ホストの上段：危険食材のスルーは1人用と同じ。普通の食材は救済へ */
-      if (n.hazard) {
-        judgeDodge(n);
-        if (COOP.roomRef) COOP.roomRef.child('events/' + n.id).set({ r: 'dodge', rd: G.round, tm: Math.round((AC.currentTime - G.startTime) * 1000) });
-      } else {
-        spawnRescue(n);
-      }
+      /* ホストの上段：通常食材も危険食材も、スルーしたら下段へ流れ直す（救済）。
+         違いは得点のタイミングだけ：通常食材は下段で2Pが切ればカバー得点、
+         危険食材は上段スルーでは得点にならず、下段でも切らずにスルーして
+         初めて＋150点になる（切ったらどちらの段でもハート−1） */
+      spawnRescue(n);
     }
     /* 2P（ゲスト）の切る操作：下段の救済食材だけを判定する */
     function doChopBottom() {
@@ -2715,17 +2754,31 @@
         if (d < bestAbs) { bestAbs = d; best = n; }
       }
       if (best && bestAbs <= best.gw) {
-        const perfect = bestAbs <= best.pw;
-        best.judged = true;
-        sfxChop(perfect);
-        showJudge('cover', 'ナイスカバー！', 'b');
-        showSfxPop(perfect, 'b', perfect ? 'PERFECT!' : 'GOOD');
-        spawnHalves(best);
-        best.el.remove();
-        const idx = G.notes.indexOf(best);
-        if (idx >= 0) G.notes.splice(idx, 1);
-        if (COOP.roomRef) {
-          COOP.roomRef.child('covers/' + best.id).set({ r: 'cover', rd: G.round, j: perfect ? 'PERFECT' : 'GOOD', tm: Math.round((now - G.startTime) * 1000) });
+        if (best.hazard) {
+          /* 下段の危険食材を切ってしまったら、1人用と同じくハート−1・コンボリセット
+             （集計はホストが covers の 'hz' を受けて行う） */
+          best.judged = true;
+          best.el.remove();
+          const hidx = G.notes.indexOf(best);
+          if (hidx >= 0) G.notes.splice(hidx, 1);
+          showJudge('miss', 'ダメ！', 'b');
+          sfxMiss();
+          if (COOP.roomRef) {
+            COOP.roomRef.child('covers/' + best.id).set({ r: 'hz', rd: G.round, tm: Math.round((now - G.startTime) * 1000) });
+          }
+        } else {
+          const perfect = bestAbs <= best.pw;
+          best.judged = true;
+          sfxChop(perfect);
+          showJudge('cover', 'ナイスカバー！', 'b');
+          showSfxPop(perfect, 'b', perfect ? 'PERFECT!' : 'GOOD');
+          spawnHalves(best);
+          best.el.remove();
+          const idx = G.notes.indexOf(best);
+          if (idx >= 0) G.notes.splice(idx, 1);
+          if (COOP.roomRef) {
+            COOP.roomRef.child('covers/' + best.id).set({ r: 'cover', rd: G.round, j: perfect ? 'PERFECT' : 'GOOD', tm: Math.round((now - G.startTime) * 1000) });
+          }
         }
       }
       else sfxWhiff();
@@ -3002,7 +3055,7 @@
         done.textContent = 'ホストの端末から協力ランキングに登録されます';
         return;
       }
-      const name = (COOP.hostName || myRankingName()) + '＆' + (COOP.guestName || DEFAULT_NAME);
+      const name = ((COOP.hostName || '').trim() || myRankingName()) + '＆' + ((COOP.guestName || '').trim() || DEFAULT_NAME);
       const entry = { name: name, score: G.score, pots: G.pots, combo: G.maxCombo, date: new Date().toISOString() };
       fetchCoopEntries()
         .then((entries) => {
@@ -3131,11 +3184,14 @@
         resolveTop();
         showJudge('dodge', 'スルー！ ＋150', 't');
         sfxDodge();
-      } else if (v.r === 'miss') {
+      } else if (v.r === 'miss' || v.r === 'hzpass') {
+        /* 通常食材の切り逃し（miss）と、危険食材の上段スルー（hzpass）は
+           どちらも下段へ流れ直す。危険食材はミス表示にせず、得点もまだ付けない */
+        const isHz = v.r === 'hzpass' || !!v.hz;
         resolveTop();
-        showJudge('miss', 'きりのがし！', 't');
-        sfxMiss();
-        const src = { id: id, itemKey: v.it, size: v.s || 1, pw: v.pw, gw: v.gw, level: 1 };
+        if (isHz) { showJudge('dodge', 'スルー！下段へ', 't'); sfxDodge(); }
+        else { showJudge('miss', 'きりのがし！', 't'); sfxMiss(); }
+        const src = { id: id, itemKey: v.it, size: v.s || 1, pw: v.pw, gw: v.gw, level: 1, hazard: isHz };
         /* 出現タイミングはイベント受信時刻ではなくミス時刻＋固定オフセットで決める。
            受信が遅れてもずらさず、出現時刻を過ぎていればそのままスポーンする
            （位置は毎フレーム時刻から計算されるので、途中からでも正しい位置に出る） */
@@ -3155,6 +3211,10 @@
       G.chopAnimStartB = performance.now();
       if (v.r === 'cover') judgeHit(r, 0, v.j === 'PERFECT', true);
       else if (v.r === 'fail') judgeMiss(r);
+      /* 下段の危険食材：切ったらハート−1（judgeHazardHit）、
+         切らずにスルーできたら＋150（judgeDodge） */
+      else if (v.r === 'hz') judgeHazardHit(r);
+      else if (v.r === 'dodge') judgeDodge(r);
     }
 
     /* ---------- 対局の開始（両端末共通） ---------- */
@@ -3302,7 +3362,11 @@
           return;
         }
         COOP.joined = true;
-        COOP.hostName = (v.host && v.host.name) || DEFAULT_NAME;
+        /* 名前は「入力された生の名前」を共有する（未入力なら空）。
+           ランキング登録時の既定名への置き換えは登録側で行い、キャラ下の
+           名札は未入力のとき従来の「1P まい」「2P まい」を出すため、
+           ここでは既定名で埋めない */
+        COOP.hostName = (v.host && v.host.name) || '';
         COOP.guestName = (v.guest && v.guest.name) || '';
         if (v.status === 'waiting') updateCoopLobby(v);
         /* 対局中の相手切断を検知する */
@@ -3345,6 +3409,7 @@
       }
       if (COOP.trackBackup) { selectTrack(COOP.trackBackup, false, false); COOP.trackBackup = null; }
       COOP.roomRef = null; COOP.role = null; COOP.code = '';
+      COOP.hostName = ''; COOP.guestName = '';
       COOP.inRoom = false; COOP.inGame = false; COOP.joined = false;
       COOP.lastStartAt = 0; COOP.leaving = false;
       $('coopEntryPanel').hidden = false;
@@ -3401,9 +3466,12 @@
           if (snap.exists()) { $('coopCreateMsg').textContent = '混み合っています。もう一度お試しください。'; return; }
           COOP.role = 'host'; COOP.code = code; COOP.roomRef = ref;
           COOP.inRoom = true; COOP.joined = false; COOP.leaving = false; COOP.lastStartAt = 0; COOP.round = 0;
+          /* 自分の名前は部屋情報でゲストと共有する（未入力なら空のまま送り、
+             名札側で「1P まい」にフォールバックさせる） */
+          COOP.hostName = (playerName || '').trim(); COOP.guestName = '';
           return ref.set({
             status: 'waiting', seed: 0, startAt: 0, round: 0, track: currentTrack,
-            host: { online: true, name: myRankingName() },
+            host: { online: true, name: COOP.hostName },
             createdAt: firebase.database.ServerValue.TIMESTAMP
           }).then(() => {
             ref.child('host/online').onDisconnect().set(false);
@@ -3431,7 +3499,11 @@
         if (v.status !== 'waiting') { $('coopJoinMsg').textContent = 'その部屋は対局中です。'; return; }
         COOP.role = 'guest'; COOP.code = code; COOP.roomRef = ref;
         COOP.inRoom = true; COOP.joined = false; COOP.leaving = false; COOP.lastStartAt = 0; COOP.round = 0;
-        return ref.child('guest').set({ online: true, name: myRankingName() }).then(() => {
+        /* 自分の名前をホストと共有し、ホストの名前もここで取り込んでおく
+           （両端末とも 1P＝ホストの名前／2P＝ゲストの名前 で名札を出す） */
+        COOP.guestName = (playerName || '').trim();
+        COOP.hostName = (v.host && v.host.name) || '';
+        return ref.child('guest').set({ online: true, name: COOP.guestName }).then(() => {
           ref.child('guest/online').onDisconnect().set(false);
           $('coopJoinMsg').textContent = '';
           showCoopWait(code);
