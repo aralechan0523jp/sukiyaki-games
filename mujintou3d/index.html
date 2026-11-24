@@ -88,6 +88,8 @@
   .inv-cell .ct { font-size:11px; font-weight:800; }
   .inv-cell .durbar { position:absolute; bottom:2px; left:5px; right:5px; height:4px; background:rgba(255,255,255,.16); border-radius:2px; overflow:hidden; }
   .inv-cell .durbar i { display:block; height:100%; background:#8bc34a; border-radius:2px; }
+  .durbar-inline { display:inline-block; width:36px; height:4px; background:rgba(255,255,255,.25); border-radius:2px; overflow:hidden; vertical-align:middle; }
+  .durbar-inline i { display:block; height:100%; background:#8bc34a; }
   #dmg-flash { inset:0; pointer-events:none; background:radial-gradient(ellipse at center, transparent 55%, rgba(255,30,20,.85) 100%); opacity:0; z-index:8; }
   #vomit-fx { inset:0; pointer-events:none; background:rgba(128,0,180,0.28); display:none; z-index:7; }
   #char-fx { inset:0; pointer-events:none; background:rgba(255,30,20,0.25); display:none; z-index:7; }
@@ -419,6 +421,7 @@ document.addEventListener("pointerdown", ()=>{ AudioSys.ensure(); }, { once:fals
 const FIRE_POS = { x: WORLD_W/2, y: WORLD_H/2 };
 const BOX_POS  = { x: WORLD_W/2 + 130, y: WORLD_H/2 - 10 };
 const BENCH_POS= { x: WORLD_W/2 + 260, y: WORLD_H/2 - 10 };
+const TABLE_POS= { x: WORLD_W/2 - 130, y: WORLD_H/2 - 10 }; // dining table: WEST of the fire (box/bench are east) — grilled food only, max 12
 const HOUSE_POS= { x: BENCH_POS.x, y: BENCH_POS.y - 170 }; // house construction site: just NORTH (above) the workbench
 /* House requirements SCALE with the number of survivors (fixed at game start):
    base (1 survivor) wood 40 / stone 50 / grass 60 / grilled food 10 — x2 for 2 survivors, x3 for 3…
@@ -484,6 +487,8 @@ let fireState = { gauge:6, lastTick:0, relightAt:0 };
 let boxState = { wood:0, stone:0, mstone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 };
 let corpsesState = {};     // uid -> {x,y,name,charId,meat,at} (shared corpses of dead players)
 let boxToolsState = {};    // id -> {kind,dur} (tools stored in the shared box, durability kept)
+let tableState = [];       // ordered (FIFO) grilled food placed on the table: [{k:"gfish"|"gmeat", rot?, char?, _id}] (room node "table"; local in solo)
+const FOOD_KINDS = ["fish", "meat", "gfish", "gmeat"]; // food (raw/grilled, incl. charred & rotten stock) can NOT be stored in the shared box
 let houseState = newHouseState(1); // shared house-building progress (room node "house"; local in solo). Reqs scale with survivor count.
 let houseDoneHandled = false; // this client already celebrated the completion (banner + host end scheduling)
 let houseTimeoutApplied = false; // the day ended with the house unfinished and the halving was applied
@@ -729,6 +734,7 @@ function attachRoomListeners(){
   roomRef.child("fire").on("value", s=>{ const f = s.val(); if(f){ fireState = f; cookingState = f.cooking || {}; } });
   roomRef.child("box").on("value", s=>{ if(s.val()) boxState = Object.assign({ wood:0, stone:0, mstone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 }, s.val()); if(ctxKind==="box") renderCtx(); });
   roomRef.child("boxTools").on("value", s=>{ boxToolsState = s.val() || {}; if(ctxKind==="box") renderCtx(); });
+  roomRef.child("table").on("value", s=>{ const v = s.val(); tableState = v ? Object.keys(v).sort().map(k=>{ const r = v[k] || {}; r._id = k; return r; }) : []; if(ctxKind==="table") renderCtx(); });
   roomRef.child("house").on("value", s=>{ const h = s.val(); if(!h) return; const wasDone = houseState.done;
     houseState = { wood:h.wood||0, stone:h.stone||0, grass:h.grass||0, food:h.food||0,
                    woodReq:h.woodReq||HOUSE_BASE.wood, stoneReq:h.stoneReq||HOUSE_BASE.stone, grassReq:h.grassReq||HOUSE_BASE.grass, foodReq:h.foodReq||HOUSE_BASE.food,
@@ -794,7 +800,7 @@ function hostStartGame(){
     metaState = { host: uid, hostBeat: startAt, phase:"playing", endAt: startAt + DAY_MS };
     players[uid].role = "survivor"; my.role = "survivor";
     fireState = { gauge:6, lastTick:startAt, relightAt:0 };
-    corpsesState = {}; boxToolsState = {}; houseState = newHouseState(1); my.dead = false; players[uid].dead = false;
+    corpsesState = {}; boxToolsState = {}; tableState = []; houseState = newHouseState(1); my.dead = false; players[uid].dead = false;
     bears = {}; for(let i=0;i<4;i++){ bears["b"+i] = { x: 600+i*700, y: 420, hp:BEAR_HP, alive:true }; }
     phase = "playing"; startGameClient(); return;
   }
@@ -806,7 +812,7 @@ function hostStartGame(){
   const bObj = {};
   for(let i=0;i<6;i++){ bObj["b"+i] = { x: 400 + i*560 + Math.floor(Math.random()*200), y: 300 + Math.floor(Math.random()*450), hp:BEAR_HP, alive:true, atkAt:0 }; }
   roomRef.child("bears").set(bObj);
-  roomRef.child("nodes").remove(); roomRef.child("items").remove(); roomRef.child("votes").remove(); roomRef.child("corpses").remove(); roomRef.child("boxTools").remove();
+  roomRef.child("nodes").remove(); roomRef.child("items").remove(); roomRef.child("votes").remove(); roomRef.child("corpses").remove(); roomRef.child("boxTools").remove(); roomRef.child("table").remove(); tableState = [];
   roomRef.child("roulette").remove(); roomRef.child("result").remove();
   // house requirements scale with the survivor count decided just now (roles are fixed at start)
   const survCount = ids.length - psychos.length;
@@ -946,6 +952,7 @@ function hostMoveBears(t){
     if(df < 48){ const sc = 48/(df||1); b.x = FIRE_POS.x + (b.x - FIRE_POS.x)*sc; b.y = FIRE_POS.y + (b.y - FIRE_POS.y)*sc; changed = true; }
     if(Math.abs(b.x - BOX_POS.x) < 54 && Math.abs(b.y - BOX_POS.y) < 42){ b.x += (b.x < BOX_POS.x ? -1 : 1) * (54 - Math.abs(b.x - BOX_POS.x)); changed = true; }
     if(Math.abs(b.x - BENCH_POS.x) < 56 && Math.abs(b.y - BENCH_POS.y) < 42){ b.x += (b.x < BENCH_POS.x ? -1 : 1) * (56 - Math.abs(b.x - BENCH_POS.x)); changed = true; }
+    if(Math.abs(b.x - TABLE_POS.x) < 58 && Math.abs(b.y - TABLE_POS.y) < 44){ b.x += (b.x < TABLE_POS.x ? -1 : 1) * (58 - Math.abs(b.x - TABLE_POS.x)); changed = true; }
     if(Math.abs(b.x - HOUSE_POS.x) < 58 && Math.abs(b.y - HOUSE_POS.y) < 44){ b.x += (b.x < HOUSE_POS.x ? -1 : 1) * (58 - Math.abs(b.x - HOUSE_POS.x)); changed = true; }
   });
   for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++){
@@ -1416,6 +1423,7 @@ function blocked(x,y){
   if(Math.hypot(x - FIRE_POS.x, y - FIRE_POS.y) < 36) return true;
   if(Math.abs(x - BOX_POS.x) < 42 && Math.abs(y - BOX_POS.y) < 32) return true;
   if(Math.abs(x - BENCH_POS.x) < 44 && Math.abs(y - BENCH_POS.y) < 30) return true;
+  if(Math.abs(x - TABLE_POS.x) < 46 && Math.abs(y - TABLE_POS.y) < 28) return true; // the dining table is solid too
   if(Math.abs(x - HOUSE_POS.x) < 48 && Math.abs(y - HOUSE_POS.y) < 34) return true; // house site is solid too
   for(let i=0;i<NODES.length;i++){
     const nd = NODES[i];
@@ -1661,6 +1669,54 @@ function hitTree(nd){
 }
 
 /* ================= USE / DROP ================= */
+/* Eating a grilled item — shared by inventory eating (doUse step 3) and table eating
+   (tableEat), so the effects are identical wherever the food came from:
+   normal = hunger recovery only; charred = same hunger, but HP-5 + red tint + slow (5s);
+   rotten = the full vomit set (HP-20 / hunger-10 / temp-100, purple screen + weird BGM, 20s). */
+function applyGrilledEat(kind, isRot, isChar){
+  if(isRot){
+    my.hunger = clamp(my.hunger - 10, 0, 100);
+    my.temp = clamp(my.temp - 100, 0, 100); // effectively zeroed
+    my.vomitUntil = nowMs() + 20000; // vomit bubble above head + slowed, 20s (synced to others via syncMe)
+    AudioSys.se("stomach"); toast("🤮 腐っていた！ゲロを吐いた…（体力-20・空腹-10・体温-100）", 3200);
+    hurtMe(20, "vomit"); // HP-20 through the central path: dies immediately if this empties HP
+  } else if(isChar){
+    my.hunger = clamp(my.hunger + ITEM_DEF[kind].eat, 0, 100);
+    my.charSlowUntil = nowMs() + 5000;
+    my.charRedUntil = nowMs() + 5000;
+    AudioSys.se("stomach"); toast("⬛ 焦げていた！（空腹は回復・体力-5）", 2800);
+    hurtMe(5, "char"); // HP-5 through the central path (+ instant −5 floater)
+  } else {
+    my.hunger = clamp(my.hunger + ITEM_DEF[kind].eat, 0, 100);
+    AudioSys.se("eat"); toast(ITEM_DEF[kind].icon + " 食べて空腹+" + ITEM_DEF[kind].eat);
+  }
+  syncMe(true);
+}
+/* ---- The dining table (west of the bonfire): grilled food sits on plates, eaten FIFO ---- */
+const TABLE_MAX = 12;
+function tablePlace(kind){
+  if((my.inv[kind]||0) <= 0) return;
+  if(tableState.length >= TABLE_MAX){ toast("🍽️ テーブルはいっぱい（12個まで）"); return; }
+  const wasRot = (my.rotGrilled[kind]||0) > 0; // worst stock leaves first (rotten > charred > normal), same policy as box/house
+  const wasChar = !wasRot && (my.charGrilled[kind]||0) > 0;
+  my.inv[kind]--;
+  if(wasRot) my.rotGrilled[kind]--;
+  if(wasChar) my.charGrilled[kind]--;
+  const rec = { k: kind }; if(wasRot) rec.rot = 1; if(wasChar) rec.char = 1;
+  if(soloMode){ rec._id = "t" + nowMs() + "_" + Math.floor(Math.random()*99999); tableState.push(rec); }
+  else roomRef.child("table").push(rec);
+  AudioSys.se("decide");
+  toast("🍽️ " + (wasChar ? "焦げ" : "") + ITEM_DEF[kind].name + "をテーブルに置いた");
+  renderInv(); renderCtx();
+}
+function tableEat(){
+  if(!tableState.length) return;
+  const rec = tableState[0]; // FIFO: the earliest-placed item is eaten first
+  if(soloMode) tableState.shift();
+  else { roomRef.child("table/" + rec._id).remove(); tableState = tableState.slice(1); } // optimistic local removal; the listener confirms
+  applyGrilledEat(rec.k, !!rec.rot, !!rec.char);
+  renderInv(); renderCtx();
+}
 function nearestOf(list, maxD){
   let best = null, bd = maxD;
   list.forEach(o=>{ const d = Math.hypot(o.x-my.x, o.y-my.y); if(d < bd){ bd = d; best = o; } });
@@ -1681,11 +1737,18 @@ function doUse(){
   //    Deposit wins over eating/using while the box panel is open. ALL items incl. tools can be boxed.
   if(ctxKind === "box" && sel){
     if(sel.toolIdx !== undefined){ boxDepositTool(sel.toolIdx); return; }
+    if(FOOD_KINDS.includes(sel.kind)){ toast(ITEM_DEF[sel.kind].icon + " " + ITEM_DEF[sel.kind].name + "はボックスに入らない"); return; } // food never goes in the box
     if(boxState.hasOwnProperty(sel.kind) && (my.inv[sel.kind]||0) > 0){
       boxMove(sel.kind, true);
       toast("📦 " + ITEM_DEF[sel.kind].name + "を箱に入れた");
       return;
     }
+  }
+  // 0t) near the table: selected grilled food -> place 1 on the table; otherwise, if the
+  //     table holds food, eat the OLDEST placed item (FIFO) with its normal effects.
+  if(ctxKind === "table"){
+    if(sel && sel.toolIdx === undefined && (sel.kind === "gfish" || sel.kind === "gmeat") && (my.inv[sel.kind]||0) > 0){ tablePlace(sel.kind); return; }
+    if(tableState.length){ tableEat(); return; }
   }
   // facilities open panels instead (ctx buttons handle details)
   // 1) selected bow -> shoot
@@ -1697,31 +1760,14 @@ function doUse(){
       return;
     } else { toast("湖の近くで使おう"); return; }
   }
-  // 3) selected food -> eat (a secretly-rotten grilled one triggers the vomit effect instead of nourishment)
+  // 3) selected grilled food -> eat from my own stock (worst first: rotten > charred > normal)
   if(sel && ITEM_DEF[sel.kind].eat){
     const kind = sel.kind;
+    const isRot = (my.rotGrilled[kind]||0) > 0; if(isRot) my.rotGrilled[kind]--;
+    const isChar = !isRot && (my.charGrilled[kind]||0) > 0; if(isChar) my.charGrilled[kind]--;
     my.inv[kind]--;
-    if((my.rotGrilled[kind]||0) > 0){
-      my.rotGrilled[kind]--;
-      my.hunger = clamp(my.hunger - 10, 0, 100);
-      my.temp = clamp(my.temp - 100, 0, 100); // effectively zeroed
-      my.vomitUntil = nowMs() + 20000; // vomit bubble above head + slowed, 20s (synced to others via syncMe)
-      AudioSys.se("stomach"); toast("🤮 腐っていた！ゲロを吐いた…（体力-20・空腹-10・体温-100）", 3200);
-      hurtMe(20, "vomit"); // HP-20 through the central path: dies immediately if this empties HP
-    } else if((my.charGrilled[kind]||0) > 0){
-      // CHARRED grilled (worst-first order: rotten > charred > normal): nourishes EXACTLY like a
-      // normal grilled item, but HP-5, the screen tints red for 5s and the feet slow for 5s.
-      my.charGrilled[kind]--;
-      my.hunger = clamp(my.hunger + ITEM_DEF[kind].eat, 0, 100);
-      my.charSlowUntil = nowMs() + 5000;
-      my.charRedUntil = nowMs() + 5000;
-      AudioSys.se("stomach"); toast("⬛ 焦げていた！（空腹は回復・体力-5）", 2800);
-      hurtMe(5, "char"); // HP-5 through the central path (+ instant −5 floater)
-    } else {
-      my.hunger = clamp(my.hunger + ITEM_DEF[kind].eat, 0, 100);
-      AudioSys.se("eat"); toast(ITEM_DEF[kind].icon + " 食べて空腹+" + ITEM_DEF[kind].eat);
-    }
-    renderInv(); syncMe(true); return;
+    applyGrilledEat(kind, isRot, isChar);
+    renderInv(); return;
   }
   // 4) bear with axe (selected axe or any axe) within range
   const bearList = Object.keys(bears).filter(id=>bears[id] && bears[id].alive).map(id=>({ id, x: bears[id].x, y: bears[id].y }));
@@ -1842,8 +1888,9 @@ function checkCtx(){
   const dBox = Math.hypot(my.x-BOX_POS.x, my.y-BOX_POS.y);
   const dBench = Math.hypot(my.x-BENCH_POS.x, my.y-BENCH_POS.y);
   const dHouse = Math.hypot(my.x-HOUSE_POS.x, my.y-HOUSE_POS.y);
-  // nearest facility wins (bench/box are to the RIGHT of the fire; their own ranges take priority)
-  const cands = [ { k:"fire", d:dFire }, { k:"box", d:dBox }, { k:"bench", d:dBench } ].filter(c=>c.d < 105);
+  const dTable = Math.hypot(my.x-TABLE_POS.x, my.y-TABLE_POS.y);
+  // nearest facility wins (bench/box are to the RIGHT of the fire, the table to the LEFT; their own ranges take priority)
+  const cands = [ { k:"fire", d:dFire }, { k:"box", d:dBox }, { k:"bench", d:dBench }, { k:"table", d:dTable } ].filter(c=>c.d < 105);
   if(dHouse < 110) cands.push({ k:"house", d:dHouse }); // house site (north of the bench), slightly larger range
   // lootable corpses (meat remaining) compete by distance too
   let bestCorpse = null, bestCorpseD = 85;
@@ -1879,9 +1926,9 @@ function renderCtx(){
   if(ctxKind === "fire"){
     const lit = fireState.gauge > 0, relight = fireState.relightAt && fireState.relightAt > nowMs();
     html += '<div class="ctx-box"><div class="ctx-title">🔥 焚き火（ゲージ ' + (fireState.gauge||0) + '/6）' + (relight ? " 着火中…" + Math.ceil((fireState.relightAt-nowMs())/1000) + "秒" : (lit ? "" : " 消えている")) + '</div><div class="ctx-btns">';
-    html += ctxBtn("🪵 木材を入れる", lit ? "ゲージ+1" : "再着火に20秒", "firewood", my.inv.wood <= 0);
-    html += ctxBtn("🐟 魚を焼く", "15秒で焼き魚", "cook|fish", my.inv.fish <= 0, true);
-    html += ctxBtn("🥩 肉を焼く", "15秒で焼き肉", "cook|meat", my.inv.meat <= 0, true);
+    html += ctxBtn("🪵 木材を入れる", "", "firewood", my.inv.wood <= 0);
+    html += ctxBtn("🐟 魚を焼く", "", "cook|fish", my.inv.fish <= 0, true);
+    html += ctxBtn("🥩 肉を焼く", "", "cook|meat", my.inv.meat <= 0, true);
     for(const sid in cookingState){
       const s = cookingState[sid]; if(!s) continue;
       const out = s.kind === "fish" ? "gfish" : "gmeat";
@@ -1908,7 +1955,7 @@ function renderCtx(){
         html += ctxBtn(ITEM_DEF[k].icon, "×" + (boxState[k]||0) + (((k === "gfish" || k === "gmeat") && (boxState[k+"C"]||0) > 0) ? "（焦げ×" + boxState[k+"C"] + "）" : ""), "take|" + k, false, true);
       }
       toolList.forEach(t=>{
-        html += ctxBtn(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name, t.dur !== undefined ? "耐久 " + durMeter(t.dur, ITEM_DEF[t.kind].dur) : "壊れない", "taketool|" + t.id, false, true);
+        html += ctxBtn(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name, t.dur !== undefined ? durBarHtml(t.dur, ITEM_DEF[t.kind].dur) : "壊れない", "taketool|" + t.id, false, true);
       });
       html += '</div>';
     }
@@ -1924,6 +1971,21 @@ function renderCtx(){
     html += '<div class="ctx-box"><div class="ctx-title">🏠 家づくり（素材を入れて完成させよう）</div>';
     html += '<div style="font-size:14px;font-weight:800;">🪵 ' + (hs.wood||0) + '/' + rq.wood + '　🪨 ' + (hs.stone||0) + '/' + rq.stone + '　🌿 ' + (hs.grass||0) + '/' + rq.grass + '　🍖 ' + (hs.food||0) + '/' + rq.food + '</div>';
     if(hs.done) html += '<div style="font-size:12px;color:#7be495;margin-top:4px;">🏠 完成！</div>';
+    html += '</div>';
+  } else if(ctxKind === "table"){
+    html += '<div class="ctx-box"><div class="ctx-title">🍽️ テーブル（' + tableState.length + '/12）</div>';
+    if(tableState.length){
+      const seenT = {}, partsT = [];
+      tableState.forEach(r=>{
+        const tag = r.rot ? "R" : (r.char ? "C" : "N");
+        const key = r.k + tag;
+        if(!seenT[key]){ seenT[key] = { k: r.k, tag: tag, n: 0 }; partsT.push(seenT[key]); }
+        seenT[key].n++;
+      });
+      html += '<div style="font-size:15px;font-weight:800;">' + partsT.map(p =>
+        (p.tag === "C" ? "⬛" : "") + ITEM_DEF[p.k].icon + (p.tag === "R" ? "🦠" : "") + "×" + p.n
+      ).join("　") + '</div>';
+    }
     html += '</div>';
   } else if(ctxKind === "bench"){
     html += '<div class="ctx-box"><div class="ctx-title">🔨 作業台（クラフト）</div><div class="ctx-btns">';
@@ -1950,7 +2012,7 @@ function fireAddWood(){
   if(fireState.gauge > 0){
     if(soloMode){ fireState.gauge = Math.min(6, fireState.gauge+1); }
     else roomRef.child("fire/gauge").transaction(g => Math.min(6, (g||0)+1));
-    toast("🔥 木材を入れた（ゲージ+1）");
+    toast("🔥 木材を入れた");
   } else if(fireState.relightAt && fireState.relightAt > nowMs()){
     my.inv.wood++; toast("着火中です"); renderInv(); return;
   } else {
@@ -1972,7 +2034,7 @@ function fireCook(kind){
   const slot = { kind, readyAt: nowMs() + 15000, by: uid, rot };
   if(soloMode){ cookingState["s" + nowMs()] = slot; }
   else roomRef.child("fire/cooking").push(slot);
-  toast("🍳 焼き始めた（15秒）"); AudioSys.se("fire"); renderInv(); renderCtx();
+  toast("🍳 焼き始めた"); AudioSys.se("fire"); renderInv(); renderCtx();
 }
 function fireRecook(sid){
   const s = cookingState[sid]; if(!s || !s.stalled) return;
@@ -1980,7 +2042,7 @@ function fireRecook(sid){
   const readyAt = nowMs() + 15000; // redo from the full 15 seconds
   if(soloMode){ s.readyAt = readyAt; s.stalled = false; }
   else roomRef.child("fire/cooking/" + sid).update({ readyAt: readyAt, stalled: false });
-  toast("🍳 焼き直し始めた（15秒）"); AudioSys.se("fire"); renderCtx();
+  toast("🍳 焼き直し始めた"); AudioSys.se("fire"); renderCtx();
 }
 function fireTakeOut(sid){
   const s = cookingState[sid]; if(!s || s.stalled || !s.readyAt || nowMs() < s.readyAt) return;
@@ -2002,6 +2064,7 @@ function boxMove(kind, deposit){
   const ck = kind + "C"; // charred subset (grilled only) — travels with the item, same policy as rotten
   const isGrilledK = kind === "gfish" || kind === "gmeat";
   if(deposit){
+    if(FOOD_KINDS.includes(kind)){ toast(ITEM_DEF[kind].icon + " " + ITEM_DEF[kind].name + "はボックスに入らない"); return; } // food (raw/grilled, any stock) never goes in the box
     if((my.inv[kind]||0) <= 0) return;
     my.inv[kind]--;
     const wasRot = (invRot(kind)[kind]||0) > 0;
@@ -2081,6 +2144,13 @@ function craftItem(idx){
   renderInv(); renderCtx();
 }
 
+/* Compact durability bar (box panel): the SAME small bar as the inventory .durbar —
+   36px wide, 4px tall — instead of the wide 10-cell block meter. */
+function durBarHtml(dur, maxDur){
+  if(dur === undefined || !maxDur) return "";
+  return '<span class="durbar-inline"><i style="width:' + Math.round(clamp(dur / maxDur, 0, 1) * 100) + '%"></i></span>';
+}
+
 /* Durability as a block meter (no numbers): 10 cells, filled by remaining fraction. */
 function durMeter(dur, maxDur){
   if(dur === undefined || !maxDur) return "";
@@ -2115,6 +2185,7 @@ function renderInv(){
         my.sel = i;
         if(ctxKind === "box"){
           if(ent.toolIdx !== undefined){ boxDepositTool(ent.toolIdx); return; }
+          if(FOOD_KINDS.includes(ent.kind)){ toast(ITEM_DEF[ent.kind].icon + " " + ITEM_DEF[ent.kind].name + "はボックスに入らない"); return; }
           if(boxState.hasOwnProperty(ent.kind) && (my.inv[ent.kind]||0) > 0){
             boxMove(ent.kind, true);
             toast("📦 " + ITEM_DEF[ent.kind].name + "を箱に入れた");
@@ -2125,6 +2196,8 @@ function renderInv(){
           if(ent.kind === "fish" || ent.kind === "meat"){ fireCook(ent.kind); return; }
         } else if(ctxKind === "house"){
           if(ent.toolIdx === undefined && (ent.kind === "wood" || ent.kind === "stone" || ent.kind === "mstone" || ent.kind === "grass" || ent.kind === "gfish" || ent.kind === "gmeat")){ houseDeposit(ent.kind); return; }
+        } else if(ctxKind === "table"){
+          if(ent.toolIdx === undefined && (ent.kind === "gfish" || ent.kind === "gmeat")){ tablePlace(ent.kind); return; }
         }
       }
       my.sel = i; AudioSys.se("decide"); renderInv();
@@ -2424,6 +2497,12 @@ function r3BuildStatics(){
   benG.add(r3Box(1.6, 0.5, 1.2, 0xcfd8dc, -1.2, 2.9, 0));
   benG.add(r3Box(1.4, 0.4, 0.6, 0x8a5a2b, 1.4, 2.85, 0));
   const benL = r3TextSprite("作業台", 11); benL.position.y = 6.2; benG.add(benL); S.add(benG);
+  // ---- dining table (west of the fire; the plates on it are dynamic, see r3Sync) ----
+  const tabG = new THREE.Group(); tabG.position.set(w2x(TABLE_POS.x), 0, w2z(TABLE_POS.y));
+  tabG.add(r3Box(7.6, 0.7, 3.6, 0x8a5a2b, 0, 2.3, 0));
+  tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, -3.2, 1.0, -1.3)); tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, 3.2, 1.0, -1.3));
+  tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, -3.2, 1.0, 1.3)); tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, 3.2, 1.0, 1.3));
+  const tabL = r3TextSprite("テーブル", 11); tabL.position.y = 6.2; tabG.add(tabL); S.add(tabG);
   // ---- bonfire (flame / light are dynamic refs) ----
   const fireG = new THREE.Group(); fireG.position.set(w2x(FIRE_POS.x), 0, w2z(FIRE_POS.y));
   for(let i = 0; i < 8; i++){ const a = i / 8 * Math.PI * 2;
@@ -2624,6 +2703,34 @@ function r3Sync(ts){
     sp.position.set(w2x(it.x), 1.5 + Math.sin(ts / 300 + it.x) * 0.15, w2z(it.y));
   }
   for(const id in R3.itemMap){ if(!seenItems[id]){ R3.dyn.remove(R3.itemMap[id]); delete R3.itemMap[id]; } }
+  // ---- table plates: white discs + the placed grilled food as billboards (same flag
+  //      treatment as ground items: charred darkened + 焦げ tag, rotten marked with the germ) ----
+  {
+    const sig = tableState.map(r => r.k + (r.rot ? "R" : "") + (r.char ? "C" : "")).join(",");
+    if(!R3.tableGrp){ R3.tableGrp = new THREE.Group(); R3.tableGrp.position.set(w2x(TABLE_POS.x), 0, w2z(TABLE_POS.y)); R3.dyn.add(R3.tableGrp); R3.tableSig = null; }
+    if(R3.tableSig !== sig){
+      R3.tableSig = sig;
+      while(R3.tableGrp.children.length) R3.tableGrp.remove(R3.tableGrp.children[0]);
+      tableState.slice(0, 12).forEach((r, i) => {
+        const px = -2.7 + (i % 4) * 1.8, pz = -1.2 + Math.floor(i / 4) * 1.2;
+        const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.62, 0.14, 14), r3Mat(0xf5f0e6));
+        plate.position.set(px, 2.72, pz); R3.tableGrp.add(plate);
+        const key = r.k + (r.rot ? "_rot" : "") + (r.char ? "_char" : "");
+        let tex = R3.texCache["item_" + key];
+        if(!tex){
+          const c = r3Canvas(112, 96), gg = c.getContext("2d");
+          if(r.rot){ gg.fillStyle = "rgba(96,190,50,0.45)"; gg.beginPath(); gg.arc(48, 48, 34, 0, Math.PI * 2); gg.fill(); }
+          gg.font = "62px sans-serif"; gg.textAlign = "center"; gg.textBaseline = "middle";
+          gg.fillText(ITEM_DEF[r.k].icon, 48, 52);
+          if(r.char){ gg.fillStyle = "rgba(0,0,0,0.55)"; gg.beginPath(); gg.arc(48, 48, 34, 0, Math.PI * 2); gg.fill(); gg.font = "bold 24px sans-serif"; gg.fillStyle = "#ffb3a7"; gg.fillText("焦げ", 48, 86); }
+          if(r.rot){ gg.font = "30px sans-serif"; gg.fillText("🦠", 88, 22); }
+          tex = new THREE.CanvasTexture(c); R3.texCache["item_" + key] = tex;
+        }
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+        sp.scale.set(1.7, 1.45, 1); sp.position.set(px, 3.35, pz); R3.tableGrp.add(sp);
+      });
+    }
+  }
   // ---- corpses ----
   const seenCorpses = {};
   for(const cid in corpsesState){
@@ -2758,7 +2865,7 @@ function r3Sync(ts){
   }
   floaters.forEach(f=>{
     const k = (performance.now() - f.at) / 1000;
-    if(!f._sp){ f._sp = r3TextSprite(f.text, 5.5, f.color); R3.dyn.add(f._sp); }
+    if(!f._sp){ f._sp = r3TextSprite(f.text, 8.25, f.color); R3.dyn.add(f._sp); }
     f._sp.visible = true;
     f._sp.position.set(w2x(f.x), 8.4 + k * 2.4, w2z(f.y));
     f._sp.material.opacity = 1 - k;
