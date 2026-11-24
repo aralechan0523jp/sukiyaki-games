@@ -2561,8 +2561,8 @@ function r3Sync(ts){
   camX = clamp(my.x - window.innerWidth / 2, 0, Math.max(0, WORLD_W - window.innerWidth));
   camY = clamp(my.y - window.innerHeight / 2, 0, Math.max(0, WORLD_H - window.innerHeight));
   const tx = w2x(my.x), tz = w2z(my.y);
-  R3.camera.position.set(tx, 148, tz + 104);
-  R3.camera.lookAt(tx, 0, tz - 6);
+  R3.camera.position.set(tx, 74, tz + 54);
+  R3.camera.lookAt(tx, 0, tz - 3);
 }
 function drawWorld(ts){
   frameCount++;
