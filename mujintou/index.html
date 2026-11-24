@@ -468,7 +468,9 @@ function hasTool(kind){ return my.tools.find(t=>t.kind===kind); }
 function spendHunger(n){ if(my) my.hunger = clamp(my.hunger - (n === undefined ? 0.2 : n), 0, 100); }
 function damageTool(tool, amount){
   tool.dur -= (amount||1);
-  if(tool.dur <= 0){ my.tools = my.tools.filter(t=>t!==tool); toast("🔨 "+ITEM_DEF[tool.kind].name+"が壊れた！"); renderInv(); }
+  if(tool.dur <= 0){ my.tools = my.tools.filter(t=>t!==tool); toast("🔨 "+ITEM_DEF[tool.kind].name+"が壊れた！"); renderInv();
+    if(tool.kind === "rod" && my && my.fishing){ my.fishing = null; hideProgress(); toast("🎣 釣り竿が壊れたので釣りを中止した"); }
+  }
 }
 function speedFactor(){
   let f = 1;
@@ -655,6 +657,7 @@ function hostLoop(){
       fireState.gauge = Math.max(0, fireState.gauge - dec);
       fireState.lastTick += dec * 10000;
       writeFire();
+      if(fireState.gauge <= 0) hostStallCooking(); // fire died: any in-progress cooking is ruined (progress reset, raw item kept)
     }
   }
   hostMoveBears(t);
@@ -664,6 +667,22 @@ function hostLoop(){
 function writeFire(){
   if(soloMode) return;
   roomRef.child("fire").update({ gauge: fireState.gauge, lastTick: fireState.lastTick, relightAt: fireState.relightAt||0 });
+}
+/* Fire went out mid-cook: slots that had NOT finished (readyAt in the future) are stalled —
+   progress reset to zero, the raw fish/meat stays in the slot (not lost, not grilled).
+   The cook must tap 焼き直す after relighting to redo the full 15 seconds (see fireRecook).
+   Slots that already finished while the fire was lit stay takeable as grilled. Host-only. */
+function hostStallCooking(){
+  const t = nowMs();
+  const stalledIds = [];
+  for(const sid in cookingState){
+    const s = cookingState[sid]; if(!s) continue;
+    if(!s.stalled && s.readyAt && t < s.readyAt){ s.stalled = true; s.readyAt = 0; stalledIds.push(sid); }
+  }
+  if(!stalledIds.length || soloMode) return;
+  const upd = {};
+  stalledIds.forEach(sid=>{ upd[sid + "/stalled"] = true; upd[sid + "/readyAt"] = 0; });
+  roomRef.child("fire/cooking").update(upd);
 }
 function hostMoveBears(t){
   const ids = Object.keys(bears);
@@ -797,7 +816,11 @@ function statTick(){
   if(my.hunger <= 0 && nowMs() - my.lastGrowl > 20000){ my.lastGrowl = nowMs(); AudioSys.se("stomach"); }
   // fishing progress
   if(my.fishing){
-    if(nowMs() >= my.fishing.readyAt){
+    if(!hasTool("rod")){
+      // rod was dropped / removed / broken mid-fishing: cancel, no fish
+      my.fishing = null; hideProgress(); toast("🎣 釣りを中止した（釣り竿がない）");
+    }
+    else if(nowMs() >= my.fishing.readyAt){
       my.fishing = null; hideProgress();
       my.inv.fish++; AudioSys.se("pickup"); toast("🎣 魚が釣れた！"); renderInv();
       const rod = hasTool("rod"); if(rod) damageTool(rod, 1);
@@ -1061,7 +1084,16 @@ function doUse(){
     else roomRef.child("bearHits").push({ bear: nb.id, dmg: 8, by: uid, ts: t });
     toast("🪓 クマを斬った！（クマの反撃に注意）"); renderInv(); return;
   }
-  if(nb && !hasTool("axe")){ toast("クマには弓矢か斧が必要！"); return; }
+  if(nb && !hasTool("axe")){
+    // bare-hand punch: only 1 damage (bear HP 30; bow=4, axe=8) — possible in principle, impractical alone.
+    // Same risk feel as bare-hand tree chopping: costs the puncher 0.6 HP, and the bear is in attack range anyway.
+    spendHunger();
+    my.hp = clamp(my.hp - 0.6, 0, 100);
+    AudioSys.se("punch");
+    if(soloMode) hostApplyBearHit({ bear: nb.id, dmg: 1, by: uid });
+    else roomRef.child("bearHits").push({ bear: nb.id, dmg: 1, by: uid, ts: t });
+    toast("👊 素手で殴った！（少しだけ効いた）"); syncMe(true); return;
+  }
   // 5) tree chop
   const trees = NODES.filter(nd=>nd.type==="tree" && !(nodesState[nd.id] && nodesState[nd.id].gone));
   const nt = nearestOf(trees, 64);
@@ -1097,6 +1129,8 @@ function doDrop(){
   if(soloMode){ groundItems["gi" + nowMs()] = item; }
   else roomRef.child("items").push(item);
   AudioSys.se("decide"); toast(ITEM_DEF[sel.kind].icon + " を下に置いた（2秒は拾えない）"); renderInv();
+  // dropping the fishing rod mid-fishing cancels the fishing attempt (no fish)
+  if(sel.kind === "rod" && my.fishing){ my.fishing = null; hideProgress(); toast("🎣 釣り竿を捨てたので釣りを中止した"); }
 }
 function showProgress(label, frac){
   $("progress-wrap").style.display = "block";
@@ -1126,6 +1160,7 @@ window.__ctxAct = function(act, arg){
   if(act === "firewood") fireAddWood();
   else if(act === "cook") fireCook(arg);
   else if(act === "takeout") fireTakeOut(arg);
+  else if(act === "recook") fireRecook(arg);
   else if(act === "take") boxMove(arg, false);
   else if(act === "craft") craftItem(arg);
 };
@@ -1142,9 +1177,14 @@ function renderCtx(){
     html += ctxBtn("🥩 肉を焼く", my.inv.meat > 0 ? "15秒で焼き肉" : "肉がない", "cook|meat", my.inv.meat <= 0, true);
     for(const sid in cookingState){
       const s = cookingState[sid]; if(!s) continue;
-      const ready = nowMs() >= s.readyAt;
       const out = s.kind === "fish" ? "gfish" : "gmeat";
-      html += ctxBtn((ready ? "✨ " : "⏳ ") + ITEM_DEF[out].name, ready ? "取り出せる！" : "あと" + Math.ceil((s.readyAt-nowMs())/1000) + "秒", "takeout|" + sid, !ready, true);
+      if(s.stalled){
+        // fire died mid-cook: raw item kept in the slot, must be redone from 15s after relighting
+        html += ctxBtn("↩️ " + ITEM_DEF[s.kind].name + "を焼き直す", lit ? "火が消えて失敗（生のまま）" : "再着火してから", "recook|" + sid, !lit, true);
+      } else {
+        const ready = s.readyAt && nowMs() >= s.readyAt;
+        html += ctxBtn((ready ? "✨ " : "⏳ ") + ITEM_DEF[out].name, ready ? "取り出せる！" : "あと" + Math.ceil((s.readyAt-nowMs())/1000) + "秒", "takeout|" + sid, !ready, true);
+      }
     }
     html += "</div></div>";
   } else if(ctxKind === "box"){
@@ -1197,8 +1237,16 @@ function fireCook(kind){
   else roomRef.child("fire/cooking").push(slot);
   toast("🍳 焼き始めた（15秒）"); AudioSys.se("fire"); renderInv(); renderCtx();
 }
+function fireRecook(sid){
+  const s = cookingState[sid]; if(!s || !s.stalled) return;
+  if(fireState.gauge <= 0){ toast("火が消えている！再着火してから焼き直そう"); return; }
+  const readyAt = nowMs() + 15000; // redo from the full 15 seconds
+  if(soloMode){ s.readyAt = readyAt; s.stalled = false; }
+  else roomRef.child("fire/cooking/" + sid).update({ readyAt: readyAt, stalled: false });
+  toast("🍳 焼き直し始めた（15秒）"); AudioSys.se("fire"); renderCtx();
+}
 function fireTakeOut(sid){
-  const s = cookingState[sid]; if(!s || nowMs() < s.readyAt) return;
+  const s = cookingState[sid]; if(!s || s.stalled || !s.readyAt || nowMs() < s.readyAt) return;
   const out = s.kind === "fish" ? "gfish" : "gmeat";
   if(soloMode){ delete cookingState[sid]; }
   else roomRef.child("fire/cooking/" + sid).remove();
