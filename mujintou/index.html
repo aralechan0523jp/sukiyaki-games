@@ -85,7 +85,9 @@
   .inv-cell.sel { border-color:#ffd94a; background:rgba(70,58,10,.9); }
   .inv-cell .ic { font-size:19px; line-height:1; }
   .inv-cell .ct { font-size:11px; font-weight:800; }
-  .inv-cell .dur { position:absolute; bottom:2px; left:0; right:0; font-size:9px; color:#9fd8ff; }
+  .inv-cell .durbar { position:absolute; bottom:2px; left:5px; right:5px; height:4px; background:rgba(255,255,255,.16); border-radius:2px; overflow:hidden; }
+  .inv-cell .durbar i { display:block; height:100%; background:#8bc34a; border-radius:2px; }
+  #dmg-flash { inset:0; pointer-events:none; background:radial-gradient(ellipse at center, transparent 55%, rgba(255,30,20,.85) 100%); opacity:0; z-index:8; }
   #inv-weight { right:12px; bottom:150px; font-size:12px; font-weight:900; background:rgba(10,20,14,.8); padding:3px 9px; border-radius:8px; z-index:7; }
   #btn-use, #btn-drop { width:76px; height:76px; border-radius:50%; font-weight:900; z-index:7; color:#fff; }
   #btn-use { right:14px; bottom:14px; background:#2e9e4f; font-size:24px; box-shadow:0 4px 0 #1c6330; border:2px solid #bff0cd; }
@@ -126,7 +128,7 @@
       <button class="btn sub" id="btn-join">コードで参加</button>
     </div>
     <div class="err" id="title-err"></div>
-    <div class="note">📖 あそびかた：8分間生きのびよう。焚き火（画面中央）の火を絶やすな！ 木材・石・草を集めて作業台で道具を作り、魚や肉を焼いて空腹を満たす。体力は回復しない。1日の終わりにサバイバー全員の残り体力の割合でルーレット勝敗！ サイコパスに止まっても、投票でサイコパスを当てれば救済勝ち。<br>🏠 作業台の上（北）に家を建てよう：木材40・石30・草50を集めて完成させると、その場で即ルーレット！ 時間切れまでに未完成だと、サバイバーの体力が半分になってしまう…。<br>🖥️ PC：WASD/矢印キー移動、E=使う、Q=捨てる 📱 スマホ：左下パッド＋右下ボタン</div>
+    <div class="note">📖 あそびかた：8分間生きのびよう。焚き火（画面中央）の火を絶やすな！ 木材・石・草を集めて作業台で道具を作り、魚や肉を焼いて空腹を満たす。体力は回復しない。1日の終わりにサバイバー全員の残り体力の割合でルーレット勝敗！ サイコパスに止まっても、投票でサイコパスを当てれば救済勝ち。<br>🏠 作業台の上（北）に家を建てよう：必要素材はサバイバーの人数で変動（1人分＝木材40・石50・草60・焼き物10、2人なら2倍、3人なら3倍）。完成させるとその場で即ルーレット！ 時間切れまでに未完成だと、サバイバーの体力が半分になってしまう…。焼き物は焼き肉・焼き魚どちらでもOK。<br>🔨 新道具：鎌（草が3つ取れる）・ハンマー（石を砕くとミニ石が落ちる。ミニ石は軽い石として使える）・バッグ（持つだけで荷物容量+50）。マップの木・石・草は👊で回収、落とした物は触れるだけで拾える。<br>🖥️ PC：WASD/矢印キー移動、E=使う、Q=捨てる 📱 スマホ：左下パッド＋右下ボタン</div>
     <div class="row" style="margin-top:8px;"><button class="btn ghost" id="btn-solo">オフラインで1人練習（Firebase不要）</button></div>
   </div>
 </div>
@@ -164,6 +166,7 @@
   </div>
   <div class="hud" id="toast"></div>
   <div class="hud" id="banner"></div>
+  <div class="hud" id="dmg-flash"></div>
   <div class="hud" id="progress-wrap"><div id="progress-label"></div><div id="progress-bar"><div id="progress-fill"></div></div></div>
   <div class="hud" id="ctx"></div>
   <div class="hud" id="pad"><div id="pad-knob"></div></div>
@@ -221,21 +224,28 @@ const BEAR_HP = 30; // bears: HP bar shows REMAINING hp (same style as trees), n
 const ITEM_DEF = {
   wood:  { name:"木材",   icon:"🪵", w:10 },
   stone: { name:"石",     icon:"🪨", w:3 },
+  mstone:{ name:"ミニ石", icon:"🪨", w:1 },
   grass: { name:"草",     icon:"🌿", w:1 },
   fish:  { name:"魚",     icon:"🐟", w:5 },
   meat:  { name:"肉",     icon:"🥩", w:5 },
   gfish: { name:"焼き魚", icon:"🍗", w:5, eat:40 },
   gmeat: { name:"焼き肉", icon:"🍖", w:5, eat:80 },
-  axe:   { name:"斧",     icon:"🪓", w:5, tool:true, dur:30 },
+  axe:   { name:"斧",     icon:"🪓", w:5, tool:true, dur:40 },
   rod:   { name:"釣り竿", icon:"🎣", w:5, tool:true, dur:5 },
   bow:   { name:"弓矢",   icon:"🏹", w:5, tool:true, dur:10 },
-  outer: { name:"アウター", icon:"🧥", w:5, tool:true } // NO dur: never breaks. Held = equipped: halves body-temp drain (see statTick)
+  outer: { name:"アウター", icon:"🧥", w:5, tool:true }, // NO dur: never breaks. Held = equipped: halves body-temp drain (see statTick)
+  sickle:{ name:"鎌",     icon:"🔪", w:5, tool:true, dur:40 }, // map grass yields x3 while owned; weapon: bear 4 / tree 5 / player 5 (selected)
+  hammer:{ name:"ハンマー", icon:"🔨", w:5, tool:true, dur:40 }, // smash map stone nodes into mini-stones on the ground
+  bag:   { name:"バッグ", icon:"🎒", w:0, tool:true } // NO dur, weight 0: holding one gives carry capacity +50 (once per player)
 };
 const RECIPES = [
-  { out:"axe", need:{ wood:1, stone:1 } },
+  { out:"axe", need:{ wood:1, stone:2, grass:1 } },
   { out:"rod", need:{ wood:1, grass:1 } },
   { out:"bow", need:{ wood:1, stone:1, grass:1 } },
-  { out:"outer", need:{ grass:30 } }
+  { out:"outer", need:{ grass:30 } },
+  { out:"sickle", need:{ wood:1, stone:1, grass:2 } },
+  { out:"hammer", need:{ wood:2, stone:1, grass:1 } },
+  { out:"bag", need:{ wood:2, grass:15 } }
 ];
 const CHARS = [
   { n:"男の子・黒髪",   skin:"#f2c189", hair:"#22252a", style:"short",  cloth:"#3f7fbf", female:false },
@@ -374,7 +384,24 @@ const FIRE_POS = { x: WORLD_W/2, y: WORLD_H/2 };
 const BOX_POS  = { x: WORLD_W/2 + 130, y: WORLD_H/2 - 10 };
 const BENCH_POS= { x: WORLD_W/2 + 260, y: WORLD_H/2 - 10 };
 const HOUSE_POS= { x: BENCH_POS.x, y: BENCH_POS.y - 170 }; // house construction site: just NORTH (above) the workbench
-const HOUSE_NEED = { wood:40, stone:30, grass:50 };        // shared materials required to finish the house
+/* House requirements SCALE with the number of survivors (fixed at game start):
+   base (1 survivor) wood 40 / stone 50 / grass 60 / grilled food 10 — x2 for 2 survivors, x3 for 3…
+   The grilled-food quota accepts 焼き肉 OR 焼き魚 (either counts; rotten grilled is indistinguishable and counts too). */
+const HOUSE_BASE = { wood:40, stone:50, grass:60, food:10 };
+function newHouseState(survCount){
+  const m = Math.max(1, survCount || 1);
+  return { wood:0, stone:0, grass:0, food:0,
+           woodReq: HOUSE_BASE.wood*m, stoneReq: HOUSE_BASE.stone*m, grassReq: HOUSE_BASE.grass*m, foodReq: HOUSE_BASE.food*m,
+           done:false };
+}
+function houseReq(){ // current requirements (fall back to base x1 before the start state arrives)
+  return { wood: houseState.woodReq || HOUSE_BASE.wood, stone: houseState.stoneReq || HOUSE_BASE.stone,
+           grass: houseState.grassReq || HOUSE_BASE.grass, food: houseState.foodReq || HOUSE_BASE.food };
+}
+function houseCompleteCheck(h){ // h: a house-shaped object (counts + reqs) -> all quotas met?
+  const r = { wood: h.woodReq || HOUSE_BASE.wood, stone: h.stoneReq || HOUSE_BASE.stone, grass: h.grassReq || HOUSE_BASE.grass, food: h.foodReq || HOUSE_BASE.food };
+  return (h.wood||0) >= r.wood && (h.stone||0) >= r.stone && (h.grass||0) >= r.grass && (h.food||0) >= r.food;
+}
 const LAKE = { x: WORLD_W/2, y: WORLD_H - 330, rx: 900, ry: 300 };
 function isWater(x,y){ const dx=(x-LAKE.x)/LAKE.rx, dy=(y-LAKE.y)/LAKE.ry; return dx*dx+dy*dy < 1; }
 function nearLake(x,y){ const dx=(x-LAKE.x)/(LAKE.rx+95), dy=(y-LAKE.y)/(LAKE.ry+95); const d=dx*dx+dy*dy; return d>=0.55 && isWater(x,y)===false && d<1.35; }
@@ -418,10 +445,10 @@ let groundItems = {};      // id -> {type,x,y,at}
 let bears = {};            // id -> {x,y,hp,alive}
 let arrowsShared = {};     // id -> {x,y,dir,by,ts}
 let fireState = { gauge:6, lastTick:0, relightAt:0 };
-let boxState = { wood:0, stone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 };
+let boxState = { wood:0, stone:0, mstone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 };
 let corpsesState = {};     // uid -> {x,y,name,charId,meat,at} (shared corpses of dead players)
 let boxToolsState = {};    // id -> {kind,dur} (tools stored in the shared box, durability kept)
-let houseState = { wood:0, stone:0, grass:0, done:false }; // shared house-building progress (room node "house"; local in solo)
+let houseState = newHouseState(1); // shared house-building progress (room node "house"; local in solo). Reqs scale with survivor count.
 let houseDoneHandled = false; // this client already celebrated the completion (banner + host end scheduling)
 let houseTimeoutApplied = false; // the day ended with the house unfinished and the halving was applied
 let dayEndPending = false;   // host is inside the timeout-halving wait before tallying the roulette
@@ -473,7 +500,7 @@ function updateDisp(ts){
 }
 function freshPlayer(x,y){
   return { x:x, y:y, dir:1, face:2, aim:0, moving:false, hp:100, hunger:100, temp:100,
-           inv:{ wood:0, stone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 },
+           inv:{ wood:0, stone:0, mstone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 },
            rotRaw:{ fish:0, meat:0 }, rotGrilled:{ gfish:0, gmeat:0 },
            dead:false, vomitUntil:0,
            tools:[], sel:0, role:"", punchCd:0, useCd:0, fishing:null, lastGrowl:0 };
@@ -491,6 +518,25 @@ function invWeight(){
   return w;
 }
 function hasTool(kind){ return my.tools.find(t=>t.kind===kind); }
+/* Carry capacity: base 30. Holding a バッグ adds +50 (80 total) — the effect applies at most
+   ONCE per player no matter how many bags they carry. Slow thresholds keep the base relation:
+   slow when weight > cap-10, nearly immobile when weight > cap (base: slow >20, immobile >30). */
+function carryCap(){ return 30 + ((my && hasTool("bag")) ? 50 : 0); }
+/* Material counting/consumption: ミニ石 (mstone) works exactly like a normal 石 (stone) —
+   every recipe and house deposit that takes stone accepts either (normal stone is spent first). */
+function matCount(kind){
+  if(kind === "stone") return (my.inv.stone||0) + (my.inv.mstone||0);
+  return my.inv[kind]||0;
+}
+function consumeMat(kind, n){
+  if(kind === "stone"){
+    let left = n;
+    const fromStone = Math.min(my.inv.stone||0, left); my.inv.stone -= fromStone; left -= fromStone;
+    if(left > 0) my.inv.mstone = Math.max(0, (my.inv.mstone||0) - left);
+    return;
+  }
+  my.inv[kind] = Math.max(0, (my.inv[kind]||0) - n);
+}
 /* Action hunger cost: each action (chop hit, pickup, punch, shot, craft, cast) costs a fixed 0.8 hunger.
    (Hunger drains were quadrupled by user request: base/action rates are all 4x the original values.) */
 function spendHunger(n){ if(my) my.hunger = clamp(my.hunger - (n === undefined ? 0.8 : n), 0, 100); }
@@ -503,7 +549,8 @@ function damageTool(tool, amount){
 function speedFactor(){
   let f = 1;
   const w = invWeight();
-  if(w > 30) f *= 0.15; else if(w > 20) f *= 0.6;
+  const cap = carryCap();
+  if(w > cap) f *= 0.15; else if(w > cap - 10) f *= 0.6;
   if(my.hunger <= 0) f *= 0.6;
   if(my.temp <= 0) f *= 0.6;
   if(my.hp <= 0) f *= 0.4;
@@ -526,6 +573,24 @@ function hurtMe(dmg, src){
   }
   if(my.hp <= 0 && phase === "playing"){ die(); return; } // die() syncs the dead state itself
   syncMe(true);
+}
+/* Bear-attack knockback: shove ME ~90px directly away from the bear at (bx,by).
+   Axis-separated with the same blocked() test as walking, so the shove stops at the water,
+   the facilities and the trees instead of phasing through them; the world edge clamps too. */
+function knockbackFrom(bx, by){
+  if(!my || my.dead) return;
+  const dx = my.x - bx, dy = my.y - by, d = Math.hypot(dx, dy) || 1;
+  const nx = my.x + dx/d * 90, ny = my.y + dy/d * 90;
+  if(!blocked(nx, my.y)) my.x = nx;
+  if(!blocked(my.x, ny)) my.y = ny;
+  my.x = clamp(my.x, 24, WORLD_W-24); my.y = clamp(my.y, 24, WORLD_H-24);
+  syncMe(true);
+}
+/* Red screen-edge flash on the victim's screen when a bear lands a hit (plus the 💥 pop via hurtMe). */
+function flashDamage(){
+  const f = $("dmg-flash"); if(!f) return;
+  f.style.transition = "none"; f.style.opacity = "0.55";
+  setTimeout(()=>{ f.style.transition = "opacity .45s ease-out"; f.style.opacity = "0"; }, 30);
 }
 
 /* ================= Firebase / Solo plumbing ================= */
@@ -580,8 +645,8 @@ function enterRoom(code, asHost){
     roomRef.child("meta").set({ host: uid, hostBeat: firebase.database.ServerValue.TIMESTAMP, phase:"lobby", endAt:0 });
     roomRef.child("meta").onDisconnect().update({ hostBeat: 0 });
     roomRef.child("fire").set({ gauge:6, lastTick: firebase.database.ServerValue.TIMESTAMP, relightAt:0 });
-    roomRef.child("box").set({ wood:0, stone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 });
-    roomRef.child("house").set({ wood:0, stone:0, grass:0, done:false });
+    roomRef.child("box").set({ wood:0, stone:0, mstone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 });
+    roomRef.child("house").set(newHouseState(1)); // replaced with the survivor-scaled state at game start
   }
   attachRoomListeners();
   phase = "lobby"; showLobby();
@@ -623,10 +688,12 @@ function attachRoomListeners(){
     if(phase==="lobby") renderLobbyList();
   });
   roomRef.child("fire").on("value", s=>{ const f = s.val(); if(f){ fireState = f; cookingState = f.cooking || {}; } });
-  roomRef.child("box").on("value", s=>{ if(s.val()) boxState = s.val(); if(ctxKind==="box") renderCtx(); });
+  roomRef.child("box").on("value", s=>{ if(s.val()) boxState = Object.assign({ wood:0, stone:0, mstone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 }, s.val()); if(ctxKind==="box") renderCtx(); });
   roomRef.child("boxTools").on("value", s=>{ boxToolsState = s.val() || {}; if(ctxKind==="box") renderCtx(); });
   roomRef.child("house").on("value", s=>{ const h = s.val(); if(!h) return; const wasDone = houseState.done;
-    houseState = { wood:h.wood||0, stone:h.stone||0, grass:h.grass||0, done:!!h.done };
+    houseState = { wood:h.wood||0, stone:h.stone||0, grass:h.grass||0, food:h.food||0,
+                   woodReq:h.woodReq||HOUSE_BASE.wood, stoneReq:h.stoneReq||HOUSE_BASE.stone, grassReq:h.grassReq||HOUSE_BASE.grass, foodReq:h.foodReq||HOUSE_BASE.food,
+                   done:!!h.done };
     if(houseState.done && !wasDone) onHouseComplete(); // completion moment: celebrate on EVERY client
     if(ctxKind==="house") renderCtx(); });
   roomRef.child("corpses").on("value", s=>{ corpsesState = s.val() || {}; });
@@ -642,7 +709,9 @@ function attachRoomListeners(){
     const ev = s.val(); s.ref.remove();
     if(!ev || !my || phase!=="playing") return;
     if(ev.type==="punch" || ev.type==="bear"){
+      if(ev.type === "bear") flashDamage(); // red screen-edge flash so the victim FEELS the hit
       hurtMe(ev.dmg||5, ev.type); // immediate death check inside — HP 0 means die NOW, any role
+      if(ev.type === "bear" && !my.dead && typeof ev.bx === "number") knockbackFrom(ev.bx, ev.by); // ~90px shove directly away from the bear
     }
     else if(ev.type==="halve"){
       // day ended with the house unfinished: the host orders every living survivor's HP halved.
@@ -686,7 +755,7 @@ function hostStartGame(){
     metaState = { host: uid, hostBeat: startAt, phase:"playing", endAt: startAt + DAY_MS };
     players[uid].role = "survivor"; my.role = "survivor";
     fireState = { gauge:6, lastTick:startAt, relightAt:0 };
-    corpsesState = {}; boxToolsState = {}; houseState = { wood:0, stone:0, grass:0, done:false }; my.dead = false; players[uid].dead = false;
+    corpsesState = {}; boxToolsState = {}; houseState = newHouseState(1); my.dead = false; players[uid].dead = false;
     bears = {}; for(let i=0;i<4;i++){ bears["b"+i] = { x: 600+i*700, y: 420, hp:BEAR_HP, alive:true }; }
     phase = "playing"; startGameClient(); return;
   }
@@ -700,7 +769,10 @@ function hostStartGame(){
   roomRef.child("bears").set(bObj);
   roomRef.child("nodes").remove(); roomRef.child("items").remove(); roomRef.child("votes").remove(); roomRef.child("corpses").remove(); roomRef.child("boxTools").remove();
   roomRef.child("roulette").remove(); roomRef.child("result").remove();
-  roomRef.child("house").set({ wood:0, stone:0, grass:0, done:false });
+  // house requirements scale with the survivor count decided just now (roles are fixed at start)
+  const survCount = ids.length - psychos.length;
+  houseState = newHouseState(survCount);
+  roomRef.child("house").set(houseState);
   roomRef.child("fire").set({ gauge:6, lastTick: startAt, relightAt:0 });
   roomRef.child("meta").update({ phase:"playing", endAt: startAt + DAY_MS, hostBeat: startAt });
   AudioSys.se("decide");
@@ -766,6 +838,18 @@ function hostLoop(){
       if(!soloMode) roomRef.child("items/" + gid + "/rot").set(1);
     }
   }
+  // node respawn: a harvested tree / stone / grass node comes back 120 seconds after it was
+  // taken, at full strength (tree HP full). Rabbits and bears do NOT respawn.
+  for(const nid in nodesState){
+    const st = nodesState[nid];
+    if(!st || !st.gone || !st.goneAt) continue;
+    const nd = NODE_MAP[nid];
+    if(!nd || (nd.type !== "tree" && nd.type !== "stone" && nd.type !== "grass")) continue;
+    if(t - st.goneAt >= 120000){
+      if(soloMode) nodesState[nid] = { gone:false, hp:TREE_HP };
+      else roomRef.child("nodes/" + nid).set({ gone:false, hp:TREE_HP }); // every client's nodes listener redraws it
+    }
+  }
   hostMoveBears(t);
   // day end?
   if(metaState.endAt && t >= metaState.endAt){ hostEndDay(); }
@@ -804,8 +888,8 @@ function hostMoveBears(t){
       if(d > 44){ b.x += dx/d * 30; b.y += dy/d * 30; changed = true; } // bear move speed x2
       else if(!b.atkAt || t - b.atkAt > 1300){
         b.atkAt = t; changed = true;
-        if(!soloMode) roomRef.child("events/" + target.id).push({ type:"bear", dmg:12, from:bid, ts:t });
-        else if(target.id === uid){ hurtMe(12, "bear"); }
+        if(!soloMode) roomRef.child("events/" + target.id).push({ type:"bear", dmg:12, from:bid, bx: Math.round(b.x), by: Math.round(b.y), ts:t });
+        else if(target.id === uid){ flashDamage(); hurtMe(12, "bear"); knockbackFrom(b.x, b.y); }
       }
     } else {
       if(Math.random() < 0.3){ b.x += (Math.random()*60-30); b.y += (Math.random()*60-30); b.x = clamp(b.x,80,WORLD_W-80); b.y = clamp(b.y,120,1000); changed = true; }
@@ -838,6 +922,8 @@ function hostApplyBearHit(h){
       for(let i=0;i<10;i++){
         roomRef.child("items").push({ type:"meat", x: Math.round(b.x + (Math.random()*90-45)), y: Math.round(b.y + (Math.random()*90-45)), at: nowMs() });
       }
+    } else {
+      for(let i=0;i<10;i++) spawnGround("meat", b.x + (Math.random()*90-45), b.y + (Math.random()*90-45));
     }
     if(h.by === uid) toast("🐻 クマを倒した！肉が散らばった");
   } else if(!soloMode){
@@ -980,38 +1066,45 @@ function onHouseComplete(){
   AudioSys.se("craft");
   if(isHost) setTimeout(()=>{ if(phase === "playing") hostEndDay(); }, 3000);
 }
-/* Deposit 1 unit of a building material into the SHARED house progress (called from doUse
-   with the selected material while near the site). Never accepts more than the required count. */
+/* Deposit 1 unit into the SHARED house progress (called from doUse with the selected item
+   while near the site). Materials: wood / stone (ミニ石 counts as stone) / grass.
+   Grilled food: 焼き肉 OR 焼き魚 both feed the single "food" quota — and a secretly rotten
+   grilled one counts too, exactly like a good one (nobody can tell them apart anyway).
+   Never accepts more than the survivor-scaled required count. */
 function houseDeposit(kind){
   if(!my || my.dead || houseState.done) return;
-  if(!HOUSE_NEED[kind]) return;
-  if((houseState[kind]||0) >= HOUSE_NEED[kind]){ toast("🏠 " + ITEM_DEF[kind].name + "はもう十分！"); return; }
+  const req = houseReq();
+  let counter = null;
+  if(kind === "wood" || kind === "grass") counter = kind;
+  else if(kind === "stone" || kind === "mstone") counter = "stone";
+  else if(kind === "gfish" || kind === "gmeat") counter = "food";
+  if(!counter) return;
+  const label = counter === "food" ? "焼き物" : ITEM_DEF[counter].name;
+  if((houseState[counter]||0) >= req[counter]){ toast("🏠 " + label + "はもう十分！"); return; }
   if((my.inv[kind]||0) <= 0){ toast(ITEM_DEF[kind].name + "がない"); return; }
+  const wasRot = counter === "food" && (my.rotGrilled[kind]||0) > 0; // rotten grilled goes in first (same stock policy as the box)
   my.inv[kind]--;
+  if(wasRot) my.rotGrilled[kind]--;
   spendHunger();
   AudioSys.se("decide");
   if(soloMode){
-    houseState[kind]++;
-    toast("🏠 " + ITEM_DEF[kind].name + "を入れた（" + houseState[kind] + "/" + HOUSE_NEED[kind] + "）");
-    if(houseState.wood >= HOUSE_NEED.wood && houseState.stone >= HOUSE_NEED.stone && houseState.grass >= HOUSE_NEED.grass){
-      houseState.done = true; onHouseComplete();
-    }
+    houseState[counter]++;
+    toast("🏠 " + ITEM_DEF[kind].name + "を入れた（" + houseState[counter] + "/" + req[counter] + "）");
+    if(houseCompleteCheck(houseState)){ houseState.done = true; onHouseComplete(); }
   } else {
-    roomRef.child("house/" + kind).transaction(v=>{
+    roomRef.child("house/" + counter).transaction(v=>{
       const cur = v || 0;
-      return cur >= HOUSE_NEED[kind] ? undefined : cur + 1; // cap at the required count, even under races
+      return cur >= req[counter] ? undefined : cur + 1; // cap at the required count, even under races
     }, (err, committed)=>{
-      if(!committed){ my.inv[kind]++; toast("🏠 " + ITEM_DEF[kind].name + "はもう十分！"); renderInv(); return; }
+      if(!committed){ my.inv[kind]++; if(wasRot) my.rotGrilled[kind]++; toast("🏠 " + label + "はもう十分！"); renderInv(); return; }
       // if that was the last piece overall, flip the shared done flag — the house listener
       // then fires onHouseComplete() on every client (host included) exactly once each.
       roomRef.child("house").once("value").then(s=>{
         const h = s.val() || {};
-        if(!h.done && (h.wood||0) >= HOUSE_NEED.wood && (h.stone||0) >= HOUSE_NEED.stone && (h.grass||0) >= HOUSE_NEED.grass){
-          roomRef.child("house/done").set(true);
-        }
+        if(!h.done && houseCompleteCheck(h)) roomRef.child("house/done").set(true);
       });
     });
-    toast("🏠 " + ITEM_DEF[kind].name + "を入れた（" + Math.min((houseState[kind]||0) + 1, HOUSE_NEED[kind]) + "/" + HOUSE_NEED[kind] + "）");
+    toast("🏠 " + ITEM_DEF[kind].name + "を入れた（" + Math.min((houseState[counter]||0) + 1, req[counter]) + "/" + req[counter] + "）");
   }
   renderInv(); renderCtx();
 }
@@ -1364,12 +1457,39 @@ setInterval(()=>{ if(phase==="playing") updateRabbits(0.2); }, 200);
 /* ================= Node claiming (trees / stones / grass / rabbits) ================= */
 function claimNode(nd, onSuccess){
   if(soloMode){
-    nodesState[nd.id] = { gone:true }; onSuccess && onSuccess(); return;
+    const st = nodesState[nd.id] || {};
+    st.gone = true;
+    if(nd.type === "stone" || nd.type === "grass") st.goneAt = nowMs(); // respawn clock — rabbits never come back
+    nodesState[nd.id] = st; onSuccess && onSuccess(); return;
   }
-  roomRef.child("nodes/" + nd.id + "/gone").transaction(cur => cur ? undefined : true, (err, committed)=>{
+  roomRef.child("nodes/" + nd.id).transaction(cur=>{
+    if(cur && cur.gone) return undefined; // already taken: abort
+    cur = cur || {};
+    cur.gone = true;
+    if(nd.type === "stone" || nd.type === "grass") cur.goneAt = Date.now(); // respawn clock — rabbits never come back
+    return cur;
+  }, (err, committed)=>{
     if(committed && onSuccess) onSuccess();
     else if(!committed) toast("他の人が取った！");
   });
+}
+/* ---- Ground-drop helpers & probability rolls ---- */
+/* Tree felled WITH AN AXE: 70% -> 2 wood / 20% -> 3 / 10% -> 5 (one roll per tree). */
+function rollWoodDrop(){ const r = Math.random(); return r < 0.7 ? 2 : (r < 0.9 ? 3 : 5); }
+/* Stone smashed WITH A HAMMER: 70% -> 3 mini-stones / 20% -> 5 / 10% -> 7. */
+function rollMiniDrop(){ const r = Math.random(); return r < 0.7 ? 3 : (r < 0.9 ? 5 : 7); }
+function spawnGround(type, x, y){
+  const it = { type: type, x: Math.round(clamp(x, 30, WORLD_W-30)), y: Math.round(clamp(y, 30, WORLD_H-30)), at: nowMs() };
+  if(soloMode) groundItems["gi" + nowMs() + "_" + Math.floor(Math.random()*99999)] = it;
+  else roomRef.child("items").push(it);
+  return it;
+}
+/* A felled tree drops its wood ON THE GROUND at the stump (touch to pick up, usual 2s cooldown).
+   Axe felling rolls the bonus table; any other way of felling drops exactly 1. */
+function dropWoodAt(nd, usedAxe){
+  const n = usedAxe ? rollWoodDrop() : 1;
+  for(let i=0;i<n;i++) spawnGround("wood", nd.x + (Math.random()*36-18), nd.y + 14 + (Math.random()*20-10));
+  toast("🪵 木が倒れた！木材×" + n + "が落ちた");
 }
 /* Remaining HP of a tree node (TREE_HP when untouched). Legacy nodes written by older
    builds stored accumulated damage as "hits" out of 10 — convert proportionally. */
@@ -1382,16 +1502,23 @@ function treeHpLeft(nd){
 function hitTree(nd){
   spendHunger();
   addFx(nd.x, nd.y - 12);
+  // damage by weapon (axe ownership-based as before): axe 10 / sickle(selected) 5 / stone(selected) 5 / bare hands 3
+  const entries = invEntries(); const sel = entries[my.sel];
   const axe = hasTool("axe");
-  const dmg = axe ? 10 : 3; // tree HP 30: axe fells in 3 hits, bare hands in 10 (same feel as the old hit counts)
-  if(!axe){ hurtMe(0.6, "self"); if(my.dead) return; } // bare-hand recoil can kill — and then the hit doesn't land
-  AudioSys.se(axe ? "axe" : "punch");
-  if(axe) damageTool(axe, 1);
+  let dmg = 3, weapon = "bare";
+  if(axe){ dmg = 10; weapon = "axe"; } // tree HP 30: axe fells in 3 hits, bare hands in 10
+  else if(sel && sel.kind === "sickle"){ dmg = 5; weapon = "sickle"; }
+  else if(sel && (sel.kind === "stone" || sel.kind === "mstone")){ dmg = 5; weapon = "stone"; }
+  if(weapon === "bare"){ hurtMe(0.6, "self"); if(my.dead) return; } // bare-hand recoil can kill — and then the hit doesn't land
+  AudioSys.se(weapon === "axe" || weapon === "sickle" ? "axe" : "punch");
+  if(weapon === "axe") damageTool(axe, 1);
+  if(weapon === "sickle") damageTool(my.tools[sel.toolIdx], 1);
+  const usedAxe = weapon === "axe"; // only axe felling rolls the bonus wood-drop table
   if(soloMode){
     const st = nodesState[nd.id] || { hp: TREE_HP };
     if(typeof st.hp !== "number") st.hp = (typeof st.hits === "number") ? Math.max(0, TREE_HP - st.hits * 3) : TREE_HP;
     st.hp -= dmg;
-    if(st.hp <= 0){ st.hp = 0; st.gone = true; my.inv.wood++; AudioSys.se("treefall"); toast("🪵 木材+1（重さ10）"); }
+    if(st.hp <= 0){ st.hp = 0; st.gone = true; st.goneAt = nowMs(); AudioSys.se("treefall"); dropWoodAt(nd, usedAxe); }
     nodesState[nd.id] = st; renderInv(); return;
   }
   let claimByMe = false;
@@ -1400,12 +1527,12 @@ function hitTree(nd){
     cur = cur || { hp: TREE_HP, gone:false };
     if(typeof cur.hp !== "number") cur.hp = (typeof cur.hits === "number") ? Math.max(0, TREE_HP - cur.hits * 3) : TREE_HP;
     cur.hp -= dmg;
-    if(cur.hp <= 0){ cur.hp = 0; cur.gone = true; cur.claimBy = uid; claimByMe = true; }
+    if(cur.hp <= 0){ cur.hp = 0; cur.gone = true; cur.goneAt = Date.now(); cur.claimBy = uid; claimByMe = true; }
     return cur;
   }, (err, committed, snap)=>{
     const v = snap && snap.val();
     if(v && v.gone && v.claimBy === uid){
-      my.inv.wood++; AudioSys.se("treefall"); toast("🪵 木が倒れた！木材+1"); renderInv();
+      AudioSys.se("treefall"); dropWoodAt(nd, usedAxe); renderInv();
     } else if(v && v.gone){ AudioSys.se("treefall"); }
   });
 }
@@ -1426,7 +1553,7 @@ function doUse(){
   const entries = invEntries();
   const sel = entries[my.sel];
   // 0h) near the house site: deposit the SELECTED building material, 1 per press (hold-repeat works)
-  if(ctxKind === "house" && sel && sel.toolIdx === undefined && HOUSE_NEED[sel.kind]){ houseDeposit(sel.kind); return; }
+  if(ctxKind === "house" && sel && sel.toolIdx === undefined && (sel.kind === "wood" || sel.kind === "stone" || sel.kind === "mstone" || sel.kind === "grass" || sel.kind === "gfish" || sel.kind === "gmeat")){ houseDeposit(sel.kind); return; }
   // 0) near the shared box: deposit the selected item (box panel is take-out only).
   //    Deposit wins over eating/using while the box panel is open. ALL items incl. tools can be boxed.
   if(ctxKind === "box" && sel){
@@ -1476,8 +1603,25 @@ function doUse(){
     else roomRef.child("bearHits").push({ bear: nb.id, dmg: 5, by: uid, ts: t });
     toast("🪓 クマを斬った！（クマの反撃に注意）"); renderInv(); return;
   }
+  if(nb && sel && sel.kind === "sickle"){
+    spendHunger();
+    damageTool(my.tools[sel.toolIdx], 1);
+    AudioSys.se("axe");
+    addFx(nb.x, nb.y - 10);
+    if(soloMode) hostApplyBearHit({ bear: nb.id, dmg: 4, by: uid });
+    else roomRef.child("bearHits").push({ bear: nb.id, dmg: 4, by: uid, ts: t });
+    toast("🔪 鎌で斬った！（クマの反撃に注意）"); renderInv(); return;
+  }
+  if(nb && sel && (sel.kind === "stone" || sel.kind === "mstone")){
+    spendHunger();
+    AudioSys.se("punch");
+    addFx(nb.x, nb.y - 10);
+    if(soloMode) hostApplyBearHit({ bear: nb.id, dmg: 5, by: uid });
+    else roomRef.child("bearHits").push({ bear: nb.id, dmg: 5, by: uid, ts: t });
+    toast("🪨 石で殴った！（クマの反撃に注意）"); renderInv(); return;
+  }
   if(nb && !hasTool("axe")){
-    // bare-hand punch: only 1 damage (bear HP 30; bow=4, axe=5) — possible in principle, impractical alone.
+    // bare-hand punch: only 1 damage (bear HP 30; bow=4, axe=5, sickle=4, stone=5) — possible in principle, impractical alone.
     // Same risk feel as bare-hand tree chopping: costs the puncher 0.6 HP, and the bear is in attack range anyway.
     spendHunger();
     hurtMe(0.6, "self");
@@ -1492,22 +1636,35 @@ function doUse(){
   const trees = NODES.filter(nd=>nd.type==="tree" && !(nodesState[nd.id] && nodesState[nd.id].gone));
   const nt = nearestOf(trees, 64);
   if(nt){ hitTree(nt); renderInv(); syncMe(true); return; }
-  // 6) stone / grass pickup
+  // 6) stone / grass harvest — 👊 ONLY: map nodes never yield to touch (dropped ground items still do).
+  //    Hammer owned + stone node -> smash: mini-stones drop on the ground (70% 3 / 20% 5 / 10% 7).
+  //    Sickle owned + grass node -> 3 grass instead of 1. Player-dropped items are ground items, not nodes — unaffected.
   const pickables = NODES.filter(nd=>(nd.type==="stone"||nd.type==="grass") && !(nodesState[nd.id] && nodesState[nd.id].gone));
   const np = nearestOf(pickables, 52);
   if(np){
+    if(np.type === "stone" && hasTool("hammer")){
+      claimNode(np, ()=>{ spendHunger(); damageTool(hasTool("hammer"), 1); const n = rollMiniDrop();
+        for(let i=0;i<n;i++) spawnGround("mstone", np.x + (Math.random()*40-20), np.y + (Math.random()*30-8));
+        AudioSys.se("axe"); toast("🔨 石を砕いた！ミニ石×" + n + "が落ちた"); renderInv(); });
+      return;
+    }
+    if(np.type === "grass" && hasTool("sickle")){
+      claimNode(np, ()=>{ spendHunger(); my.inv.grass += 3; damageTool(hasTool("sickle"), 1); AudioSys.se("pickup"); toast("🌿 草+3（鎌でまとめて収穫）"); renderInv(); });
+      return;
+    }
     claimNode(np, ()=>{ spendHunger(); my.inv[np.type]++; AudioSys.se("pickup"); toast(ITEM_DEF[np.type].icon + " " + ITEM_DEF[np.type].name + "+1"); renderInv(); });
     return;
   }
-  // 7) punch another player
+  // 7) punch another player — bare hands 3; a weapon in hand (axe owned, or sickle/stone/mini-stone selected) 5
   const others = Object.keys(players).filter(id=>id!==uid && !players[id].dead).map(id=>({ id, x: players[id].x, y: players[id].y }));
   const no = nearestOf(others, 58);
   if(no){
     spendHunger();
     addFx(no.x, no.y - 10);
     AudioSys.se("punch");
+    const pDmg = (hasTool("axe") || (sel && (sel.kind === "sickle" || sel.kind === "stone" || sel.kind === "mstone"))) ? 5 : 3;
     if(soloMode){ /* no one */ }
-    else roomRef.child("events/" + no.id).push({ type:"punch", dmg:5, from: uid, ts: t });
+    else roomRef.child("events/" + no.id).push({ type:"punch", dmg:pDmg, from: uid, ts: t });
     toast("👊 殴った！"); return;
   }
   toast("近くに使えるものがない");
@@ -1603,16 +1760,16 @@ function renderCtx(){
     // Empty box: NO contents UI at all (take-out display turns ON only when something is inside).
     // ALL item types can be stored, including tools — each tool instance keeps its remaining durability.
     const toolList = boxToolEntries();
-    const totalInBox = ["wood","stone","grass","fish","meat","gfish","gmeat"].reduce((s,k)=>s+(boxState[k]||0),0) + toolList.length;
+    const totalInBox = ["wood","stone","mstone","grass","fish","meat","gfish","gmeat"].reduce((s,k)=>s+(boxState[k]||0),0) + toolList.length;
     html += '<div class="ctx-box"><div class="ctx-title">📦 共有アイテムボックス（取り出すだけ）</div>';
     if(totalInBox > 0){
       html += '<div class="ctx-btns">';
-      for(const k of ["wood","stone","grass","fish","meat","gfish","gmeat"]){
+      for(const k of ["wood","stone","mstone","grass","fish","meat","gfish","gmeat"]){
         if((boxState[k]||0) <= 0) continue;
         html += ctxBtn(ITEM_DEF[k].icon + " 取る", "箱" + (boxState[k]||0), "take|" + k, false, true);
       }
       toolList.forEach(t=>{
-        html += ctxBtn(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name + "を取る", t.dur !== undefined ? "耐久" + t.dur : "壊れない", "taketool|" + t.id, false, true);
+        html += ctxBtn(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name + "を取る", t.dur !== undefined ? "耐久 " + durMeter(t.dur, ITEM_DEF[t.kind].dur) : "壊れない", "taketool|" + t.id, false, true);
       });
       html += '</div>';
     }
@@ -1624,18 +1781,18 @@ function renderCtx(){
     html += ctxBtn("🥩 肉を取る", "死体から肉+1", "loot|" + ctxCorpse, (c.meat||0) <= 0, true);
     html += "</div></div>";
   } else if(ctxKind === "house"){
-    const hs = houseState;
+    const hs = houseState, rq = houseReq();
     html += '<div class="ctx-box"><div class="ctx-title">🏠 家づくり（素材を入れて完成させよう）</div>';
-    html += '<div style="font-size:14px;font-weight:800;">🪵 木材 ' + (hs.wood||0) + '/' + HOUSE_NEED.wood + '　🪨 石 ' + (hs.stone||0) + '/' + HOUSE_NEED.stone + '　🌿 草 ' + (hs.grass||0) + '/' + HOUSE_NEED.grass + '</div>';
+    html += '<div style="font-size:14px;font-weight:800;">🪵 木材 ' + (hs.wood||0) + '/' + rq.wood + '　🪨 石 ' + (hs.stone||0) + '/' + rq.stone + '　🌿 草 ' + (hs.grass||0) + '/' + rq.grass + '　🍖 焼き物 ' + (hs.food||0) + '/' + rq.food + '</div>';
     if(hs.done) html += '<div style="font-size:12px;color:#7be495;margin-top:4px;">🏠 完成！</div>';
-    else html += '<div style="font-size:11px;color:#bcd8c2;margin-top:4px;">入れる：下の持ち物で素材を選んで「👊(E)」を押す（1回で1個・長押しでもOK）</div>';
+    else html += '<div style="font-size:11px;color:#bcd8c2;margin-top:4px;">入れる：下の持ち物で素材や焼き物を選んで「👊(E)」を押す（1回で1個・長押しでもOK）。焼き物は焼き肉・焼き魚どちらでもOK、ミニ石は石として数える</div>';
     html += '</div>';
   } else if(ctxKind === "bench"){
     html += '<div class="ctx-box"><div class="ctx-title">🔨 作業台（クラフト）</div><div class="ctx-btns">';
     RECIPES.forEach((r,i)=>{
       const needTxt = Object.keys(r.need).map(k=>ITEM_DEF[k].icon + "×" + r.need[k]).join(" ");
       let lack = "";
-      for(const k in r.need){ if((my.inv[k]||0) < r.need[k]) lack = "不足：" + ITEM_DEF[k].name + "あと" + (r.need[k]-(my.inv[k]||0)) + "個"; }
+      for(const k in r.need){ if(matCount(k) < r.need[k]) lack = "不足：" + ITEM_DEF[k].name + "あと" + (r.need[k]-matCount(k)) + "個"; }
       html += ctxBtn(ITEM_DEF[r.out].icon + " " + ITEM_DEF[r.out].name + "を作る", lack || needTxt, "craft|" + i, !!lack);
     });
     html += "</div></div>";
@@ -1738,7 +1895,7 @@ function boxDepositTool(toolIdx){
   const rec = { kind: t.kind }; if(t.dur !== undefined) rec.dur = t.dur; // no dur field at all for indestructible items (Firebase rejects undefined values)
   if(soloMode){ boxToolsState["t" + nowMs() + "_" + Math.floor(Math.random()*9999)] = rec; }
   else roomRef.child("boxTools").push(rec);
-  AudioSys.se("decide"); toast("📦 " + ITEM_DEF[t.kind].name + "を箱に入れた" + (t.dur !== undefined ? "（耐久" + t.dur + "）" : ""));
+  AudioSys.se("decide"); toast("📦 " + ITEM_DEF[t.kind].name + "を箱に入れた");
   renderInv(); renderCtx();
 }
 function boxTakeTool(id){
@@ -1747,7 +1904,7 @@ function boxTakeTool(id){
   else roomRef.child("boxTools/" + id).remove();
   const dur = (t.dur !== undefined ? t.dur : ITEM_DEF[t.kind].dur); // undefined for indestructible items (アウター)
   my.tools.push({ kind: t.kind, dur });
-  AudioSys.se("pickup"); toast(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name + "を箱から取った" + (dur !== undefined ? "（耐久" + dur + "）" : ""));
+  AudioSys.se("pickup"); toast(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name + "を箱から取った");
   renderInv(); renderCtx();
 }
 /* ---- Corpse looting: 1 meat per use action, 3 meat total per corpse ---- */
@@ -1762,12 +1919,19 @@ function lootCorpse(cid){
 }
 function craftItem(idx){
   const r = RECIPES[Number(idx)]; if(!r) return;
-  for(const k in r.need){ if((my.inv[k]||0) < r.need[k]){ toast("素材が足りない"); return; } }
-  for(const k in r.need) my.inv[k] -= r.need[k];
+  for(const k in r.need){ if(matCount(k) < r.need[k]){ toast("素材が足りない"); return; } } // ミニ石 counts as 石
+  for(const k in r.need) consumeMat(k, r.need[k]);
   spendHunger();
-  my.tools.push({ kind: r.out, dur: ITEM_DEF[r.out].dur }); // dur is undefined for indestructible items (アウター)
-  AudioSys.se("craft"); toast(ITEM_DEF[r.out].icon + " " + ITEM_DEF[r.out].name + "を作った！" + (ITEM_DEF[r.out].dur !== undefined ? "（耐久" + ITEM_DEF[r.out].dur + "）" : "（壊れない）"));
+  my.tools.push({ kind: r.out, dur: ITEM_DEF[r.out].dur }); // dur is undefined for indestructible items (アウター/バッグ)
+  AudioSys.se("craft"); toast(ITEM_DEF[r.out].icon + " " + ITEM_DEF[r.out].name + "を作った！" + (ITEM_DEF[r.out].dur !== undefined ? "" : "（壊れない）"));
   renderInv(); renderCtx();
+}
+
+/* Durability as a block meter (no numbers): 10 cells, filled by remaining fraction. */
+function durMeter(dur, maxDur){
+  if(dur === undefined || !maxDur) return "";
+  const filled = Math.round(clamp(dur / maxDur, 0, 1) * 10);
+  return "█".repeat(filled) + "░".repeat(10 - filled);
 }
 
 /* ================= Inventory UI ================= */
@@ -1780,7 +1944,7 @@ function renderInv(){
     const d = document.createElement("div");
     d.className = "inv-cell" + (i===my.sel ? " sel" : "");
     d.innerHTML = '<div class="ic">' + ITEM_DEF[e.kind].icon + '</div><div class="ct">' + (e.toolIdx!==undefined ? "" : "×"+e.count) + '</div>' +
-                  (e.dur !== undefined ? '<div class="dur">耐久' + e.dur + '</div>' : "");
+                  (e.dur !== undefined && ITEM_DEF[e.kind].dur ? '<div class="durbar"><i style="width:' + Math.round(clamp(e.dur / ITEM_DEF[e.kind].dur, 0, 1) * 100) + '%"></i></div>' : "");
     // pointerdown (not click): the tap must register even while another finger holds the pad
     d.addEventListener("pointerdown", e=>{
       e.preventDefault();
@@ -1802,9 +1966,10 @@ function renderInv(){
   });
   if(!entries.length) bar.innerHTML = '<div class="inv-cell"><div class="ic">🎒</div><div class="ct">空</div></div>';
   const w = invWeight();
+  const cap = carryCap();
   const wEl = $("inv-weight");
-  wEl.textContent = "🎒 " + w + " / 30" + (w > 30 ? " ⚠️ほぼ動けない" : (w > 20 ? " ⚠️足が遅い" : ""));
-  wEl.style.color = w > 20 ? "#ff9c8a" : "#fff";
+  wEl.textContent = "🎒 " + w + " / " + cap + (w > cap ? " ⚠️ほぼ動けない" : (w > cap - 10 ? " ⚠️足が遅い" : ""));
+  wEl.style.color = w > cap - 10 ? "#ff9c8a" : "#fff";
 }
 
 /* ================= Drawing ================= */
@@ -1974,8 +2139,9 @@ function drawWorld(ts){
     ctx2d.fillStyle = "#ffe9b0"; ctx2d.fillRect(sx-30, sy-4, 12, 12); ctx2d.fillRect(sx+18, sy-4, 12, 12);
     ctx2d.font = "bold 12px sans-serif"; ctx2d.fillStyle = "#fff"; ctx2d.fillText("🏠 家", sx, sy-52);
   } else {
-    const hTotal = (houseState.wood||0) + (houseState.stone||0) + (houseState.grass||0);
-    const hNeedTotal = HOUSE_NEED.wood + HOUSE_NEED.stone + HOUSE_NEED.grass;
+    const hTotal = (houseState.wood||0) + (houseState.stone||0) + (houseState.grass||0) + (houseState.food||0);
+    const hReq = houseReq();
+    const hNeedTotal = hReq.wood + hReq.stone + hReq.grass + hReq.food;
     ctx2d.fillStyle = "#b09a72"; ctx2d.fillRect(sx-44, sy+16, 88, 10); // foundation
     if(hTotal * 2 >= hNeedTotal){ // past 50%: wooden frame goes up
       ctx2d.fillStyle = "#8a5a2b";
