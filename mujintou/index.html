@@ -1472,12 +1472,12 @@ function doUse(){
     const axe = hasTool("axe"); damageTool(axe, 1);
     AudioSys.se("axe");
     addFx(nb.x, nb.y - 10);
-    if(soloMode) hostApplyBearHit({ bear: nb.id, dmg: 8, by: uid });
-    else roomRef.child("bearHits").push({ bear: nb.id, dmg: 8, by: uid, ts: t });
+    if(soloMode) hostApplyBearHit({ bear: nb.id, dmg: 5, by: uid });
+    else roomRef.child("bearHits").push({ bear: nb.id, dmg: 5, by: uid, ts: t });
     toast("🪓 クマを斬った！（クマの反撃に注意）"); renderInv(); return;
   }
   if(nb && !hasTool("axe")){
-    // bare-hand punch: only 1 damage (bear HP 30; bow=4, axe=8) — possible in principle, impractical alone.
+    // bare-hand punch: only 1 damage (bear HP 30; bow=4, axe=5) — possible in principle, impractical alone.
     // Same risk feel as bare-hand tree chopping: costs the puncher 0.6 HP, and the bear is in attack range anyway.
     spendHunger();
     hurtMe(0.6, "self");
