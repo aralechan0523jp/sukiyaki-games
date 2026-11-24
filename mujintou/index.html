@@ -88,6 +88,7 @@
   .inv-cell .durbar { position:absolute; bottom:2px; left:5px; right:5px; height:4px; background:rgba(255,255,255,.16); border-radius:2px; overflow:hidden; }
   .inv-cell .durbar i { display:block; height:100%; background:#8bc34a; border-radius:2px; }
   #dmg-flash { inset:0; pointer-events:none; background:radial-gradient(ellipse at center, transparent 55%, rgba(255,30,20,.85) 100%); opacity:0; z-index:8; }
+  #vomit-fx { inset:0; pointer-events:none; background:rgba(128,0,180,0.28); display:none; z-index:7; }
   #inv-weight { right:12px; bottom:150px; font-size:12px; font-weight:900; background:rgba(10,20,14,.8); padding:3px 9px; border-radius:8px; z-index:7; }
   #btn-use, #btn-drop { width:76px; height:76px; border-radius:50%; font-weight:900; z-index:7; color:#fff; }
   #btn-use { right:14px; bottom:14px; background:#2e9e4f; font-size:24px; box-shadow:0 4px 0 #1c6330; border:2px solid #bff0cd; }
@@ -167,6 +168,7 @@
   <div class="hud" id="toast"></div>
   <div class="hud" id="banner"></div>
   <div class="hud" id="dmg-flash"></div>
+  <div class="hud" id="vomit-fx"></div>
   <div class="hud" id="progress-wrap"><div id="progress-label"></div><div id="progress-bar"><div id="progress-fill"></div></div></div>
   <div class="hud" id="ctx"></div>
   <div class="hud" id="pad"><div id="pad-knob"></div></div>
@@ -273,7 +275,7 @@ function toast(msg, ms){
 
 /* ================= Audio (WebAudio synth) ================= */
 const AudioSys = {
-  ctx:null, muted:false, titleTimer:null, windNodes:null, master:null,
+  ctx:null, muted:false, titleTimer:null, windNodes:null, weirdNodes:null, master:null,
   ensure(){
     if(this.ctx) { if(this.ctx.state==="suspended") this.ctx.resume(); return; }
     try {
@@ -375,7 +377,35 @@ const AudioSys = {
     }, 1800);
     this.windNodes = { src, g, lfo };
   },
-  stopWind(){ if(this.windNodes){ try{ this.windNodes.src.stop(); }catch(e){} clearInterval(this.windNodes.lfo); this.windNodes = null; } }
+  stopWind(){ if(this.windNodes){ try{ this.windNodes.src.stop(); }catch(e){} clearInterval(this.windNodes.lfo); this.windNodes = null; } },
+  /* Weird BGM: eerie detuned drone for the rotten-grilled vomit state (20s) — a slow-wobbling
+     minor-2nd cluster (A2 + Bb2) plus a high tone that drifts between minor notes.
+     Replaces the wind ambience while active; stopWeird(true) resumes the wind. */
+  startWeird(){
+    this.ensure(); if(!this.ctx || this.weirdNodes) return;
+    this.stopWind();
+    const ctx = this.ctx;
+    const g = ctx.createGain(); g.gain.value = 0; g.connect(this.master);
+    g.gain.setTargetAtTime(0.075, ctx.currentTime, 0.9);
+    const mk = (type, freq)=>{ const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq; o.connect(g); o.start(); return o; };
+    const o1 = mk("triangle", 110), o2 = mk("triangle", 116.54), o3 = mk("sine", 220);
+    const lfo = ctx.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.35;
+    const lfoG = ctx.createGain(); lfoG.gain.value = 6; lfo.connect(lfoG); lfoG.connect(o1.frequency); lfoG.connect(o2.frequency); lfo.start();
+    const lfo2 = ctx.createOscillator(); lfo2.type = "sine"; lfo2.frequency.value = 0.13;
+    const lfo2G = ctx.createGain(); lfo2G.gain.value = 0.03; lfo2.connect(lfo2G); lfo2G.connect(g.gain); lfo2.start();
+    const notes = [220, 233.08, 261.63, 207.65, 196];
+    let ni = 0;
+    const drift = setInterval(()=>{ if(!this.weirdNodes) return; ni = (ni + 1 + Math.floor(Math.random()*2)) % notes.length; o3.frequency.setTargetAtTime(notes[ni], ctx.currentTime, 0.7); }, 2400);
+    this.weirdNodes = { oscs:[o1,o2,o3,lfo,lfo2], g:g, drift:drift };
+  },
+  stopWeird(resumeWind){
+    if(this.weirdNodes){
+      const w = this.weirdNodes; this.weirdNodes = null; clearInterval(w.drift);
+      try{ w.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.25); }catch(e){}
+      w.oscs.forEach(o=>{ try{ o.stop(this.ctx.currentTime + 1.1); }catch(e){} });
+    }
+    if(resumeWind) this.startWind();
+  }
 };
 document.addEventListener("pointerdown", ()=>{ AudioSys.ensure(); }, { once:false });
 
@@ -1287,11 +1317,25 @@ cv.addEventListener("pointerdown", e=>{
     shootArrow(Math.atan2((camY + e.clientY) - (my.y - 6), (camX + e.clientX) - my.x));
   }
 });
+/* Rotten-grilled aftermath (LOCAL player only): while the vomit state runs (20s) a translucent
+   PURPLE tint covers the game screen and the eerie "weird BGM" replaces the wind ambience.
+   Called every frame, but it only acts on state TRANSITIONS (start/stop fire exactly once). */
+let vomitFxOn = false;
+function updateVomitFx(){
+  const on = !!(my && phase === "playing" && !my.dead && (my.vomitUntil||0) > nowMs());
+  const ov = $("vomit-fx");
+  if(ov) ov.style.display = on ? "block" : "none";
+  if(on === vomitFxOn) return;
+  vomitFxOn = on;
+  if(on) AudioSys.startWeird();
+  else AudioSys.stopWeird(phase === "playing");
+}
 function frameLoop(ts){
   if(phase !== "playing" && phase !== "roulette" && phase !== "vote" && phase !== "result"){ rafId = null; return; }
   rafId = requestAnimationFrame(frameLoop);
   const dt = Math.min(0.05, (ts - lastFrame)/1000 || 0.016); lastFrame = ts;
   if(phase === "playing" && my) stepMovement(dt);
+  updateVomitFx();
   updateArrows(dt);
   drawWorld(ts);
 }
@@ -1330,7 +1374,7 @@ function stepMovement(dt){
   if(my.dead){ checkCtx(); return; }
   for(const id in groundItems){
     const it = groundItems[id]; if(!it) continue;
-    if(nowMs() < (it.at||0) + 2000) continue;
+    if(nowMs() < (it.at||0) + (typeof it.cd === "number" ? it.cd : 2000)) continue; // per-item pickup delay: tree wood 800ms, player drops & other natural drops 2000ms
     if(Math.hypot(it.x-my.x, it.y-my.y) < 34){
       claimGroundItem(id, it);
     }
@@ -1373,20 +1417,26 @@ function claimGroundItem(id, it){
 /* ================= Hit effects & status bubbles ================= */
 let fxList = [];
 function addFx(x, y){ fxList.push({ x, y, at: performance.now() }); if(fxList.length > 40) fxList.shift(); }
-/* One bubble above the head, highest priority first: vomit (20s) > HP<=15 > temp<=15 > hunger<=15 */
-function warnBubbleFor(o, now){
-  if(!o) return null;
-  if(o.vomitUntil && now < o.vomitUntil) return "🤮";
-  if(typeof o.hp === "number" && o.hp <= 15) return "🏥";
-  if(typeof o.temp === "number" && o.temp <= 15) return "🥶";
-  if(typeof o.hunger === "number" && o.hunger <= 15) return "🍽️";
-  return null;
+/* Status bubbles above the head: ALL applicable ones, in display order 🤮 🏥 🥶 🍽️
+   (🤮 while vomiting · 🏥 HP<=15 · 🥶 temp<=15 · 🍽️ hunger<=15), drawn side by side in a row. */
+function warnBubblesFor(o, now){
+  const out = [];
+  if(!o) return out;
+  if(o.vomitUntil && now < o.vomitUntil) out.push("🤮");
+  if(typeof o.hp === "number" && o.hp <= 15) out.push("🏥");
+  if(typeof o.temp === "number" && o.temp <= 15) out.push("🥶");
+  if(typeof o.hunger === "number" && o.hunger <= 15) out.push("🍽️");
+  return out;
 }
 function drawBubble(g, x, y, em){
+  const arr = Array.isArray(em) ? em : [em]; // one emoji or a whole row of status bubbles
+  if(!arr.length) return;
+  const hw = arr.length * 10 + 3; // half width grows with the number of bubbles
   g.save();
   g.fillStyle = "rgba(255,255,255,0.93)";
-  g.beginPath(); g.moveTo(x-11, y-9); g.lineTo(x+11, y-9); g.lineTo(x+11, y+7); g.lineTo(x+3, y+7); g.lineTo(x, y+12); g.lineTo(x-3, y+7); g.lineTo(x-11, y+7); g.closePath(); g.fill();
-  g.font = "12px sans-serif"; g.textAlign = "center"; g.fillText(em, x, y+3);
+  g.beginPath(); g.moveTo(x-hw, y-9); g.lineTo(x+hw, y-9); g.lineTo(x+hw, y+7); g.lineTo(x+3, y+7); g.lineTo(x, y+12); g.lineTo(x-3, y+7); g.lineTo(x-hw, y+7); g.closePath(); g.fill();
+  g.font = "12px sans-serif"; g.textAlign = "center";
+  arr.forEach((e,i)=>{ g.fillText(e, x + (i - (arr.length-1)/2) * 20, y+3); });
   g.restore();
 }
 
@@ -1478,17 +1528,18 @@ function claimNode(nd, onSuccess){
 function rollWoodDrop(){ const r = Math.random(); return r < 0.7 ? 2 : (r < 0.9 ? 3 : 5); }
 /* Stone smashed WITH A HAMMER: 70% -> 3 mini-stones / 20% -> 5 / 10% -> 7. */
 function rollMiniDrop(){ const r = Math.random(); return r < 0.7 ? 3 : (r < 0.9 ? 5 : 7); }
-function spawnGround(type, x, y){
+function spawnGround(type, x, y, cdMs){
   const it = { type: type, x: Math.round(clamp(x, 30, WORLD_W-30)), y: Math.round(clamp(y, 30, WORLD_H-30)), at: nowMs() };
+  if(typeof cdMs === "number") it.cd = cdMs; // optional per-item pickup delay (ms); pickup check falls back to 2000
   if(soloMode) groundItems["gi" + nowMs() + "_" + Math.floor(Math.random()*99999)] = it;
   else roomRef.child("items").push(it);
   return it;
 }
-/* A felled tree drops its wood ON THE GROUND at the stump (touch to pick up, usual 2s cooldown).
+/* A felled tree drops its wood ON THE GROUND at the stump (touch to pick up after a short 0.8s delay).
    Axe felling rolls the bonus table; any other way of felling drops exactly 1. */
 function dropWoodAt(nd, usedAxe){
   const n = usedAxe ? rollWoodDrop() : 1;
-  for(let i=0;i<n;i++) spawnGround("wood", nd.x + (Math.random()*36-18), nd.y + 14 + (Math.random()*20-10));
+  for(let i=0;i<n;i++) spawnGround("wood", nd.x + (Math.random()*36-18), nd.y + 14 + (Math.random()*20-10), 800);
   toast("🪵 木が倒れた！木材×" + n + "が落ちた");
 }
 /* Remaining HP of a tree node (TREE_HP when untouched). Legacy nodes written by older
@@ -1676,7 +1727,7 @@ function doDrop(){
   const sel = entries[my.sel];
   if(!sel){ toast("捨てる物がない"); return; }
   const dropX = Math.round(my.x), dropY = Math.round(my.y + 56); // a bit BELOW (south)
-  const item = { type: sel.kind, x: dropX, y: clamp(dropY, 30, WORLD_H-30), at: nowMs() };
+  const item = { type: sel.kind, x: dropX, y: clamp(dropY, 30, WORLD_H-30), at: nowMs(), cd: 2000 }; // player drops keep the 2s pickup delay
   // the hidden rotten flag travels with the dropped item (raw rotten stays rotten; grilled rotten stays secret)
   if((sel.kind === "fish" || sel.kind === "meat") && (my.rotRaw[sel.kind]||0) > 0){ my.rotRaw[sel.kind]--; item.rot = 1; }
   if((sel.kind === "gfish" || sel.kind === "gmeat") && (my.rotGrilled[sel.kind]||0) > 0){ my.rotGrilled[sel.kind]--; item.rot = 1; }
@@ -1684,7 +1735,7 @@ function doDrop(){
   else my.inv[sel.kind]--;
   if(soloMode){ groundItems["gi" + nowMs()] = item; }
   else roomRef.child("items").push(item);
-  AudioSys.se("decide"); toast(ITEM_DEF[sel.kind].icon + " を下に置いた（2秒は拾えない）"); renderInv();
+  AudioSys.se("decide"); toast(ITEM_DEF[sel.kind].icon + " を下に置いた"); renderInv();
   // dropping the fishing rod mid-fishing cancels the fishing attempt (no fish)
   if(sel.kind === "rod" && my.fishing){ my.fishing = null; hideProgress(); toast("🎣 釣り竿を捨てたので釣りを中止した"); }
 }
@@ -1940,24 +1991,36 @@ function renderInv(){
   const entries = invEntries();
   if(my.sel >= entries.length) my.sel = Math.max(0, entries.length-1);
   bar.innerHTML = "";
-  entries.forEach((e,i)=>{
+  entries.forEach((ent,i)=>{
     const d = document.createElement("div");
     d.className = "inv-cell" + (i===my.sel ? " sel" : "");
-    d.innerHTML = '<div class="ic">' + ITEM_DEF[e.kind].icon + '</div><div class="ct">' + (e.toolIdx!==undefined ? "" : "×"+e.count) + '</div>' +
-                  (e.dur !== undefined && ITEM_DEF[e.kind].dur ? '<div class="durbar"><i style="width:' + Math.round(clamp(e.dur / ITEM_DEF[e.kind].dur, 0, 1) * 100) + '%"></i></div>' : "");
-    // pointerdown (not click): the tap must register even while another finger holds the pad
-    d.addEventListener("pointerdown", e=>{
-      e.preventDefault();
-      // One-tap deposit: while the shared box panel is open, tapping an item puts it straight
-      // into the box (1 unit, or the tool with its durability) — no 👊 press needed.
-      // The select + 👊(E) deposit flow keeps working too; away from the box a tap just selects.
-      if(ctxKind === "box" && phase === "playing" && my && !my.dead){
+    d.innerHTML = '<div class="ic">' + ITEM_DEF[ent.kind].icon + '</div><div class="ct">' + (ent.toolIdx!==undefined ? "" : "×"+ent.count) + '</div>' +
+                  (ent.dur !== undefined && ITEM_DEF[ent.kind].dur ? '<div class="durbar"><i style="width:' + Math.round(clamp(ent.dur / ITEM_DEF[ent.kind].dur, 0, 1) * 100) + '%"></i></div>' : "");
+    // pointerdown (not click): the tap must register even while another finger holds the pad.
+    // NOTE: the tapped entry is captured as `ent` — naming the event parameter `e` would shadow it.
+    d.addEventListener("pointerdown", ev=>{
+      ev.preventDefault();
+      // Facility tap-to-send: while a facility panel is open, tapping an item performs THAT
+      // facility's send action for the tapped item directly (no select + 👊 needed):
+      //   box     -> deposit the item (1 unit, or the tool with its durability)
+      //   bonfire -> wood: add to the fire (+1 gauge / relight rules) · raw fish/meat: into a cooking slot
+      //   house   -> deposit 1 unit toward the house quota (materials / grilled food)
+      // The workbench takes no items, so taps there just select — as they do away from facilities.
+      // The select + 👊(E) flows keep working everywhere.
+      if(phase === "playing" && my && !my.dead){
         my.sel = i;
-        if(e.toolIdx !== undefined){ boxDepositTool(e.toolIdx); return; }
-        if(boxState.hasOwnProperty(e.kind) && (my.inv[e.kind]||0) > 0){
-          boxMove(e.kind, true);
-          toast("📦 " + ITEM_DEF[e.kind].name + "を箱に入れた");
-          return;
+        if(ctxKind === "box"){
+          if(ent.toolIdx !== undefined){ boxDepositTool(ent.toolIdx); return; }
+          if(boxState.hasOwnProperty(ent.kind) && (my.inv[ent.kind]||0) > 0){
+            boxMove(ent.kind, true);
+            toast("📦 " + ITEM_DEF[ent.kind].name + "を箱に入れた");
+            return;
+          }
+        } else if(ctxKind === "fire"){
+          if(ent.kind === "wood"){ fireAddWood(); return; }
+          if(ent.kind === "fish" || ent.kind === "meat"){ fireCook(ent.kind); return; }
+        } else if(ctxKind === "house"){
+          if(ent.toolIdx === undefined && (ent.kind === "wood" || ent.kind === "stone" || ent.kind === "mstone" || ent.kind === "grass" || ent.kind === "gfish" || ent.kind === "gmeat")){ houseDeposit(ent.kind); return; }
         }
       }
       my.sel = i; AudioSys.se("decide"); renderInv();
@@ -1965,6 +2028,17 @@ function renderInv(){
     bar.appendChild(d);
   });
   if(!entries.length) bar.innerHTML = '<div class="inv-cell"><div class="ic">🎒</div><div class="ct">空</div></div>';
+  // 🖐️ unequip cell — always at the RIGHT END of the bar. Tapping it clears the selection
+  // (sel = -1, "nothing selected"): 👊 then does bare-hand context actions only — no eating
+  // selected food, no selected-weapon damage bonus, no selected-item facility deposit via 👊.
+  const hd = document.createElement("div");
+  hd.className = "inv-cell" + (my.sel === -1 ? " sel" : "");
+  hd.innerHTML = '<div class="ic">🖐️</div><div class="ct">外す</div>';
+  hd.addEventListener("pointerdown", ev=>{
+    ev.preventDefault();
+    my.sel = -1; AudioSys.se("decide"); renderInv();
+  });
+  bar.appendChild(hd);
   const w = invWeight();
   const cap = carryCap();
   const wEl = $("inv-weight");
@@ -2251,7 +2325,7 @@ function drawWorld(ts){
     if(px < -50 || py < -60 || px > W+50 || py > H+50) continue;
     if(p.dead) continue; // ghosts are invisible to other players
     drawChara(ctx2d, px, py + 16, 1.05, CHARS[p.charId||0], p.dir||1, false, ts);
-    const wbO = warnBubbleFor(p, nowMs()); if(wbO) drawBubble(ctx2d, px, py - 56, wbO);
+    const wbO = warnBubblesFor(p, nowMs()); if(wbO.length) drawBubble(ctx2d, px, py - 56, wbO);
     ctx2d.font = "bold 11px sans-serif"; ctx2d.textAlign = "center";
     ctx2d.fillStyle = "rgba(0,0,0,0.55)"; const nm = p.name||""; ctx2d.fillRect(px - ctx2d.measureText(nm).width/2 - 3, py - 44, ctx2d.measureText(nm).width + 6, 14);
     ctx2d.fillStyle = "#fff"; ctx2d.fillText(nm, px, py - 33);
@@ -2276,7 +2350,7 @@ function drawWorld(ts){
     drawChara(ctx2d, mxp, myp + 16, 1.1, CHARS[myChar], my.dir, my.moving, ts);
     if(my.dead) ctx2d.restore();
     if(my.dead) drawBubble(ctx2d, mxp, myp - 62, "👻");
-    else { const wbM = warnBubbleFor(my, nowMs()); if(wbM) drawBubble(ctx2d, mxp, myp - 48, wbM); }
+    else { const wbM = warnBubblesFor(my, nowMs()); if(wbM.length) drawBubble(ctx2d, mxp, myp - 48, wbM); }
     ctx2d.font = "bold 11px sans-serif"; ctx2d.textAlign = "center"; ctx2d.fillStyle = "#ffd94a";
     ctx2d.fillText("▼ " + myName, mxp, myp - 34);
   }
@@ -2323,7 +2397,7 @@ function showRoulette(){
       g.save(); g.rotate(-Math.PI/2 + pct*Math.PI); g.fillText("サバイバー", 78, 6); g.restore();
       g.save(); g.rotate(-Math.PI/2 + pct*Math.PI*2 + (1-pct)*Math.PI); g.fillText("サイコパス", 78, 6); g.restore();
       g.restore();
-      g.fillStyle = "#ffd94a"; g.beginPath(); g.moveTo(160,6); g.lineTo(148,30); g.lineTo(172,30); g.closePath(); g.fill();
+      g.fillStyle = "#ffd94a"; g.beginPath(); g.moveTo(160,30); g.lineTo(148,6); g.lineTo(172,6); g.closePath(); g.fill(); // pointer: ▽ pointing DOWN at the wheel
       g.fillStyle = "#222"; g.beginPath(); g.arc(160,160,16,0,Math.PI*2); g.fill();
       if(Math.floor(rot/0.5) !== lastTick){ lastTick = Math.floor(rot/0.5); if(k < 0.97) AudioSys.se("tick"); }
       if(k < 1) wheelAnim = requestAnimationFrame(anim);
