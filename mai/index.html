@@ -1664,7 +1664,8 @@
       densityResetDone: false, densityResetBar: -1, densityDrop: 0,
       chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, lastFoodWidth: 62, rafId: 0, schedTimer: 0, lastChopAt: -Infinity,
       blackoutUntil: 0, warnTimer: 0,
-      mode: 'solo', role: null, round: 0, noteSeq: 0, notesById: null, chopAnimStartB: -1
+      mode: 'solo', role: null, round: 0, noteSeq: 0, notesById: null, chopAnimStartB: -1,
+      genPots: 0, genChops: 0, genReg: []
     };
     const els = {};
     ['titleScreen','gameScreen','scoreVal','comboVal','comboBox','levelVal','heartsVal','stage','notes','targetRing','apRing','targetRing2','apRing2','rikki','judgePop','sfxPop','banner','warnBanner','blackout','guideLine','potDots','potMsg','potCount','potSvgWrap','pauseOverlay','resultOverlay','rankBig','rankWord','stScore','stLevel','stCombo','stPot','stPerfect','stGoodMiss','muteBtn','fwCanvas','comboBanner','flames','potBanner','crackers'].forEach((id) => els[id] = $(id));
@@ -1907,28 +1908,40 @@
          大きい食材の前後では間隔が広く、小さい食材では狭くなるので、大きさが
          変わっても重なり防止が効く。テンポが変わっても（21人前で♪=128に戻った
          後も）ピクセル基準なので常に効く */
-      const lanePx = (layoutCache.spawnX > layoutCache.targetX) ? (layoutCache.spawnX - layoutCache.targetX) : 320;
+      /* 協力プレイでは端末ごとの画面幅で譜面が変わらないよう、レーン幅は固定値で計算する */
+      const lanePx = G.mode === 'coop' ? 320 : ((layoutCache.spawnX > layoutCache.targetX) ? (layoutCache.spawnX - layoutCache.targetX) : 320);
       const pxPerSec = lanePx / travel;
       slots.forEach((s) => {
         const hitTime = t0 + s * ed;
+        /* 協力プレイでは、人前連動の出現条件を「生成した食材数から決まる決定的な人前数」
+           （genPots）で判定する。実プレイの人前（G.pots）はホスト集計が state 経由で
+           遅れて届くため、それを生成に使うと両端末の譜面が途中で食い違ってしまう */
+        const potsNow = G.mode === 'coop' ? G.genPots : G.pots;
         /* 30人前以降は、しらたきも他の野菜と同様にかぶって出てくる（間隔の制限なし）。
            30人前までは、少しはかぶってもいいように間隔を以前より狭くする：
            すでに予定されているしらたきの前後（通常 約0.45秒／超ロング 約0.55秒）には他の食材を出さない */
-        const overlapMode = G.pots >= 30;
-        const nearShirataki = !overlapMode && G.notes.some((n) => n.shirataki && Math.abs(n.hitTime - hitTime) < (n.xlong ? 0.55 : 0.45));
+        const overlapMode = potsNow >= 30;
+        /* 協力プレイでは、判定で消えていく実ノートではなく「生成記録」だけを見て、
+           両端末で必ず同じ判定になるようにする */
+        const nearShirataki = !overlapMode && (G.mode === 'coop'
+          ? G.genReg.some((m) => m.s && Math.abs(m.t - hitTime) < (m.x ? 0.55 : 0.45))
+          : G.notes.some((n) => n.shirataki && Math.abs(n.hitTime - hitTime) < (n.xlong ? 0.55 : 0.45)));
         if (nearShirataki) return;
         /* 22人前完成後、まれに危険アイテムがまぎれる */
-        const hazard = G.pots >= 22 && rngFn() < 0.12;
+        const hazard = potsNow >= 22 && rngFn() < 0.12;
         /* 8人前完成後、長いしらたきがまぎれる（中心が分かりにくい難関食材）。
            （25人前からの超ロングしらたきは廃止。通常の長いしらたきだけが残る）
            30人前までは前後に他の食材が近すぎるときだけ通常食材に戻す（少しのかぶりは許容）。
            30人前以降は間隔チェックなしで、他の野菜と同じ密度でかぶって出る */
         let shiraType = null;
-        if (!hazard && G.pots >= 8 && rngFn() < 0.24) {
+        if (!hazard && potsNow >= 8 && rngFn() < 0.24) {
           shiraType = 'normal';
           if (!overlapMode) {
             const iso = 0.45;
-            if (G.notes.some((n) => Math.abs(n.hitTime - hitTime) < iso)) shiraType = null;
+            const clash = G.mode === 'coop'
+              ? G.genReg.some((m) => Math.abs(m.t - hitTime) < iso)
+              : G.notes.some((n) => Math.abs(n.hitTime - hitTime) < iso);
+            if (clash) shiraType = null;
           }
         }
         const shirataki = !!shiraType;
@@ -1937,7 +1950,7 @@
            （10%は1.5倍の大きさ、10%は0.5倍の大きさ）。移動速度・判定タイミングは
            通常食材とまったく同じ（ビート通り）で、見た目の大きさだけが変わる */
         let size = 1;
-        if (!hazard && !shirataki && G.pots >= 25) {
+        if (!hazard && !shirataki && potsNow >= 25) {
           const sr = rngFn();
           if (sr < 0.10) size = 1.5;
           else if (sr < 0.20) size = 0.5;
@@ -1974,6 +1987,29 @@
         G.noteSeq++;
         G.notes.push(noteObj);
         if (G.notesById) G.notesById.set(noteObj.id, noteObj);
+        if (G.mode === 'coop') {
+          /* 生成記録と決定的な人前カウンタ（両端末で必ず同じ値になる）。
+             生成は実プレイより先行するので、21人前リセットもここで先に決まり、
+             judgeHit 側のリセットは !tempoResetDone ガードで上書きされない */
+          G.genReg.push({ t: hitTime, s: shirataki, x: xlong });
+          if (!hazard) {
+            G.genChops++;
+            const gp = Math.floor(G.genChops / 12);
+            if (gp > G.genPots) {
+              G.genPots = gp;
+              /* 21人前到達のテンポ／密度リセットは生成時点で決定的に決める。
+                 適用は次の小節から（その小節の barStart はまだ計算されていない） */
+              if (gp === 21) {
+                G.tempoResetDone = true;
+                G.tempoResetBar = bar + 1;
+                G.tempoDrop = Math.max(0, levelForBar(bar + 1) - 7);
+                G.densityResetDone = true;
+                G.densityResetBar = bar + 1;
+                G.densityDrop = Math.max(0, levelForBar(bar + 1) - 1);
+              }
+            }
+          }
+        }
       });
     }
 
@@ -2556,11 +2592,13 @@
       if (best && bestAbs <= best.gw) {
         if (best.hazard) judgeHazardHit(best);
         else judgeHit(best, bestAbs);
-        /* 協力プレイ：ホストは上段の結果をゲストへ知らせる（ゲスト画面でも演出を出す） */
+        /* 協力プレイ：ホストは上段の結果をイベントとしてゲストへ知らせる
+           （ノーツID・判定・判定時刻のみ。位置はゲストが自分の時計で再現する） */
         if (G.mode === 'coop' && COOP.role === 'host' && COOP.roomRef) {
           COOP.roomRef.child('events/' + best.id).set({
             r: best.hazard ? 'hz' : 'cut', rd: G.round,
-            j: bestAbs <= best.pw ? 'PERFECT' : 'GOOD'
+            j: bestAbs <= best.pw ? 'PERFECT' : 'GOOD',
+            tm: Math.round((now - G.startTime) * 1000)
           });
         }
       }
@@ -2568,6 +2606,10 @@
     }
 
     /* ================= 協力プレイ：下段（救済レーン）の処理 ================= */
+    /* 救済食材が下段に入るまでの固定オフセット（秒）：元のノートがターゲットを
+       通過した時刻（ミス時刻）＋この値で下段の右端に現れ、そこから travel 秒かけて
+       下段の輪へ届く。両端末ともこの式で計算するので出現タイミングがずれない */
+    const RESCUE_DELAY = 0.55;
     /* アイテムキーから食材データを引く（救済食材を両端末で同じ見た目にするため） */
     function itemFromKey(key) {
       if (!key) return FOODS[0];
@@ -2600,9 +2642,11 @@
       n.el.remove();
       showJudge('miss', 'きりのがし！', 't');
       sfxMiss();
-      const now = AC.currentTime;
-      const travel = travelForBar(currentBarAt(now));
-      const hit = now + 0.55 + travel;
+      /* 出現タイミングはミス時刻（元のノートのターゲット通過時刻）を基準に決める。
+         ホストの検出タイミング（判定窓＋フレームのブレ）を基準にすると、その分だけ
+         ゲスト側の出現が遅れてカクついて見えるため、検出時刻は使わない */
+      const travel = travelForBar(currentBarAt(n.hitTime));
+      const hit = n.hitTime + RESCUE_DELAY + travel;
       const r = makeRescueNote(n, hit, travel);
       G.notes.push(r);
       if (G.notesById) G.notesById.set(r.id, r);
@@ -2610,7 +2654,7 @@
       if (COOP.roomRef) {
         COOP.roomRef.child('events/' + n.id).set({
           r: 'miss', rd: G.round,
-          ht: Math.round((hit - G.startTime) * 1000), tr: travel,
+          mt: Math.round((n.hitTime - G.startTime) * 1000), tr: travel,
           it: n.itemKey, s: n.size, pw: n.pw, gw: n.gw
         });
       }
@@ -2620,7 +2664,7 @@
       n.judged = true; n.falling = true; n.fallStart = performance.now();
       showJudge('miss', 'MISS', 'b');
       sfxMiss();
-      if (COOP.roomRef) COOP.roomRef.child('covers/' + n.id).set({ r: 'fail', rd: G.round });
+      if (COOP.roomRef) COOP.roomRef.child('covers/' + n.id).set({ r: 'fail', rd: G.round, tm: Math.round((AC.currentTime - G.startTime) * 1000) });
     }
     /* 判定窓を過ぎたノートの協力プレイ用処理（render から呼ばれる） */
     function handleCoopPass(n) {
@@ -2649,7 +2693,7 @@
       /* ホストの上段：危険食材のスルーは1人用と同じ。普通の食材は救済へ */
       if (n.hazard) {
         judgeDodge(n);
-        if (COOP.roomRef) COOP.roomRef.child('events/' + n.id).set({ r: 'dodge', rd: G.round });
+        if (COOP.roomRef) COOP.roomRef.child('events/' + n.id).set({ r: 'dodge', rd: G.round, tm: Math.round((AC.currentTime - G.startTime) * 1000) });
       } else {
         spawnRescue(n);
       }
@@ -2681,7 +2725,7 @@
         const idx = G.notes.indexOf(best);
         if (idx >= 0) G.notes.splice(idx, 1);
         if (COOP.roomRef) {
-          COOP.roomRef.child('covers/' + best.id).set({ r: 'cover', rd: G.round, j: perfect ? 'PERFECT' : 'GOOD' });
+          COOP.roomRef.child('covers/' + best.id).set({ r: 'cover', rd: G.round, j: perfect ? 'PERFECT' : 'GOOD', tm: Math.round((now - G.startTime) * 1000) });
         }
       }
       else sfxWhiff();
@@ -2706,7 +2750,8 @@
         densityResetDone: false, densityResetBar: -1, densityDrop: 0,
         chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, lastFoodWidth: 62, lastChopAt: -Infinity,
         blackoutUntil: 0, warnTimer: 0,
-        mode: 'solo', role: null, round: 0, noteSeq: 0, notesById: null, chopAnimStartB: -1
+        mode: 'solo', role: null, round: 0, noteSeq: 0, notesById: null, chopAnimStartB: -1,
+        genPots: 0, genChops: 0, genReg: []
       });
       /* 1人用：協力プレイ用の表示をすべて戻し、譜面乱数も従来の Math.random に戻す */
       rngFn = Math.random;
@@ -2791,8 +2836,9 @@
         ? 'ベストスコア更新！ ' + sessionBest.toLocaleString('ja-JP') + '点'
         : 'ベストスコア： ' + sessionBest.toLocaleString('ja-JP') + '点';
       if (G.mode === 'coop') {
-        /* 協力プレイ：ホストが部屋を「終了」にし、協力ランキングへ登録する
-           （1人用ランキングには登録しない） */
+        /* 協力プレイ：最終スコアを確実に送ってから部屋を「終了」にし、
+           協力ランキングへ登録する（1人用ランキングには登録しない） */
+        if (COOP.role === 'host') pushCoopState(true);
         if (COOP.roomRef) COOP.roomRef.update({ status: 'over' });
         $('retryBtn').textContent = '🔁 再戦する（同じ部屋）';
         $('retryBtn').disabled = false;
@@ -2850,14 +2896,19 @@
     /* ================= 協力プレイ（オンライン） =================
        ランキングと同じ Firebase Realtime Database（sukiyaki-ranking）を使う。
        部屋は maiCoopRooms/{4桁コード}。ホスト=1P（上段）／ゲスト=2P（下段）。
-       譜面はシード共有で両端末が同じものを生成し、開始時刻はサーバー時刻で同期。
-       ハート・スコア・コンボ・人前はホストが集計して state で両画面に同期する */
+       譜面はシード＋開始時刻（サーバー時刻）から両端末がローカルで完全再現し、
+       ノーツ位置は各端末が自分の時計で毎フレーム計算する。生成は実プレイの
+       人前や画面幅に依存させない（生成専用カウンタ genPots／生成記録 genReg を
+       使う）ため、相手の状態で譜面が書き換わることはない。
+       Firebaseでやり取りするのは判定イベント（events／covers）だけ。
+       ハート・スコア・コンボ・人前はホストが集計して state で送るが、HUD表示
+       専用で、書き込みは間引く（値が変わったときだけ・約5回/秒まで） */
     const COOP_DB_URL = 'https://sukiyaki-ranking-default-rtdb.firebaseio.com';
     const COOP_RANKING_URL = COOP_DB_URL + '/mai-coop-scores.json';
     const COOP = {
       role: null, code: '', roomRef: null, inRoom: false, inGame: false,
       joined: false, leaving: false, lastStartAt: 0, round: 0,
-      hostName: '', guestName: '', trackBackup: null, uiMode: 'solo'
+      hostName: '', guestName: '', trackBackup: null, uiMode: 'solo', stateTimer: 0
     };
     let fbDb = null, fbReady = false, serverOffset = 0;
     function ensureFb() {
@@ -2981,16 +3032,31 @@
         });
     }
 
-    /* ---------- 共有スコアの同期（ホスト→ゲスト） ---------- */
-    function pushCoopState() {
+    /* ---------- 共有スコアの同期（ホスト→ゲスト） ----------
+       state は HUD 表示専用の値なので、書き込みは「値が変わったときだけ・
+       最大でも約5回/秒」に絞る。判定のたびに書き込むと通信が埋まって、
+       肝心の判定イベント（events／covers）の届きが遅れ、相手レーンがカクつく */
+    const coopStateSync = { json: '', lastAt: 0 };
+    function pushCoopState(force) {
       if (!COOP.roomRef || COOP.role !== 'host') return;
-      COOP.roomRef.child('state').set({
+      const payload = {
         rd: G.round, score: G.score, combo: G.combo, maxCombo: G.maxCombo,
         hearts: G.hearts, pots: G.pots, potChops: G.potChops,
-        perfect: G.perfect, good: G.good, miss: G.miss,
-        tempoResetBar: G.tempoResetDone ? G.tempoResetBar : -1, tempoDrop: G.tempoDrop,
-        densityResetBar: G.densityResetDone ? G.densityResetBar : -1, densityDrop: G.densityDrop
-      });
+        perfect: G.perfect, good: G.good, miss: G.miss
+      };
+      const json = JSON.stringify(payload);
+      if (json === coopStateSync.json) return;
+      const wait = 200 - (Date.now() - coopStateSync.lastAt);
+      if (!force && wait > 0) {
+        /* 間引き中は最後の値をタイマーで送る（取りこぼし防止） */
+        if (!COOP.stateTimer) {
+          COOP.stateTimer = setTimeout(() => { COOP.stateTimer = 0; pushCoopState(true); }, wait + 10);
+        }
+        return;
+      }
+      coopStateSync.json = json;
+      coopStateSync.lastAt = Date.now();
+      COOP.roomRef.child('state').set(payload);
     }
     function applyCoopState(s) {
       if (!s || s.rd !== G.round || !G.playing || G.mode !== 'coop') return;
@@ -2999,13 +3065,8 @@
       G.hearts = s.hearts == null ? 3 : s.hearts;
       G.pots = s.pots || 0; G.potChops = s.potChops || 0;
       G.perfect = s.perfect || 0; G.good = s.good || 0; G.miss = s.miss || 0;
-      /* 21人前リセット（テンポ・密度）はホストの値をそのまま採用し、譜面の同期を保つ */
-      if (s.tempoResetBar >= 0 && !G.tempoResetDone) {
-        G.tempoResetDone = true; G.tempoResetBar = s.tempoResetBar; G.tempoDrop = s.tempoDrop || 0;
-      }
-      if (s.densityResetBar >= 0 && !G.densityResetDone) {
-        G.densityResetDone = true; G.densityResetBar = s.densityResetBar; G.densityDrop = s.densityDrop || 0;
-      }
+      /* テンポ／密度リセット（21人前）は譜面生成が両端末で決定的に決めるため、
+         ここでは触らない。state は表示の差し替え専用で、ゲーム進行には使わない */
       if (G.pots > oldPots) {
         showBanner('すき焼き完成！ ＋500');
         sfxFanfare();
@@ -3075,7 +3136,10 @@
         showJudge('miss', 'きりのがし！', 't');
         sfxMiss();
         const src = { id: id, itemKey: v.it, size: v.s || 1, pw: v.pw, gw: v.gw, level: 1 };
-        const r = makeRescueNote(src, G.startTime + (v.ht || 0) / 1000, v.tr || 2);
+        /* 出現タイミングはイベント受信時刻ではなくミス時刻＋固定オフセットで決める。
+           受信が遅れてもずらさず、出現時刻を過ぎていればそのままスポーンする
+           （位置は毎フレーム時刻から計算されるので、途中からでも正しい位置に出る） */
+        const r = makeRescueNote(src, G.startTime + (v.mt || 0) / 1000 + RESCUE_DELAY + (v.tr || 2), v.tr || 2);
         G.notes.push(r);
         if (G.notesById) G.notesById.set(r.id, r);
         els.notes.appendChild(r.el);
@@ -3112,7 +3176,8 @@
         densityResetDone: false, densityResetBar: -1, densityDrop: 0,
         chopAnimStart: -1, faceUntil: 0, lastFood: -1, lastFoodTime: -Infinity, lastFoodWidth: 62, lastChopAt: -Infinity,
         blackoutUntil: 0, warnTimer: 0,
-        mode: 'coop', role: COOP.role, round: COOP.round, noteSeq: 0, notesById: new Map(), chopAnimStartB: -1
+        mode: 'coop', role: COOP.role, round: COOP.round, noteSeq: 0, notesById: new Map(), chopAnimStartB: -1,
+        genPots: 0, genChops: 0, genReg: []
       });
       clearTimeout(G.warnTimer);
       els.blackout.classList.remove('on');
@@ -3147,7 +3212,7 @@
       cancelAnimationFrame(G.rafId);
       G.rafId = requestAnimationFrame(render);
       attachPlayListeners();
-      if (COOP.role === 'host') pushCoopState();
+      if (COOP.role === 'host') pushCoopState(true);
     }
     /* ホスト：対局開始／再戦。シード＋開始時刻＋BGMを部屋へ書く */
     function startCoopMatch() {
@@ -3263,6 +3328,8 @@
     function cleanupCoopRoom() {
       if (!COOP.inRoom && !COOP.roomRef) return;
       COOP.leaving = true;
+      if (COOP.stateTimer) { clearTimeout(COOP.stateTimer); COOP.stateTimer = 0; }
+      coopStateSync.json = ''; coopStateSync.lastAt = 0;
       detachPlayListeners();
       if (COOP.roomRef) {
         try {
