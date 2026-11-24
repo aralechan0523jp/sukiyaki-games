@@ -671,8 +671,8 @@ function renderLobbyList(){
   });
   const n = ids.length;
   $("btn-start").disabled = !(isHost && n >= 4 && n <= 8);
-  $("btn-start-test").disabled = !(isHost && n >= 2);
-  $("lobby-err").textContent = isHost && n < 4 ? ("現在 " + n + " 人。開始には4人必要です（テスト開始は2人〜）") : "";
+  $("btn-start-test").disabled = !(isHost && (n >= 2 || soloMode));
+  $("lobby-err").textContent = soloMode ? "オフライン練習：テスト開始ボタンで1人で始められます" : (isHost && n < 4 ? ("現在 " + n + " 人。開始には4人必要です（テスト開始は2人〜）") : "");
 }
 function attachRoomListeners(){
   roomRef.child("players").on("value", s=>{
