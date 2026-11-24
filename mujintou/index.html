@@ -47,18 +47,17 @@
   #scr-game { padding:0; overflow:hidden; background:#000; }
   #cv { position:absolute; inset:0; width:100%; height:100%; display:block; }
   .hud { position:absolute; z-index:5; }
-  #hud-stats { top:8px; left:8px; background:rgba(10,20,14,.78); border:2px solid #d9a441; border-radius:10px; padding:6px 9px; width:min(228px,52vw); }
-  .bar-row { display:flex; align-items:center; gap:5px; font-size:11px; font-weight:800; margin:2px 0; }
-  .bar-row span.lb { width:34px; }
-  .bar { flex:1; height:11px; background:#333; border-radius:6px; overflow:hidden; border:1px solid #000; }
+  #hud-stats { top:42px; left:6px; background:rgba(10,20,14,.78); border:2px solid #d9a441; border-radius:8px; padding:3px 7px; width:min(178px,46vw); }
+  .bar-row { display:flex; align-items:center; gap:4px; font-size:10px; font-weight:800; margin:1px 0; line-height:1.1; }
+  .bar-row span.em { width:15px; text-align:center; font-size:11px; }
+  .bar-row span.num { width:23px; text-align:right; }
+  .bar { flex:1; height:6px; background:#333; border-radius:3px; overflow:hidden; border:1px solid #000; }
   .bar i { display:block; height:100%; }
   #bar-hp i { background:#e84c3d; } #bar-hunger i { background:#f39c12; } #bar-temp i { background:#39a7e8; }
   #hud-top { top:8px; right:8px; text-align:right; }
   #hud-timer { background:rgba(10,20,14,.78); border:2px solid #d9a441; border-radius:10px; padding:5px 10px; font-weight:900; font-size:19px; color:#ffd94a; display:inline-block; }
-  #hud-fire { margin-top:5px; background:rgba(10,20,14,.78); border:2px solid #d9a441; border-radius:10px; padding:4px 8px; font-size:13px; font-weight:800; }
   #btn-mute { margin-top:5px; background:rgba(10,20,14,.8); color:#fff; border:2px solid #d9a441; font-size:15px; padding:4px 9px; }
-  #minimap { margin-top:5px; border:2px solid #d9a441; border-radius:8px; background:#1c3524; display:block; margin-left:auto; }
-  #hud-role { top:8px; left:50%; transform:translateX(-50%); background:rgba(60,10,10,.85); border:2px solid #ff8a75; color:#ffd9d2; border-radius:10px; padding:4px 12px; font-weight:900; font-size:14px; display:none; }
+  #hud-role { top:6px; left:6px; background:rgba(60,10,10,.85); border:2px solid #ff8a75; color:#ffd9d2; border-radius:10px; padding:3px 10px; font-weight:900; font-size:13px; display:none; }
   #hud-role.surv { background:rgba(10,50,25,.85); border-color:#7be495; color:#d9ffe2; }
   #ctx { left:50%; transform:translateX(-50%); bottom:178px; width:min(560px,96vw); display:none; flex-direction:column; gap:6px; z-index:6; }
   #ctx .ctx-box { background:rgba(16,32,24,.94); border:2px solid #d9a441; border-radius:12px; padding:8px; }
@@ -68,7 +67,7 @@
   .ctx-btn.blue { background:#3a6ea5; box-shadow:0 2px 0 #244a70; }
   .ctx-btn:disabled { background:#666; box-shadow:none; opacity:.65; }
   .ctx-btn small { display:block; font-weight:600; font-size:10px; opacity:.85; }
-  #toast { left:50%; transform:translateX(-50%); top:64px; background:rgba(0,0,0,.82); color:#ffe9b0; padding:7px 16px; border-radius:20px; font-size:14px; font-weight:800; display:none; z-index:9; white-space:nowrap; max-width:94vw; overflow:hidden; text-overflow:ellipsis; }
+  #toast { left:50%; transform:translateX(-50%); top:88px; background:rgba(0,0,0,.82); color:#ffe9b0; padding:7px 16px; border-radius:20px; font-size:14px; font-weight:800; display:none; z-index:9; white-space:nowrap; max-width:94vw; overflow:hidden; text-overflow:ellipsis; }
   #progress-wrap { left:50%; transform:translateX(-50%); bottom:270px; width:min(300px,70vw); display:none; z-index:6; text-align:center; }
   #progress-label { font-size:13px; font-weight:900; text-shadow:1px 1px 2px #000; margin-bottom:3px; }
   #progress-bar { height:14px; background:rgba(0,0,0,.6); border:2px solid #fff; border-radius:8px; overflow:hidden; }
@@ -76,13 +75,13 @@
   /* controls */
   #pad { left:14px; bottom:14px; width:132px; height:132px; border-radius:50%; background:rgba(255,255,255,.10); border:2px solid rgba(255,255,255,.35); z-index:7; }
   #pad-knob { position:absolute; left:50%; top:50%; width:56px; height:56px; margin:-28px 0 0 -28px; border-radius:50%; background:rgba(255,255,255,.35); border:2px solid rgba(255,255,255,.6); }
-  #inv-bar { right:10px; bottom:104px; display:flex; gap:5px; z-index:7; max-width:62vw; flex-wrap:wrap; justify-content:flex-end; }
-  .inv-cell { width:52px; height:58px; background:rgba(10,20,14,.85); border:2px solid #6d8a76; border-radius:9px; text-align:center; padding-top:3px; position:relative; }
+  #inv-bar { right:10px; bottom:96px; display:flex; gap:4px; z-index:7; max-width:min(500px,74vw); flex-wrap:wrap; justify-content:flex-end; }
+  .inv-cell { width:46px; height:50px; background:rgba(10,20,14,.85); border:2px solid #6d8a76; border-radius:9px; text-align:center; padding-top:3px; position:relative; }
   .inv-cell.sel { border-color:#ffd94a; background:rgba(70,58,10,.9); }
-  .inv-cell .ic { font-size:21px; line-height:1; }
+  .inv-cell .ic { font-size:19px; line-height:1; }
   .inv-cell .ct { font-size:11px; font-weight:800; }
   .inv-cell .dur { position:absolute; bottom:2px; left:0; right:0; font-size:9px; color:#9fd8ff; }
-  #inv-weight { right:12px; bottom:166px; font-size:12px; font-weight:900; background:rgba(10,20,14,.8); padding:3px 9px; border-radius:8px; z-index:7; }
+  #inv-weight { right:12px; bottom:150px; font-size:12px; font-weight:900; background:rgba(10,20,14,.8); padding:3px 9px; border-radius:8px; z-index:7; }
   #btn-use, #btn-drop { width:76px; height:76px; border-radius:50%; font-weight:900; z-index:7; color:#fff; }
   #btn-use { right:14px; bottom:14px; background:#2e9e4f; font-size:17px; box-shadow:0 4px 0 #1c6330; border:2px solid #bff0cd; }
   #btn-drop { right:102px; bottom:14px; background:#7a5a2c; font-size:13px; box-shadow:0 4px 0 #4c3715; border:2px solid #e8d9ae; width:62px; height:62px; }
@@ -145,17 +144,15 @@
 <!-- ===== GAME ===== -->
 <div class="screen" id="scr-game">
   <canvas id="cv"></canvas>
-  <div class="hud" id="hud-stats">
-    <div class="bar-row"><span class="lb">❤️体力</span><div class="bar" id="bar-hp"><i></i></div><span id="v-hp">100</span></div>
-    <div class="bar-row"><span class="lb">🍖空腹</span><div class="bar" id="bar-hunger"><i></i></div><span id="v-hunger">100</span></div>
-    <div class="bar-row"><span class="lb">🌡️体温</span><div class="bar" id="bar-temp"><i></i></div><span id="v-temp">100</span></div>
-  </div>
   <div class="hud" id="hud-role"></div>
+  <div class="hud" id="hud-stats">
+    <div class="bar-row"><span class="em">❤️</span><div class="bar" id="bar-hp"><i></i></div><span class="num" id="v-hp">100</span></div>
+    <div class="bar-row"><span class="em">🍖</span><div class="bar" id="bar-hunger"><i></i></div><span class="num" id="v-hunger">100</span></div>
+    <div class="bar-row"><span class="em">🌡️</span><div class="bar" id="bar-temp"><i></i></div><span class="num" id="v-temp">100</span></div>
+  </div>
   <div class="hud" id="hud-top">
     <span id="hud-timer">8:00</span><br>
-    <span id="hud-fire">🔥 焚き火 ▰▰▰▰▰▰</span><br>
     <button id="btn-mute">🔊 音ON</button>
-    <canvas id="minimap" width="120" height="90"></canvas>
   </div>
   <div class="hud" id="toast"></div>
   <div class="hud" id="progress-wrap"><div id="progress-label"></div><div id="progress-bar"><div id="progress-fill"></div></div></div>
@@ -409,6 +406,46 @@ let cookingState = {};     // slotId -> {kind,readyAt,by}
 let metaState = { host:"", hostBeat:0, endAt:0 };
 let rouletteState = null, resultState = null, votesState = {};
 let my = null;             // local player object
+/* ---- Display interpolation for remote players & bears (client-side only; no extra Firebase writes) ----
+   Snapshots arrive at ~8Hz (players) / ~1Hz (host bears). Each entity keeps a display position that
+   eases toward the latest target, plus a velocity estimate used for short extrapolation between snapshots. */
+const dispP = {}, dispB = {};
+let lastDispTs = 0;
+function feedDisp(map, id, x, y, now, maxV){
+  const d = map[id];
+  if(!d){ map[id] = { x:x, y:y, tx:x, ty:y, vx:0, vy:0, at:now }; return; }
+  if(Math.abs(x - d.tx) > 0.5 || Math.abs(y - d.ty) > 0.5){
+    const dt = clamp((now - d.at)/1000, 0.05, 2);
+    d.vx = clamp(d.vx*0.5 + ((x - d.tx)/dt)*0.5, -maxV, maxV);
+    d.vy = clamp(d.vy*0.5 + ((y - d.ty)/dt)*0.5, -maxV, maxV);
+    d.tx = x; d.ty = y; d.at = now;
+  }
+}
+function stepDisp(map, id, dt, now, k, extraCap){
+  const d = map[id]; if(!d) return null;
+  const age = clamp((now - d.at)/1000, 0, extraCap);
+  const px = d.tx + d.vx * age, py = d.ty + d.vy * age;
+  if(Math.hypot(px - d.x, py - d.y) > 200){ d.x = px; d.y = py; } // teleport / respawn: snap
+  else { const f = 1 - Math.exp(-k * dt); d.x += (px - d.x) * f; d.y += (py - d.y) * f; }
+  return d;
+}
+function updateDisp(ts){
+  const dt = lastDispTs ? clamp((ts - lastDispTs)/1000, 0.001, 0.05) : 0.016;
+  lastDispTs = ts;
+  for(const pid in players){
+    if(pid === uid) continue;
+    const p = players[pid]; if(!p || typeof p.x !== "number") continue;
+    feedDisp(dispP, pid, p.x, p.y, ts, 280);
+    stepDisp(dispP, pid, dt, ts, 12, 0.28);
+  }
+  for(const pid in dispP){ if(!players[pid]) delete dispP[pid]; }
+  for(const bid in bears){
+    const b = bears[bid]; if(!b || !b.alive) continue;
+    feedDisp(dispB, bid, b.x, b.y, ts, 70);
+    stepDisp(dispB, bid, dt, ts, 5, 0.7);
+  }
+  for(const bid in dispB){ if(!bears[bid] || !bears[bid].alive) delete dispB[bid]; }
+}
 function freshPlayer(x,y){
   return { x:x, y:y, dir:1, face:2, moving:false, hp:100, hunger:100, temp:100,
            inv:{ wood:0, stone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 },
@@ -427,6 +464,8 @@ function invWeight(){
   return w;
 }
 function hasTool(kind){ return my.tools.find(t=>t.kind===kind); }
+/* Action hunger cost: each action (chop hit, pickup, punch, shot, craft, cast) costs a fixed 0.2 hunger. */
+function spendHunger(n){ if(my) my.hunger = clamp(my.hunger - (n === undefined ? 0.2 : n), 0, 100); }
 function damageTool(tool, amount){
   tool.dur -= (amount||1);
   if(tool.dur <= 0){ my.tools = my.tools.filter(t=>t!==tool); toast("🔨 "+ITEM_DEF[tool.kind].name+"が壊れた！"); renderInv(); }
@@ -466,8 +505,8 @@ function buildCharGrid(){
   CHARS.forEach((c,i)=>{
     const d = document.createElement("div");
     d.className = "char-cell" + (i===myChar ? " sel" : "");
-    const cv = document.createElement("canvas"); cv.width = 36; cv.height = 46;
-    drawChara(cv.getContext("2d"), 18, 40, 1.5, c, 1, false, 0);
+    const cv = document.createElement("canvas"); cv.width = 36; cv.height = 52;
+    drawChara(cv.getContext("2d"), 18, 50, 0.9, c, 1, false, 0); // full body incl. hair spikes & face fits the card
     d.appendChild(cv);
     const lb = document.createElement("div"); lb.textContent = c.n; d.appendChild(lb);
     d.onclick = ()=>{ myChar = i; AudioSys.ensure(); AudioSys.se("decide"); buildCharGrid(); };
@@ -528,7 +567,7 @@ function attachRoomListeners(){
     if(ph !== phase){ onPhaseChange(ph, m); }
     if(phase==="lobby") renderLobbyList();
   });
-  roomRef.child("fire").on("value", s=>{ const f = s.val(); if(f){ fireState = f; cookingState = f.cooking || {}; updateFireHud(); } });
+  roomRef.child("fire").on("value", s=>{ const f = s.val(); if(f){ fireState = f; cookingState = f.cooking || {}; } });
   roomRef.child("box").on("value", s=>{ if(s.val()) boxState = s.val(); if(ctxKind==="box") renderCtx(); });
   roomRef.child("nodes").on("value", s=>{ nodesState = s.val() || {}; });
   roomRef.child("items").on("value", s=>{ groundItems = s.val() || {}; });
@@ -707,7 +746,7 @@ function startGameClient(){
     myRef.child("role").once("value").then(s=>{ my.role = s.val() || ""; showRoleHud(); });
   }
   toast(my.role === "psychopath" ? "🔪 バレないように邪魔をしよう…" : "🏝️ 8分間 生きのびよう！", 3000);
-  renderInv(); updateFireHud();
+  renderInv();
   if(syncTimer) clearInterval(syncTimer);
   syncTimer = setInterval(()=>syncMe(false), 120);
   if(statTimer) clearInterval(statTimer);
@@ -745,11 +784,12 @@ function syncMe(force){
 function statTick(){
   if(phase !== "playing" || !my) return;
   const dt = 0.25; // this tick runs every 250ms; rates below are per-second
-  my.hunger = clamp(my.hunger - 0.14*dt, 0, 100);
+  // hunger: base time drain 0.14/s + moving bonus 0.05/s + fishing bonus 0.03/s (actions also cost a fixed 0.2 each, see spendHunger)
+  my.hunger = clamp(my.hunger - (0.14 + (my.moving ? 0.05 : 0) + (my.fishing ? 0.03 : 0)) * dt, 0, 100);
   const lit = fireState.gauge > 0;
   const dFire = Math.hypot(my.x - FIRE_POS.x, my.y - FIRE_POS.y);
   if(lit && dFire < 280) my.temp = clamp(my.temp + 2.2*dt, 0, 100);
-  else my.temp = clamp(my.temp - 0.30*dt, 0, 100);
+  else my.temp = clamp(my.temp - 0.60*dt, 0, 100); // temp drain doubled (was 0.30/s) per balance request; near-fire recovery unchanged
   let drain = 0;
   if(my.hunger <= 0) drain += 0.55;
   if(my.temp <= 0) drain += 0.55;
@@ -780,14 +820,7 @@ function updateStatHud(){
   const mm = Math.floor(remain/60000), ss = Math.floor(remain%60000/1000);
   $("hud-timer").textContent = mm + ":" + String(ss).padStart(2,"0");
 }
-function updateFireHud(){
-  const g = clamp(fireState.gauge||0, 0, 6);
-  let s = "🔥 焚き火 " + "▰".repeat(g) + "▱".repeat(6-g);
-  if(fireState.relightAt && fireState.relightAt > nowMs()) s = "🕯️ 着火中… あと" + Math.ceil((fireState.relightAt-nowMs())/1000) + "秒";
-  else if(g === 0) s = "🧊 焚き火は消えている（木材で再着火）";
-  $("hud-fire").textContent = s;
-}
-setInterval(()=>{ if(phase==="playing") updateFireHud(); }, 1000);
+/* (top-right bonfire chip removed per user feedback; fire state is shown in the fire context panel and on the bonfire itself) */
 
 /* ================= Input ================= */
 const keys = {};
@@ -825,7 +858,6 @@ function frameLoop(ts){
   if(phase === "playing" && my) stepMovement(dt);
   updateArrows(dt);
   drawWorld(ts);
-  drawMinimap();
 }
 function stepMovement(dt){
   let vx = padVec.x, vy = padVec.y;
@@ -875,6 +907,7 @@ function claimGroundItem(id, it){
   roomRef.child("items/" + id + "/claimedBy").transaction(cur => cur ? undefined : uid, (err, committed)=>{
     if(committed){
       ref.remove();
+      spendHunger();
       if(ITEM_DEF[it.type].tool) my.tools.push({ kind: it.type, dur: it.dur || ITEM_DEF[it.type].dur });
       else my.inv[it.type] = (my.inv[it.type]||0) + 1;
       AudioSys.se("pickup"); toast(ITEM_DEF[it.type].icon + " " + ITEM_DEF[it.type].name + "を拾った"); renderInv();
@@ -885,6 +918,7 @@ function claimGroundItem(id, it){
 /* ================= Arrows ================= */
 function shootArrow(){
   const bow = hasTool("bow"); if(!bow) return;
+  spendHunger();
   const dirs = { 0:[0,-1], 1:[-1,0], 2:[0,1], 3:[1,0] };
   const d = dirs[my.face] || [my.dir, 0];
   const id = "a" + uid + "_" + nowMs();
@@ -953,6 +987,7 @@ function claimNode(nd, onSuccess){
   });
 }
 function hitTree(nd){
+  spendHunger();
   const axe = hasTool("axe");
   const dmg = axe ? 4 : 1;
   if(!axe){ my.hp = clamp(my.hp - 0.6, 0, 100); }
@@ -993,13 +1028,20 @@ function doUse(){
   my.useCd = t;
   const entries = invEntries();
   const sel = entries[my.sel];
+  // 0) near the shared box: deposit the selected item (box panel is take-out only).
+  //    Deposit wins over eating/using while the box panel is open; tools can't be boxed.
+  if(ctxKind === "box" && sel && sel.toolIdx === undefined && boxState.hasOwnProperty(sel.kind) && (my.inv[sel.kind]||0) > 0){
+    boxMove(sel.kind, true);
+    toast("📦 " + ITEM_DEF[sel.kind].name + "を箱に入れた");
+    return;
+  }
   // facilities open panels instead (ctx buttons handle details)
   // 1) selected bow -> shoot
   if(sel && sel.kind === "bow"){ shootArrow(); return; }
   // 2) selected rod near lake -> fishing
   if(sel && sel.kind === "rod"){
     if(nearLake(my.x, my.y)){
-      if(!my.fishing){ my.fishing = { readyAt: t + 15000 }; showProgress("🎣 釣り中…", 0); AudioSys.se("decide"); }
+      if(!my.fishing){ spendHunger(); my.fishing = { readyAt: t + 15000 }; showProgress("🎣 釣り中…", 0); AudioSys.se("decide"); }
       return;
     } else { toast("湖の近くで使おう"); return; }
   }
@@ -1012,6 +1054,7 @@ function doUse(){
   const bearList = Object.keys(bears).filter(id=>bears[id] && bears[id].alive).map(id=>({ id, x: bears[id].x, y: bears[id].y }));
   const nb = nearestOf(bearList, 62);
   if(nb && hasTool("axe")){
+    spendHunger();
     const axe = hasTool("axe"); damageTool(axe, 1);
     AudioSys.se("axe");
     if(soloMode) hostApplyBearHit({ bear: nb.id, dmg: 8, by: uid });
@@ -1027,13 +1070,14 @@ function doUse(){
   const pickables = NODES.filter(nd=>(nd.type==="stone"||nd.type==="grass") && !(nodesState[nd.id] && nodesState[nd.id].gone));
   const np = nearestOf(pickables, 52);
   if(np){
-    claimNode(np, ()=>{ my.inv[np.type]++; AudioSys.se("pickup"); toast(ITEM_DEF[np.type].icon + " " + ITEM_DEF[np.type].name + "+1"); renderInv(); });
+    claimNode(np, ()=>{ spendHunger(); my.inv[np.type]++; AudioSys.se("pickup"); toast(ITEM_DEF[np.type].icon + " " + ITEM_DEF[np.type].name + "+1"); renderInv(); });
     return;
   }
   // 7) punch another player
   const others = Object.keys(players).filter(id=>id!==uid).map(id=>({ id, x: players[id].x, y: players[id].y }));
   const no = nearestOf(others, 58);
   if(no){
+    spendHunger();
     AudioSys.se("punch");
     if(soloMode){ /* no one */ }
     else roomRef.child("events/" + no.id).push({ type:"punch", dmg:5, from: uid, ts: t });
@@ -1082,7 +1126,6 @@ window.__ctxAct = function(act, arg){
   if(act === "firewood") fireAddWood();
   else if(act === "cook") fireCook(arg);
   else if(act === "takeout") fireTakeOut(arg);
-  else if(act === "deposit") boxMove(arg, true);
   else if(act === "take") boxMove(arg, false);
   else if(act === "craft") craftItem(arg);
 };
@@ -1105,12 +1148,11 @@ function renderCtx(){
     }
     html += "</div></div>";
   } else if(ctxKind === "box"){
-    html += '<div class="ctx-box"><div class="ctx-title">📦 共有アイテムボックス（みんなで使える）</div><div class="ctx-btns">';
+    html += '<div class="ctx-box"><div class="ctx-title">📦 共有アイテムボックス（取り出すだけ）</div><div class="ctx-btns">';
     for(const k of ["wood","stone","grass","fish","meat","gfish","gmeat"]){
-      html += ctxBtn(ITEM_DEF[k].icon + " 入れる", "所持" + (my.inv[k]||0), "deposit|" + k, (my.inv[k]||0) <= 0);
       html += ctxBtn(ITEM_DEF[k].icon + " 取る", "箱" + (boxState[k]||0), "take|" + k, (boxState[k]||0) <= 0, true);
     }
-    html += "</div></div>";
+    html += '</div><div style="font-size:11px;color:#bcd8c2;margin-top:5px;">入れる：下の持ち物を選んで「使う(E)」を押す</div></div>';
   } else if(ctxKind === "bench"){
     html += '<div class="ctx-box"><div class="ctx-title">🔨 作業台（クラフト）</div><div class="ctx-btns">';
     RECIPES.forEach((r,i)=>{
@@ -1184,6 +1226,7 @@ function craftItem(idx){
   const r = RECIPES[Number(idx)]; if(!r) return;
   for(const k in r.need){ if((my.inv[k]||0) < r.need[k]){ toast("素材が足りない"); return; } }
   for(const k in r.need) my.inv[k] -= r.need[k];
+  spendHunger();
   my.tools.push({ kind: r.out, dur: ITEM_DEF[r.out].dur });
   AudioSys.se("craft"); toast(ITEM_DEF[r.out].icon + " " + ITEM_DEF[r.out].name + "を作った！（耐久" + ITEM_DEF[r.out].dur + "）");
   renderInv(); renderCtx();
@@ -1212,34 +1255,108 @@ function renderInv(){
 
 /* ================= Drawing ================= */
 function drawChara(g, cx, feetY, s, c, dir, moving, ts){
-  const bob = moving ? Math.sin(ts/90) * 2 : 0;
-  const top = feetY - 44*s + bob*0.4;
-  g.save(); g.translate(cx, top); g.scale(dir < 0 ? -s : s, s);
-  // legs
-  g.fillStyle = "#5a4632";
-  const lp = moving ? Math.sin(ts/90)*3 : 0;
-  g.fillRect(-7, 34 + (lp>0?lp*0.4:0), 5, 8); g.fillRect(2, 34 + (lp<0?-lp*0.4:0), 5, 8);
-  // body (clothes)
-  g.fillStyle = c.cloth; g.fillRect(-9, 18, 18, 17);
-  g.fillStyle = "rgba(0,0,0,0.15)"; g.fillRect(-9, 31, 18, 4);
-  // arms
-  g.fillStyle = c.skin; g.fillRect(-12, 19, 4, 12); g.fillRect(8, 19, 4, 12);
-  // head
-  g.fillStyle = c.skin; g.fillRect(-8, 0, 16, 15);
-  // hair by style
+  // Chibi pixel sprite in local units: head/hair y≈0..18, torso 20..33, legs 33..46, feet at y=48.
+  const ph = moving ? Math.sin(ts/110) : 0;
+  const bob = moving ? Math.abs(Math.cos(ts/110)) * 1.1 : 0;
+  g.save(); g.translate(cx, feetY - 48*s - bob*s); g.scale(dir < 0 ? -s : s, s);
+  const dark = "rgba(0,0,0,0.22)", lite = "rgba(255,255,255,0.25)";
+  // ---- back hair (behind body) ----
   g.fillStyle = c.hair;
-  if(c.style === "short" || c.style === "spiky"){ g.fillRect(-8, -3, 16, 6); if(c.style==="spiky"){ g.fillRect(-6,-7,4,5); g.fillRect(0,-8,4,6); g.fillRect(5,-6,3,4); } }
-  else if(c.style === "long"){ g.fillRect(-9, -3, 18, 7); g.fillRect(-9, 0, 4, 22); g.fillRect(5, 0, 4, 22); }
-  else if(c.style === "twin"){ g.fillRect(-8, -3, 16, 6); g.fillRect(-14, -2, 5, 14); g.fillRect(9, -2, 5, 14); }
-  else if(c.style === "pony"){ g.fillRect(-8, -3, 16, 6); g.fillRect(7, -5, 5, 15); }
-  else if(c.style === "bob"){ g.fillRect(-9, -3, 18, 8); g.fillRect(-9, 0, 3, 10); g.fillRect(6, 0, 3, 10); }
-  else if(c.style === "curly"){ g.fillRect(-9, -5, 18, 8); g.fillRect(-9, 0, 4, 8); g.fillRect(5, 0, 4, 8); }
-  else if(c.style === "bandana"){ g.fillStyle = "#c0392b"; g.fillRect(-8, -3, 16, 6); g.fillRect(7, -1, 5, 4); g.fillStyle = c.hair; g.fillRect(-8, 3, 16, 2); }
-  else if(c.style === "glasses"){ g.fillRect(-8, -3, 16, 5); g.strokeStyle = "#222"; g.lineWidth = 1.2; g.strokeRect(-6, 6, 5, 5); g.strokeRect(1, 6, 5, 5); }
-  // eyes
-  g.fillStyle = "#222";
-  if(c.style !== "glasses"){ g.fillRect(-4, 8, 2, 3); g.fillRect(2, 8, 2, 3); }
-  if(c.female){ g.fillStyle = "#e88aa0"; g.fillRect(-6, 12, 2, 2); g.fillRect(4, 12, 2, 2); }
+  if(c.style === "long"){ g.fillRect(-10, 2, 20, 34); }
+  else if(c.style === "pony"){ g.fillRect(6, 0, 6, 22); g.fillRect(8, 20, 5, 6); }
+  else if(c.style === "twin"){ g.fillRect(-16, 4, 6, 17); g.fillRect(10, 4, 6, 17); }
+  else if(c.style === "curly"){ g.fillRect(-10, 4, 4, 12); g.fillRect(6, 4, 4, 12); }
+  // ---- legs & shoes (walk swing) ----
+  const lOff = moving ? ph * 2.2 : 0, rOff = moving ? -ph * 2.2 : 0;
+  if(c.female){
+    g.fillStyle = c.skin;
+    g.fillRect(-6, 33 + Math.max(0,lOff)*0.3, 4, 9 - Math.max(0,lOff)*0.3); g.fillRect(2, 33 + Math.max(0,rOff)*0.3, 4, 9 - Math.max(0,rOff)*0.3);
+    g.fillStyle = "#7a3b2e";
+    g.fillRect(-7, 43 - Math.max(0,lOff)*0.5, 6, 3); g.fillRect(1, 43 - Math.max(0,rOff)*0.5, 6, 3);
+  } else {
+    g.fillStyle = "#46536e";
+    g.fillRect(-7, 33, 5, 10 - Math.max(0,lOff)*0.4); g.fillRect(2, 33, 5, 10 - Math.max(0,rOff)*0.4);
+    g.fillStyle = "#3a2a1c";
+    g.fillRect(-8, 43 - Math.max(0,lOff)*0.5, 7, 3); g.fillRect(1, 43 - Math.max(0,rOff)*0.5, 7, 3);
+  }
+  // ---- torso / outfit ----
+  g.fillStyle = c.cloth; g.fillRect(-9, 20, 18, 14);
+  g.fillStyle = lite; g.fillRect(-9, 20, 18, 2);
+  g.fillStyle = dark; g.fillRect(-9, 30, 18, 4);                    // hem / skirt shade
+  g.fillStyle = "#5a4632"; g.fillRect(-9, 29, 18, 2);               // belt
+  g.fillStyle = "#ffd94a"; g.fillRect(-1, 29, 2, 2);                // buckle
+  g.fillStyle = c.skin; g.fillRect(-2, 20, 4, 3);                   // collar V
+  if(c.female){ g.fillStyle = c.cloth; g.fillRect(-10, 27, 20, 6); g.fillStyle = dark; g.fillRect(-10, 31, 20, 2); } // skirt flare
+  // ---- arms (sleeve + forearm, swing opposite to legs) ----
+  const aL = moving ? -ph * 1.6 : 0, aR = moving ? ph * 1.6 : 0;
+  g.fillStyle = c.cloth; g.fillRect(-13, 21 + aL*0.3, 5, 6); g.fillRect(8, 21 + aR*0.3, 5, 6);
+  g.fillStyle = c.skin;  g.fillRect(-13, 27 + aL, 4, 7);   g.fillRect(9, 27 + aR, 4, 7);
+  // ---- head ----
+  g.fillStyle = c.skin; g.fillRect(-8, 4, 16, 14);
+  g.fillRect(-9, 9, 1, 4); g.fillRect(8, 9, 1, 4);                  // ears
+  g.fillStyle = dark; g.fillRect(-8, 16, 16, 2);                    // chin shade
+  // ---- face ----
+  g.fillStyle = "#fff"; g.fillRect(-5, 10, 3, 4); g.fillRect(2, 10, 3, 4);
+  g.fillStyle = "#26221f"; g.fillRect(-4, 11, 2, 3); g.fillRect(3, 11, 2, 3);
+  g.fillStyle = "#fff"; g.fillRect(-4, 11, 1, 1); g.fillRect(3, 11, 1, 1);
+  g.fillStyle = "rgba(90,50,30,0.7)"; g.fillRect(-5, 8, 3, 1); g.fillRect(2, 8, 3, 1); // brows
+  g.fillStyle = "#a05a44"; g.fillRect(-1, 15, 2, 1);                // mouth
+  if(c.female){
+    g.fillStyle = "rgba(240,130,160,0.65)"; g.fillRect(-7, 14, 3, 2); g.fillRect(4, 14, 3, 2); // blush
+    g.fillStyle = "#26221f"; g.fillRect(-6, 9, 1, 2); g.fillRect(5, 9, 1, 2);                   // lashes
+  }
+  if(c.style === "bandana"){ g.fillStyle = "rgba(40,26,18,0.55)"; g.fillRect(-4, 16, 2, 1); g.fillRect(0, 17, 2, 1); g.fillRect(3, 16, 2, 1); } // stubble
+  // ---- hair / headgear by style ----
+  g.fillStyle = c.hair;
+  if(c.style === "short"){
+    g.fillRect(-8, 1, 16, 5); g.fillRect(-8, 6, 4, 2); g.fillRect(-2, 6, 3, 1); g.fillRect(3, 6, 5, 2);
+    g.fillRect(-8, 5, 2, 6); g.fillRect(6, 5, 2, 6);                 // sideburns
+    if(c.hair === "#e8c33c"){ g.fillStyle = "#f7dd7a"; g.fillRect(-6, 2, 6, 2); g.fillRect(2, 1, 4, 2); } // blonde sweep highlight
+  }
+  else if(c.style === "spiky"){
+    g.fillRect(-8, 3, 16, 4);
+    g.fillRect(-7, -3, 3, 6); g.fillRect(-3, -5, 3, 8); g.fillRect(1, -4, 3, 7); g.fillRect(5, -2, 3, 5);
+    g.fillRect(-8, 6, 2, 5); g.fillRect(6, 6, 2, 5);
+  }
+  else if(c.style === "long"){
+    g.fillRect(-9, 1, 18, 5); g.fillRect(-9, 6, 4, 1); g.fillRect(-3, 6, 3, 1); g.fillRect(2, 6, 3, 1); g.fillRect(6, 6, 3, 1);
+    g.fillRect(-10, 4, 4, 24); g.fillRect(6, 4, 4, 24);              // front locks over shoulders
+    g.fillStyle = lite; g.fillRect(-8, 2, 5, 2);
+  }
+  else if(c.style === "twin"){
+    g.fillRect(-8, 1, 16, 5); g.fillRect(-8, 6, 3, 1); g.fillRect(-1, 6, 2, 1); g.fillRect(5, 6, 3, 1);
+    g.fillStyle = "#ffd94a"; g.fillRect(-16, 2, 6, 3); g.fillRect(10, 2, 6, 3);   // hair ties
+    g.fillStyle = lite; g.fillRect(-6, 2, 5, 2);
+  }
+  else if(c.style === "pony"){
+    g.fillRect(-8, 1, 16, 5); g.fillRect(-8, 6, 4, 1); g.fillRect(0, 6, 3, 1); g.fillRect(5, 6, 3, 1);
+    g.fillStyle = "#e05252"; g.fillRect(6, -1, 6, 3);                // hair tie
+    g.fillStyle = lite; g.fillRect(-6, 2, 5, 2);
+  }
+  else if(c.style === "bob"){
+    g.fillRect(-9, 1, 18, 5); g.fillRect(-9, 5, 3, 11); g.fillRect(6, 5, 3, 11);
+    g.fillRect(-6, 6, 12, 1);
+    g.fillStyle = lite; g.fillRect(-7, 2, 6, 2);
+  }
+  else if(c.style === "curly"){
+    g.beginPath();
+    [[-7,4],[-4,1],[0,0],[4,1],[7,4],[8,7],[-8,7]].forEach(p=>{ g.moveTo(p[0]+3, p[1]); g.arc(p[0], p[1], 3, 0, Math.PI*2); });
+    g.fill();
+    g.fillRect(-8, 3, 16, 3);
+    g.fillStyle = lite; g.beginPath(); g.arc(-3, 0, 1.4, 0, Math.PI*2); g.fill();
+  }
+  else if(c.style === "bandana"){
+    g.fillStyle = "#c0392b";
+    g.fillRect(-8, 1, 16, 6); g.fillRect(8, 3, 4, 3); g.fillRect(10, 6, 3, 5);   // band + knot tail
+    g.fillStyle = "#e8e3d5"; g.fillRect(-5, 3, 2, 2); g.fillRect(1, 3, 2, 2); g.fillRect(6, 3, 1, 2); // pattern dots
+    g.fillStyle = c.hair; g.fillRect(-8, 7, 3, 6); g.fillRect(5, 7, 3, 6);       // hair under band
+  }
+  else if(c.style === "glasses"){
+    g.fillRect(-8, 1, 16, 5); g.fillRect(-8, 6, 5, 1); g.fillRect(2, 6, 6, 1); g.fillRect(-8, 5, 2, 5);
+    g.strokeStyle = "#1d1d22"; g.lineWidth = 1.1;
+    g.strokeRect(-6.5, 9, 6, 6); g.strokeRect(0.5, 9, 6, 6);
+    g.beginPath(); g.moveTo(-0.5, 11); g.lineTo(0.5, 11); g.stroke();
+  }
   g.restore();
 }
 function drawBear(g, x, y, ts){
@@ -1257,6 +1374,7 @@ function drawWorld(ts){
   frameCount++;
   const W = cv.width, H = cv.height;
   if(!my) return;
+  updateDisp(ts);
   camX = clamp(my.x - W/2, 0, Math.max(0, WORLD_W - W));
   camY = clamp(my.y - H/2, 0, Math.max(0, WORLD_H - H));
   ctx2d.fillStyle = "#3f7d33"; ctx2d.fillRect(0,0,W,H);
@@ -1343,9 +1461,10 @@ function drawWorld(ts){
     ctx2d.fillStyle = "rgba(0,0,0,0.25)"; ctx2d.beginPath(); ctx2d.ellipse(ix, iy+8, 11, 4, 0, 0, Math.PI*2); ctx2d.fill();
     ctx2d.font = "17px sans-serif"; ctx2d.textAlign = "center"; ctx2d.fillText(ITEM_DEF[it.type].icon, ix, iy+5);
   }
-  // bears
+  // bears (drawn at interpolated display position)
   for(const bid in bears){ const b = bears[bid]; if(!b || !b.alive) continue;
-    const bx = b.x - camX, by = b.y - camY;
+    const dbp = dispB[bid];
+    const bx = (dbp ? dbp.x : b.x) - camX, by = (dbp ? dbp.y : b.y) - camY;
     if(bx < -50 || by < -50 || bx > W+50 || by > H+50) continue;
     drawBear(ctx2d, bx, by, ts);
     ctx2d.fillStyle = "#400"; ctx2d.fillRect(bx-20, by-44, 40, 5);
@@ -1368,7 +1487,8 @@ function drawWorld(ts){
     if(pid === uid) continue;
     const p = players[pid]; if(!p || typeof p.x !== "number") continue;
     if(p.lastSeen && nowMs() - p.lastSeen > 15000) continue;
-    const px = p.x - camX, py = p.y - camY;
+    const dpp = dispP[pid];
+    const px = (dpp ? dpp.x : p.x) - camX, py = (dpp ? dpp.y : p.y) - camY;
     if(px < -50 || py < -60 || px > W+50 || py > H+50) continue;
     drawChara(ctx2d, px, py + 16, 1.05, CHARS[p.charId||0], p.dir||1, false, ts);
     ctx2d.font = "bold 11px sans-serif"; ctx2d.textAlign = "center";
@@ -1391,17 +1511,7 @@ function drawWorld(ts){
   if(camX < 200) ctx2d.fillText("🌿 西の草原", 12, 170);
   if(camY + H > WORLD_H - 200) ctx2d.fillText("🎣 南の湖", 12, H - 160);
 }
-function drawMinimap(){
-  const mm = $("minimap"); if(!mm || !my) return;
-  const g = mm.getContext("2d");
-  g.fillStyle = "#2a5724"; g.fillRect(0,0,120,90);
-  g.fillStyle = "#8d8d84"; g.fillRect(89,0,31,90);
-  g.fillStyle = "#2b6cb0"; g.beginPath(); g.ellipse(60, 79, 28, 9, 0, 0, Math.PI*2); g.fill();
-  g.fillStyle = "#ff7b24"; g.fillRect(58, 43, 4, 4);
-  for(const pid in players){ const p = players[pid]; if(!p || typeof p.x !== "number") continue;
-    g.fillStyle = pid === uid ? "#ffd94a" : "#fff";
-    g.fillRect(p.x/WORLD_W*120 - 1.5, p.y/WORLD_H*90 - 1.5, 3, 3); }
-}
+/* (minimap removed per user feedback) */
 
 /* ================= Roulette / Vote / Result ================= */
 let wheelAnim = null;
