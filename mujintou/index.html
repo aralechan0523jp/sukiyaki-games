@@ -7,10 +7,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
   html,body { margin:0; padding:0; background:#10231a; color:#fff; font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif; overflow:hidden; height:100%; touch-action:none; }
   button { font-family:inherit; cursor:pointer; border:none; border-radius:10px; }
   input { font-family:inherit; }
+  /* text inputs stay editable/selectable (name & room code) — everything else is selection-locked above */
+  input, textarea { user-select:text; -webkit-user-select:text; -webkit-touch-callout:default; }
   .screen { position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:flex-start; overflow-y:auto; padding:16px 12px 32px; }
   .screen.on { display:flex; }
   /* ---------- Title ---------- */
@@ -219,12 +221,14 @@ const ITEM_DEF = {
   gmeat: { name:"焼き肉", icon:"🍖", w:5, eat:80 },
   axe:   { name:"斧",     icon:"🪓", w:5, tool:true, dur:30 },
   rod:   { name:"釣り竿", icon:"🎣", w:5, tool:true, dur:5 },
-  bow:   { name:"弓矢",   icon:"🏹", w:5, tool:true, dur:10 }
+  bow:   { name:"弓矢",   icon:"🏹", w:5, tool:true, dur:10 },
+  outer: { name:"アウター", icon:"🧥", w:5, tool:true } // NO dur: never breaks. Held = equipped: halves body-temp drain (see statTick)
 };
 const RECIPES = [
   { out:"axe", need:{ wood:1, stone:1 } },
   { out:"rod", need:{ wood:1, grass:1 } },
-  { out:"bow", need:{ wood:1, stone:1, grass:1 } }
+  { out:"bow", need:{ wood:1, stone:1, grass:1 } },
+  { out:"outer", need:{ grass:30 } }
 ];
 const CHARS = [
   { n:"男の子・黒髪",   skin:"#f2c189", hair:"#22252a", style:"short",  cloth:"#3f7fbf", female:false },
@@ -642,6 +646,7 @@ function hostStartGame(){
   const ids = Object.keys(players);
   if(ids.length < 2 && !soloMode) return;
   if(soloMode && ids.length < 1) return;
+  wipeoutDone = false; // new match: re-arm the survivor-wipeout check
   const n = ids.length;
   const psychoCount = n >= 6 ? 2 : 1;
   const shuffled = ids.slice();
@@ -673,6 +678,7 @@ function hostStartGame(){
 
 /* ================= Host: shared world simulation ================= */
 let hostTimer = null;
+let wipeoutDone = false; // survivor wipeout ends the game once (see hostLoop)
 function hostLoop(){
   if(!isHost || phase !== "playing") return;
   const t = nowMs();
@@ -693,6 +699,19 @@ function hostLoop(){
         corpsesState[pid] = c; // local mirror; the corpses listener will confirm the same node
         roomRef.child("corpses/" + pid).set(c);
       }
+    }
+  }
+  // Survivor wipeout = instant psychopath win: the moment EVERY survivor is dead the game
+  // ends right there — remaining time is skipped, no roulette, no rescue vote.
+  // Online only: solo practice has no psychopath, so dying there just leaves a ghost as before.
+  // (Runs after the enforcement pass above, so players it just force-killed count as dead.)
+  if(!soloMode && !wipeoutDone){
+    const survIds = Object.keys(players).filter(id=> players[id] && players[id].role === "survivor");
+    if(survIds.length && survIds.every(id=> players[id].dead || (typeof players[id].hp === "number" && players[id].hp <= 0))){
+      wipeoutDone = true; // trigger once only
+      roomRef.child("result").set({ winner:"psychopath", wiped:true });
+      roomRef.child("meta").update({ phase:"result" });
+      return; // game over: no fire/bear/day-end simulation this tick
     }
   }
   // fire decay: -1 per 20s (1 gauge = 20 seconds; full 6 gauges = 120s)
@@ -762,12 +781,13 @@ function hostMoveBears(t){
       if(Math.random() < 0.3){ b.x += (Math.random()*60-30); b.y += (Math.random()*60-30); b.x = clamp(b.x,80,WORLD_W-80); b.y = clamp(b.y,120,1000); changed = true; }
     }
   });
-  // --- separation & solids: bears never overlap the bonfire, the box, or each other ---
+  // --- separation & solids: bears never overlap the bonfire, the box, the workbench, or each other ---
   ids.forEach(bid=>{
     const b = bears[bid]; if(!b || !b.alive) return;
     const df = Math.hypot(b.x - FIRE_POS.x, b.y - FIRE_POS.y);
     if(df < 48){ const sc = 48/(df||1); b.x = FIRE_POS.x + (b.x - FIRE_POS.x)*sc; b.y = FIRE_POS.y + (b.y - FIRE_POS.y)*sc; changed = true; }
     if(Math.abs(b.x - BOX_POS.x) < 54 && Math.abs(b.y - BOX_POS.y) < 42){ b.x += (b.x < BOX_POS.x ? -1 : 1) * (54 - Math.abs(b.x - BOX_POS.x)); changed = true; }
+    if(Math.abs(b.x - BENCH_POS.x) < 56 && Math.abs(b.y - BENCH_POS.y) < 42){ b.x += (b.x < BENCH_POS.x ? -1 : 1) * (56 - Math.abs(b.x - BENCH_POS.x)); changed = true; }
   });
   for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++){
     const A = bears[ids[i]], B = bears[ids[j]];
@@ -897,8 +917,13 @@ function statTick(){
   my.hunger = clamp(my.hunger - (0.14 + (my.moving ? 0.05 : 0) + (my.fishing ? 0.03 : 0)) * dt, 0, 100);
   const lit = fireState.gauge > 0;
   const dFire = Math.hypot(my.x - FIRE_POS.x, my.y - FIRE_POS.y);
-  if(lit && dFire < 280) my.temp = clamp(my.temp + 2.2*dt, 0, 100);
-  else my.temp = clamp(my.temp - 1.20*dt, 0, 100); // temp drain doubled AGAIN (was 0.60/s, originally 0.30/s); near-fire recovery unchanged (+2.2/s)
+  if(lit && dFire < 280) my.temp = clamp(my.temp + 2.2*dt, 0, 100); // near-fire recovery is NOT affected by the outer
+  else {
+    // temp drain doubled AGAIN (was 0.60/s, originally 0.30/s). Wearing the アウター (just holding it
+    // counts as equipped) halves the DRAIN only: -1.20/s -> -0.60/s.
+    const tempDrain = hasTool("outer") ? 0.60 : 1.20;
+    my.temp = clamp(my.temp - tempDrain*dt, 0, 100);
+  }
   let drain = 0;
   if(my.hunger <= 0) drain += 0.55;
   if(my.temp <= 0) drain += 0.55;
@@ -1002,7 +1027,25 @@ document.addEventListener("keyup", e=>{ keys[e.key.toLowerCase()] = false; });
   const end = e=>{ if(e.pointerId===pid){ pid = null; padVec = {x:0,y:0}; knob.style.transform = "translate(0,0)"; } };
   pad.addEventListener("pointerup", end); pad.addEventListener("pointercancel", end);
 })();
-$("btn-use").addEventListener("click", ()=>{ AudioSys.ensure(); doUse(); });
+/* 👊 button: a tap fires once; HOLDING it repeats doUse() every ~280ms (continuous attacks).
+   Pointer events drive it; the trailing click after pointerup is swallowed via useClickSuppress
+   so a hold never double-fires. If pointer events are unavailable the plain click still works. */
+let useHoldTimer = null, useClickSuppress = false;
+$("btn-use").addEventListener("pointerdown", e=>{
+  e.preventDefault();
+  AudioSys.ensure();
+  useClickSuppress = true;
+  doUse();
+  if(useHoldTimer) clearInterval(useHoldTimer);
+  useHoldTimer = setInterval(()=>{ doUse(); }, 280);
+});
+const stopUseHold = ()=>{ if(useHoldTimer){ clearInterval(useHoldTimer); useHoldTimer = null; } };
+$("btn-use").addEventListener("pointerup", stopUseHold);
+$("btn-use").addEventListener("pointercancel", stopUseHold);
+$("btn-use").addEventListener("pointerleave", stopUseHold);
+$("btn-use").addEventListener("click", ()=>{ AudioSys.ensure(); if(useClickSuppress){ useClickSuppress = false; return; } doUse(); });
+// long-press / right-click menus must never pop up over the game screen
+$("scr-game").addEventListener("contextmenu", e=>e.preventDefault());
 $("btn-drop").addEventListener("click", ()=>{ AudioSys.ensure(); doDrop(); });
 
 /* ================= Frame loop / movement ================= */
@@ -1072,9 +1115,10 @@ function stepMovement(dt){
 }
 function blocked(x,y){
   if(isWater(x,y)) return true;
-  // solids: the bonfire and the shared box are never walked through / overlapped
+  // solids: the bonfire, the shared box and the workbench are never walked through / overlapped
   if(Math.hypot(x - FIRE_POS.x, y - FIRE_POS.y) < 36) return true;
   if(Math.abs(x - BOX_POS.x) < 42 && Math.abs(y - BOX_POS.y) < 32) return true;
+  if(Math.abs(x - BENCH_POS.x) < 44 && Math.abs(y - BENCH_POS.y) < 30) return true;
   for(let i=0;i<NODES.length;i++){
     const nd = NODES[i];
     if(nd.type !== "tree") continue;
@@ -1243,7 +1287,7 @@ function doUse(){
   if(my.dead){ toast("👻 幽霊は何もできない"); return; }
   AudioSys.ensure();
   const t = nowMs();
-  if(t - my.useCd < 300) return;
+  if(t - my.useCd < 280) return; // matches the 👊 hold-repeat interval (~280ms) so held repeats land
   my.useCd = t;
   const entries = invEntries();
   const sel = entries[my.sel];
@@ -1343,7 +1387,7 @@ function doDrop(){
   // the hidden rotten flag travels with the dropped item (raw rotten stays rotten; grilled rotten stays secret)
   if((sel.kind === "fish" || sel.kind === "meat") && (my.rotRaw[sel.kind]||0) > 0){ my.rotRaw[sel.kind]--; item.rot = 1; }
   if((sel.kind === "gfish" || sel.kind === "gmeat") && (my.rotGrilled[sel.kind]||0) > 0){ my.rotGrilled[sel.kind]--; item.rot = 1; }
-  if(sel.toolIdx !== undefined){ item.dur = my.tools[sel.toolIdx].dur; my.tools.splice(sel.toolIdx, 1); }
+  if(sel.toolIdx !== undefined){ if(my.tools[sel.toolIdx].dur !== undefined) item.dur = my.tools[sel.toolIdx].dur; my.tools.splice(sel.toolIdx, 1); } // no dur field for indestructible items (Firebase rejects undefined)
   else my.inv[sel.kind]--;
   if(soloMode){ groundItems["gi" + nowMs()] = item; }
   else roomRef.child("items").push(item);
@@ -1430,11 +1474,11 @@ function renderCtx(){
         html += ctxBtn(ITEM_DEF[k].icon + " 取る", "箱" + (boxState[k]||0), "take|" + k, false, true);
       }
       toolList.forEach(t=>{
-        html += ctxBtn(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name + "を取る", "耐久" + t.dur, "taketool|" + t.id, false, true);
+        html += ctxBtn(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name + "を取る", t.dur !== undefined ? "耐久" + t.dur : "壊れない", "taketool|" + t.id, false, true);
       });
       html += '</div>';
     }
-    html += '<div style="font-size:11px;color:#bcd8c2;margin-top:5px;">入れる：下の持ち物（道具もOK）を選んで「👊(E)」を押す</div></div>';
+    html += '<div style="font-size:11px;color:#bcd8c2;margin-top:5px;">入れる：下の持ち物をタップするだけ（道具もOK）／選んで「👊(E)」でもOK</div></div>';
   } else if(ctxKind === "corpse"){
     const c = corpsesState[ctxCorpse];
     if(!c){ box.style.display = "none"; box.innerHTML = ""; return; }
@@ -1546,18 +1590,19 @@ function boxDepositTool(toolIdx){
   const t = my.tools[toolIdx]; if(!t) return;
   my.tools.splice(toolIdx, 1);
   if(t.kind === "rod" && my.fishing){ my.fishing = null; hideProgress(); toast("🎣 釣り竿を箱に入れたので釣りを中止した"); }
-  if(soloMode){ boxToolsState["t" + nowMs() + "_" + Math.floor(Math.random()*9999)] = { kind: t.kind, dur: t.dur }; }
-  else roomRef.child("boxTools").push({ kind: t.kind, dur: t.dur });
-  AudioSys.se("decide"); toast("📦 " + ITEM_DEF[t.kind].name + "を箱に入れた（耐久" + t.dur + "）");
+  const rec = { kind: t.kind }; if(t.dur !== undefined) rec.dur = t.dur; // no dur field at all for indestructible items (Firebase rejects undefined values)
+  if(soloMode){ boxToolsState["t" + nowMs() + "_" + Math.floor(Math.random()*9999)] = rec; }
+  else roomRef.child("boxTools").push(rec);
+  AudioSys.se("decide"); toast("📦 " + ITEM_DEF[t.kind].name + "を箱に入れた" + (t.dur !== undefined ? "（耐久" + t.dur + "）" : ""));
   renderInv(); renderCtx();
 }
 function boxTakeTool(id){
   const t = boxToolsState[id]; if(!t) return;
   if(soloMode){ delete boxToolsState[id]; }
   else roomRef.child("boxTools/" + id).remove();
-  const dur = (t.dur !== undefined ? t.dur : ITEM_DEF[t.kind].dur);
+  const dur = (t.dur !== undefined ? t.dur : ITEM_DEF[t.kind].dur); // undefined for indestructible items (アウター)
   my.tools.push({ kind: t.kind, dur });
-  AudioSys.se("pickup"); toast(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name + "を箱から取った（耐久" + dur + "）");
+  AudioSys.se("pickup"); toast(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name + "を箱から取った" + (dur !== undefined ? "（耐久" + dur + "）" : ""));
   renderInv(); renderCtx();
 }
 /* ---- Corpse looting: 1 meat per use action, 3 meat total per corpse ---- */
@@ -1575,8 +1620,8 @@ function craftItem(idx){
   for(const k in r.need){ if((my.inv[k]||0) < r.need[k]){ toast("素材が足りない"); return; } }
   for(const k in r.need) my.inv[k] -= r.need[k];
   spendHunger();
-  my.tools.push({ kind: r.out, dur: ITEM_DEF[r.out].dur });
-  AudioSys.se("craft"); toast(ITEM_DEF[r.out].icon + " " + ITEM_DEF[r.out].name + "を作った！（耐久" + ITEM_DEF[r.out].dur + "）");
+  my.tools.push({ kind: r.out, dur: ITEM_DEF[r.out].dur }); // dur is undefined for indestructible items (アウター)
+  AudioSys.se("craft"); toast(ITEM_DEF[r.out].icon + " " + ITEM_DEF[r.out].name + "を作った！" + (ITEM_DEF[r.out].dur !== undefined ? "（耐久" + ITEM_DEF[r.out].dur + "）" : "（壊れない）"));
   renderInv(); renderCtx();
 }
 
@@ -1591,7 +1636,21 @@ function renderInv(){
     d.className = "inv-cell" + (i===my.sel ? " sel" : "");
     d.innerHTML = '<div class="ic">' + ITEM_DEF[e.kind].icon + '</div><div class="ct">' + (e.toolIdx!==undefined ? "" : "×"+e.count) + '</div>' +
                   (e.dur !== undefined ? '<div class="dur">耐久' + e.dur + '</div>' : "");
-    d.onclick = ()=>{ my.sel = i; AudioSys.se("decide"); renderInv(); };
+    d.onclick = ()=>{
+      // One-tap deposit: while the shared box panel is open, tapping an item puts it straight
+      // into the box (1 unit, or the tool with its durability) — no 👊 press needed.
+      // The select + 👊(E) deposit flow keeps working too; away from the box a tap just selects.
+      if(ctxKind === "box" && phase === "playing" && my && !my.dead){
+        my.sel = i;
+        if(e.toolIdx !== undefined){ boxDepositTool(e.toolIdx); return; }
+        if(boxState.hasOwnProperty(e.kind) && (my.inv[e.kind]||0) > 0){
+          boxMove(e.kind, true);
+          toast("📦 " + ITEM_DEF[e.kind].name + "を箱に入れた");
+          return;
+        }
+      }
+      my.sel = i; AudioSys.se("decide"); renderInv();
+    };
     bar.appendChild(d);
   });
   if(!entries.length) bar.innerHTML = '<div class="inv-cell"><div class="ic">🎒</div><div class="ct">空</div></div>';
@@ -1993,8 +2052,9 @@ function showResult(){
   AudioSys.stopWind();
   const r = resultState || { winner:"survivor" };
   $("result-title").textContent = r.winner === "survivor" ? "🎉 サバイバーの勝利！" : "🔪 サイコパスの勝利…";
-  $("result-desc").textContent = r.rescued ? "救済投票でサイコパスを当てた！逆転勝ち！" :
-    (r.winner === "survivor" ? "ルーレットでサバイバーに止まった！" : "サイコパスを見破れなかった…");
+  $("result-desc").textContent = r.wiped ? "サバイバー全滅…サイコパスの勝ち！" :
+    (r.rescued ? "救済投票でサイコパスを当てた！逆転勝ち！" :
+    (r.winner === "survivor" ? "ルーレットでサバイバーに止まった！" : "サイコパスを見破れなかった…"));
   const ul = $("result-list"); ul.innerHTML = "";
   Object.keys(players).forEach(pid=>{
     const p = players[pid]; if(!p) return;
