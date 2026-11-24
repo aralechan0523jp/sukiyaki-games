@@ -83,7 +83,7 @@
   .inv-cell .dur { position:absolute; bottom:2px; left:0; right:0; font-size:9px; color:#9fd8ff; }
   #inv-weight { right:12px; bottom:150px; font-size:12px; font-weight:900; background:rgba(10,20,14,.8); padding:3px 9px; border-radius:8px; z-index:7; }
   #btn-use, #btn-drop { width:76px; height:76px; border-radius:50%; font-weight:900; z-index:7; color:#fff; }
-  #btn-use { right:14px; bottom:14px; background:#2e9e4f; font-size:17px; box-shadow:0 4px 0 #1c6330; border:2px solid #bff0cd; }
+  #btn-use { right:14px; bottom:14px; background:#2e9e4f; font-size:24px; box-shadow:0 4px 0 #1c6330; border:2px solid #bff0cd; }
   #btn-drop { right:102px; bottom:14px; background:#7a5a2c; font-size:13px; box-shadow:0 4px 0 #4c3715; border:2px solid #e8d9ae; width:62px; height:62px; }
   /* overlays */
   .overlay { position:fixed; inset:0; background:rgba(5,10,8,.86); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:20; padding:14px; text-align:center; }
@@ -118,7 +118,7 @@
       <button class="btn sub" id="btn-join">コードで参加</button>
     </div>
     <div class="err" id="title-err"></div>
-    <div class="note">📖 あそびかた：8分間生きのびよう。焚き火（画面中央）の火を絶やすな！ 木材・石・草を集めて作業台で道具を作り、魚や肉を焼いて空腹を満たす。体力は回復しない。1日の終わりに全員の残り体力の割合でルーレット勝敗！ サイコパスに止まっても、投票でサイコパスを当てれば救済勝ち。<br>🖥️ PC：WASD/矢印キー移動、E=使う、Q=捨てる 📱 スマホ：左下パッド＋右下ボタン</div>
+    <div class="note">📖 あそびかた：8分間生きのびよう。焚き火（画面中央）の火を絶やすな！ 木材・石・草を集めて作業台で道具を作り、魚や肉を焼いて空腹を満たす。体力は回復しない。1日の終わりにサバイバー全員の残り体力の割合でルーレット勝敗！ サイコパスに止まっても、投票でサイコパスを当てれば救済勝ち。<br>🖥️ PC：WASD/矢印キー移動、E=使う、Q=捨てる 📱 スマホ：左下パッド＋右下ボタン</div>
     <div class="row" style="margin-top:8px;"><button class="btn ghost" id="btn-solo">オフラインで1人練習（Firebase不要）</button></div>
   </div>
 </div>
@@ -161,7 +161,7 @@
   <div class="hud" id="inv-weight">🎒 0 / 30</div>
   <div class="hud" id="inv-bar"></div>
   <button class="hud" id="btn-drop">捨てる<br>Q</button>
-  <button class="hud" id="btn-use">使う<br>E</button>
+  <button class="hud" id="btn-use">👊<br><span style="font-size:11px;">E</span></button>
 </div>
 
 <!-- ===== ROULETTE ===== -->
@@ -175,7 +175,7 @@
 <!-- ===== VOTE ===== -->
 <div class="overlay" id="ov-vote">
   <h2>🗳️ 救済投票</h2>
-  <div style="font-weight:700;max-width:440px;">ルーレットはサイコパスに止まった…！ でも投票でサイコパスを当てればサバイバーの逆転勝ち。サイコパスだと思う人を選んでね（サバイバーだけ投票できます）。</div>
+  <div style="font-weight:700;max-width:440px;">ルーレットはサイコパスに止まった…！ でも投票でサイコパスを当てればサバイバーの逆転勝ち。サイコパスだと思う人を選んでね（サバイバーだけ投票できます。サイコパスは投票権なし。票が割れたらサイコパスの勝ち）。</div>
   <div id="vote-list" style="margin-top:10px;"></div>
   <div id="vote-status" class="note"></div>
 </div>
@@ -211,7 +211,7 @@ const ITEM_DEF = {
   grass: { name:"草",     icon:"🌿", w:1 },
   fish:  { name:"魚",     icon:"🐟", w:5 },
   meat:  { name:"肉",     icon:"🥩", w:5 },
-  gfish: { name:"焼き魚", icon:"🍢", w:5, eat:40 },
+  gfish: { name:"焼き魚", icon:"🍗", w:5, eat:40 },
   gmeat: { name:"焼き肉", icon:"🍖", w:5, eat:80 },
   axe:   { name:"斧",     icon:"🪓", w:5, tool:true, dur:30 },
   rod:   { name:"釣り竿", icon:"🎣", w:5, tool:true, dur:5 },
@@ -402,6 +402,8 @@ let bears = {};            // id -> {x,y,hp,alive}
 let arrowsShared = {};     // id -> {x,y,dir,by,ts}
 let fireState = { gauge:6, lastTick:0, relightAt:0 };
 let boxState = { wood:0, stone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 };
+let corpsesState = {};     // uid -> {x,y,name,charId,meat,at} (shared corpses of dead players)
+let boxToolsState = {};    // id -> {kind,dur} (tools stored in the shared box, durability kept)
 let cookingState = {};     // slotId -> {kind,readyAt,by}
 let metaState = { host:"", hostBeat:0, endAt:0 };
 let rouletteState = null, resultState = null, votesState = {};
@@ -435,20 +437,23 @@ function updateDisp(ts){
   for(const pid in players){
     if(pid === uid) continue;
     const p = players[pid]; if(!p || typeof p.x !== "number") continue;
+    if(p.dead){ delete dispP[pid]; continue; } // ghosts are invisible to other players
     feedDisp(dispP, pid, p.x, p.y, ts, 280);
     stepDisp(dispP, pid, dt, ts, 12, 0.28);
   }
   for(const pid in dispP){ if(!players[pid]) delete dispP[pid]; }
   for(const bid in bears){
     const b = bears[bid]; if(!b || !b.alive) continue;
-    feedDisp(dispB, bid, b.x, b.y, ts, 70);
+    feedDisp(dispB, bid, b.x, b.y, ts, 150); // bears move 2x faster now
     stepDisp(dispB, bid, dt, ts, 5, 0.7);
   }
   for(const bid in dispB){ if(!bears[bid] || !bears[bid].alive) delete dispB[bid]; }
 }
 function freshPlayer(x,y){
-  return { x:x, y:y, dir:1, face:2, moving:false, hp:100, hunger:100, temp:100,
+  return { x:x, y:y, dir:1, face:2, aim:0, moving:false, hp:100, hunger:100, temp:100,
            inv:{ wood:0, stone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 },
+           rotRaw:{ fish:0, meat:0 }, rotGrilled:{ gfish:0, gmeat:0 },
+           dead:false, vomitUntil:0,
            tools:[], sel:0, role:"", punchCd:0, useCd:0, fishing:null, lastGrowl:0 };
 }
 function invEntries(){
@@ -479,6 +484,7 @@ function speedFactor(){
   if(my.hunger <= 0) f *= 0.6;
   if(my.temp <= 0) f *= 0.6;
   if(my.hp <= 0) f *= 0.4;
+  if(nowMs() < (my.vomitUntil||0)) f *= 0.5; // vomit: slowed for 20s
   return f;
 }
 
@@ -528,7 +534,7 @@ function enterRoom(code, asHost){
   roomRef = db.ref("rooms/" + code);
   myRef = roomRef.child("players/" + uid);
   myRef.set({ name: myName, charId: myChar, x: Math.round(my.x), y: Math.round(my.y), dir:1, face:2,
-              hp:100, hunger:100, temp:100, role:"", online:true, lastSeen: firebase.database.ServerValue.TIMESTAMP });
+              hp:100, hunger:100, temp:100, role:"", dead:false, vomitUntil:0, online:true, lastSeen: firebase.database.ServerValue.TIMESTAMP });
   myRef.onDisconnect().remove();
   if(asHost){
     roomRef.child("meta").set({ host: uid, hostBeat: firebase.database.ServerValue.TIMESTAMP, phase:"lobby", endAt:0 });
@@ -571,6 +577,8 @@ function attachRoomListeners(){
   });
   roomRef.child("fire").on("value", s=>{ const f = s.val(); if(f){ fireState = f; cookingState = f.cooking || {}; } });
   roomRef.child("box").on("value", s=>{ if(s.val()) boxState = s.val(); if(ctxKind==="box") renderCtx(); });
+  roomRef.child("boxTools").on("value", s=>{ boxToolsState = s.val() || {}; if(ctxKind==="box") renderCtx(); });
+  roomRef.child("corpses").on("value", s=>{ corpsesState = s.val() || {}; });
   roomRef.child("nodes").on("value", s=>{ nodesState = s.val() || {}; });
   roomRef.child("items").on("value", s=>{ groundItems = s.val() || {}; });
   roomRef.child("bears").on("value", s=>{ bears = s.val() || {}; });
@@ -584,6 +592,7 @@ function attachRoomListeners(){
     if(!ev || !my || phase!=="playing") return;
     if(ev.type==="punch" || ev.type==="bear"){
       my.hp = clamp(my.hp - (ev.dmg||5), 0, 100);
+      addFx(my.x, my.y - 10);
       AudioSys.se(ev.type==="bear" ? "bear" : "punch");
       toast(ev.type==="bear" ? "🐻 クマに攻撃された！" : "👊 誰かに殴られた！");
       syncMe(true);
@@ -620,18 +629,19 @@ function hostStartGame(){
     metaState = { host: uid, hostBeat: startAt, phase:"playing", endAt: startAt + DAY_MS };
     players[uid].role = "survivor"; my.role = "survivor";
     fireState = { gauge:6, lastTick:startAt, relightAt:0 };
+    corpsesState = {}; boxToolsState = {}; my.dead = false; players[uid].dead = false;
     bears = {}; for(let i=0;i<4;i++){ bears["b"+i] = { x: 600+i*700, y: 420, hp:30, alive:true }; }
     phase = "playing"; startGameClient(); return;
   }
   ids.forEach(id=>{
     roomRef.child("players/" + id + "/role").set(psychos.includes(id) ? "psychopath" : "survivor");
-    roomRef.child("players/" + id).update({ hp:100, hunger:100, temp:100 });
+    roomRef.child("players/" + id).update({ hp:100, hunger:100, temp:100, dead:false, vomitUntil:0 });
   });
   // bears: 6 in the northern forest
   const bObj = {};
   for(let i=0;i<6;i++){ bObj["b"+i] = { x: 400 + i*560 + Math.floor(Math.random()*200), y: 300 + Math.floor(Math.random()*450), hp:30, alive:true, atkAt:0 }; }
   roomRef.child("bears").set(bObj);
-  roomRef.child("nodes").remove(); roomRef.child("items").remove(); roomRef.child("votes").remove();
+  roomRef.child("nodes").remove(); roomRef.child("items").remove(); roomRef.child("votes").remove(); roomRef.child("corpses").remove(); roomRef.child("boxTools").remove();
   roomRef.child("roulette").remove(); roomRef.child("result").remove();
   roomRef.child("fire").set({ gauge:6, lastTick: startAt, relightAt:0 });
   roomRef.child("meta").update({ phase:"playing", endAt: startAt + DAY_MS, hostBeat: startAt });
@@ -646,18 +656,26 @@ function hostLoop(){
   // heartbeat
   if(soloMode){ metaState.hostBeat = t; }
   else roomRef.child("meta/hostBeat").set(t);
-  // fire decay: -1 per 10s
+  // fire decay: -1 per 20s (1 gauge = 20 seconds; full 6 gauges = 120s)
   if(fireState.relightAt && fireState.relightAt > 0 && t >= fireState.relightAt){
     fireState = { gauge:1, lastTick:t, relightAt:0 };
     writeFire();
   } else if(fireState.gauge > 0 && fireState.lastTick){
     const elapsed = t - fireState.lastTick;
-    if(elapsed >= 10000){
-      const dec = Math.floor(elapsed/10000);
+    if(elapsed >= 20000){
+      const dec = Math.floor(elapsed/20000);
       fireState.gauge = Math.max(0, fireState.gauge - dec);
-      fireState.lastTick += dec * 10000;
+      fireState.lastTick += dec * 20000;
       writeFire();
       if(fireState.gauge <= 0) hostStallCooking(); // fire died: any in-progress cooking is ruined (progress reset, raw item kept)
+    }
+  }
+  // rotten food: raw meat/fish lying on the ground for 20 seconds turns rotten (host writes the shared flag)
+  for(const gid in groundItems){
+    const git = groundItems[gid];
+    if(git && (git.type === "fish" || git.type === "meat") && !git.rot && t - (git.at||t) > 20000){
+      git.rot = 1;
+      if(!soloMode) roomRef.child("items/" + gid + "/rot").set(1);
     }
   }
   hostMoveBears(t);
@@ -687,7 +705,7 @@ function hostStallCooking(){
 function hostMoveBears(t){
   const ids = Object.keys(bears);
   if(!ids.length) return;
-  const plist = Object.keys(players).map(id=>({ id, p: players[id] })).filter(o=>o.p && typeof o.p.x === "number");
+  const plist = Object.keys(players).map(id=>({ id, p: players[id] })).filter(o=>o.p && typeof o.p.x === "number" && !o.p.dead);
   let changed = false;
   ids.forEach(bid=>{
     const b = bears[bid]; if(!b || !b.alive) return;
@@ -695,16 +713,29 @@ function hostMoveBears(t){
     plist.forEach(o=>{ const d = Math.hypot(o.p.x-b.x, o.p.y-b.y); if(d < best){ best = d; target = o; } });
     if(target){
       const dx = target.p.x - b.x, dy = target.p.y - b.y, d = Math.hypot(dx,dy) || 1;
-      if(d > 44){ b.x += dx/d * 15; b.y += dy/d * 15; changed = true; }
+      if(d > 44){ b.x += dx/d * 30; b.y += dy/d * 30; changed = true; } // bear move speed x2
       else if(!b.atkAt || t - b.atkAt > 1300){
         b.atkAt = t; changed = true;
-        if(!soloMode) roomRef.child("events/" + target.id).push({ type:"bear", dmg:6, from:bid, ts:t });
-        else if(target.id === uid){ my.hp = clamp(my.hp-6,0,100); AudioSys.se("bear"); toast("🐻 クマに攻撃された！"); }
+        if(!soloMode) roomRef.child("events/" + target.id).push({ type:"bear", dmg:12, from:bid, ts:t });
+        else if(target.id === uid){ my.hp = clamp(my.hp-12,0,100); AudioSys.se("bear"); toast("🐻 クマに攻撃された！"); }
       }
     } else {
-      if(Math.random() < 0.3){ b.x += (Math.random()*30-15); b.y += (Math.random()*30-15); b.x = clamp(b.x,80,WORLD_W-80); b.y = clamp(b.y,120,1000); changed = true; }
+      if(Math.random() < 0.3){ b.x += (Math.random()*60-30); b.y += (Math.random()*60-30); b.x = clamp(b.x,80,WORLD_W-80); b.y = clamp(b.y,120,1000); changed = true; }
     }
   });
+  // --- separation & solids: bears never overlap the bonfire, the box, or each other ---
+  ids.forEach(bid=>{
+    const b = bears[bid]; if(!b || !b.alive) return;
+    const df = Math.hypot(b.x - FIRE_POS.x, b.y - FIRE_POS.y);
+    if(df < 48){ const sc = 48/(df||1); b.x = FIRE_POS.x + (b.x - FIRE_POS.x)*sc; b.y = FIRE_POS.y + (b.y - FIRE_POS.y)*sc; changed = true; }
+    if(Math.abs(b.x - BOX_POS.x) < 54 && Math.abs(b.y - BOX_POS.y) < 42){ b.x += (b.x < BOX_POS.x ? -1 : 1) * (54 - Math.abs(b.x - BOX_POS.x)); changed = true; }
+  });
+  for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++){
+    const A = bears[ids[i]], B = bears[ids[j]];
+    if(!A || !B || !A.alive || !B.alive) continue;
+    const dx = B.x-A.x, dy = B.y-A.y, d = Math.hypot(dx,dy);
+    if(d > 0.01 && d < 54){ const push = (54-d)/2, ux = dx/d, uy = dy/d; A.x -= ux*push; A.y -= uy*push; B.x += ux*push; B.y += uy*push; changed = true; }
+  }
   if(changed && !soloMode) roomRef.child("bears").update(bears);
 }
 function hostApplyBearHit(h){
@@ -724,25 +755,38 @@ function hostApplyBearHit(h){
   }
 }
 function hostEndDay(){
+  // Roulette basis: SURVIVORS ONLY — survivor win % = (sum of survivors' remaining HP) / (survivors x 100).
+  // Psychopaths' HP is excluded entirely. Dead survivors count as 0 (their synced HP is 0).
   const ids = Object.keys(players);
-  let sum = 0; ids.forEach(id=>{ const v = (players[id] && typeof players[id].hp === "number") ? players[id].hp : (id===uid && my ? my.hp : 100); sum += clamp(v, 0, 100); });
-  const max = ids.length * 100;
+  const survIds = ids.filter(id=> players[id] && players[id].role === "survivor");
+  const useIds = survIds.length ? survIds : ids;
+  let sum = 0; useIds.forEach(id=>{ const v = (players[id] && typeof players[id].hp === "number") ? players[id].hp : (id===uid && my ? my.hp : 100); sum += clamp(v, 0, 100); });
+  const max = useIds.length * 100;
   const pct = max > 0 ? Math.round(sum / max * 100) : 0;
   const result = (Math.random()*100) < pct ? "survivor" : "psychopath";
   const seed = Math.floor(Math.random()*100000);
   if(soloMode){
-    rouletteState = { pct, result, seed, sum, max };
+    rouletteState = { pct, result, seed, sum, max, survCount: useIds.length };
     metaState.phase = "roulette"; phase = "roulette"; showRoulette(); return;
   }
-  roomRef.child("roulette").set({ pct, result, seed, sum, max });
+  roomRef.child("roulette").set({ pct, result, seed, sum, max, survCount: useIds.length });
   roomRef.child("meta").update({ phase:"roulette" });
 }
 function hostTallyVotes(){
+  // Rescue vote: ONLY living survivors may vote (psychopaths have NO voting rights; ghosts neither).
+  // Overturn to survivor win ONLY when a UNIQUE top-voted player is a psychopath. Split/tie -> psychopath wins.
   const counts = {};
-  Object.keys(votesState).forEach(v=>{ const tg = votesState[v]; if(tg) counts[tg] = (counts[tg]||0)+1; });
-  let top = null, topN = 0;
-  Object.keys(counts).forEach(k=>{ if(counts[k] > topN){ topN = counts[k]; top = k; } });
-  const rescued = top && players[top] && players[top].role === "psychopath";
+  Object.keys(votesState).forEach(v=>{
+    const voter = players[v];
+    if(!voter || voter.role !== "survivor" || voter.dead) return;
+    const tg = votesState[v]; if(tg) counts[tg] = (counts[tg]||0)+1;
+  });
+  let top = null, topN = 0, tied = false;
+  Object.keys(counts).forEach(k=>{
+    if(counts[k] > topN){ topN = counts[k]; top = k; tied = false; }
+    else if(counts[k] === topN && topN > 0){ tied = true; }
+  });
+  const rescued = !tied && top && players[top] && players[top].role === "psychopath";
   const winner = rescued ? "survivor" : "psychopath";
   if(soloMode){ resultState = { winner, rescued: !!rescued, topVoted: top }; phase = "result"; showResult(); return; }
   roomRef.child("result").set({ winner, rescued: !!rescued, topVoted: top || "" });
@@ -757,6 +801,7 @@ function startGameClient(){
   document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("on"));
   AudioSys.stopTitle(); AudioSys.startWind();
   gameStartedAt = nowMs();
+  if(my) my.dead = false;
   // my role: read own node (others' roles are never displayed)
   const me = players[uid];
   if(me && me.role) my.role = me.role;
@@ -778,6 +823,7 @@ function startGameClient(){
 }
 function showRoleHud(){
   const roleEl = $("hud-role");
+  if(my && my.dead){ roleEl.style.display = "block"; roleEl.textContent = "👻 幽霊中（動けるだけ・何もできない）"; roleEl.classList.remove("surv"); return; }
   if(!my || !my.role){ roleEl.style.display = "none"; return; }
   roleEl.style.display = "block";
   if(my.role === "psychopath"){ roleEl.textContent = "🔪 あなたは サイコパス"; roleEl.classList.remove("surv"); }
@@ -795,6 +841,7 @@ function syncMe(force){
   if(!my) return;
   const data = { x: Math.round(my.x), y: Math.round(my.y), dir: my.dir, face: my.face,
                  hp: Math.round(my.hp*10)/10, hunger: Math.round(my.hunger*10)/10, temp: Math.round(my.temp*10)/10,
+                 dead: !!my.dead, vomitUntil: my.vomitUntil||0,
                  lastSeen: nowMs(), online: true };
   if(soloMode){ Object.assign(players[uid], data); return; }
   if(myRef) myRef.update(data);
@@ -802,17 +849,19 @@ function syncMe(force){
 /* stats: hunger drains; temp depends on lit bonfire proximity; HP drains at 0s (no recovery) */
 function statTick(){
   if(phase !== "playing" || !my) return;
+  if(my.dead){ updateStatHud(); return; } // ghosts: no drains, HP stays 0
   const dt = 0.25; // this tick runs every 250ms; rates below are per-second
   // hunger: base time drain 0.14/s + moving bonus 0.05/s + fishing bonus 0.03/s (actions also cost a fixed 0.2 each, see spendHunger)
   my.hunger = clamp(my.hunger - (0.14 + (my.moving ? 0.05 : 0) + (my.fishing ? 0.03 : 0)) * dt, 0, 100);
   const lit = fireState.gauge > 0;
   const dFire = Math.hypot(my.x - FIRE_POS.x, my.y - FIRE_POS.y);
   if(lit && dFire < 280) my.temp = clamp(my.temp + 2.2*dt, 0, 100);
-  else my.temp = clamp(my.temp - 0.60*dt, 0, 100); // temp drain doubled (was 0.30/s) per balance request; near-fire recovery unchanged
+  else my.temp = clamp(my.temp - 1.20*dt, 0, 100); // temp drain doubled AGAIN (was 0.60/s, originally 0.30/s); near-fire recovery unchanged (+2.2/s)
   let drain = 0;
   if(my.hunger <= 0) drain += 0.55;
   if(my.temp <= 0) drain += 0.55;
   if(drain > 0) my.hp = clamp(my.hp - drain*dt, 0, 100);
+  if(my.hp <= 0){ die(); updateStatHud(); return; } // HP reached 0 -> death (corpse + ghost)
   if(my.hunger <= 0 && nowMs() - my.lastGrowl > 20000){ my.lastGrowl = nowMs(); AudioSys.se("stomach"); }
   // fishing progress
   if(my.fishing){
@@ -833,6 +882,21 @@ function statTick(){
   if(!isHost && metaState.hostBeat && nowMs() - metaState.hostBeat > 20000 && phase === "playing"){
     toast("⚠️ ホストの接続が切れたようです（ゲームは続行中）", 3000);
   }
+}
+/* Death: leave a lootable corpse in the shared world and become a ghost.
+   Ghost: can still move around the whole map (no collisions), can do NO actions,
+   and is NOT rendered on other players' screens. */
+function die(){
+  if(!my || my.dead) return;
+  my.dead = true; my.hp = 0;
+  my.fishing = null; hideProgress();
+  const c = { x: Math.round(my.x), y: Math.round(my.y), name: myName, charId: myChar, meat: 3, at: nowMs() };
+  if(soloMode){ corpsesState[uid] = c; }
+  else if(roomRef) roomRef.child("corpses/" + uid).set(c);
+  if(ctxKind){ ctxKind = null; renderCtx(); }
+  toast("💀 死んでしまった…幽霊になって見守ろう", 4200);
+  AudioSys.se("bear");
+  showRoleHud(); syncMe(true);
 }
 function updateStatHud(){
   $("bar-hp").firstElementChild.style.width = my.hp + "%";
@@ -874,6 +938,15 @@ $("btn-drop").addEventListener("click", ()=>{ AudioSys.ensure(); doDrop(); });
 const cv = $("cv"), ctx2d = cv.getContext("2d");
 function resize(){ cv.width = window.innerWidth; cv.height = window.innerHeight; }
 window.addEventListener("resize", resize); resize();
+/* PC mouse aim: click/tap the canvas with a bow selected -> shoot toward the cursor (free angle) */
+cv.addEventListener("pointerdown", e=>{
+  if(phase !== "playing" || !my || my.dead) return;
+  AudioSys.ensure();
+  const entries = invEntries(); const sel = entries[my.sel];
+  if(sel && sel.kind === "bow"){
+    shootArrow(Math.atan2((camY + e.clientY) - (my.y - 6), (camX + e.clientX) - my.x));
+  }
+});
 function frameLoop(ts){
   if(phase !== "playing" && phase !== "roulette" && phase !== "vote" && phase !== "result"){ rafId = null; return; }
   rafId = requestAnimationFrame(frameLoop);
@@ -894,14 +967,27 @@ function stepMovement(dt){
     vx /= (len||1); vy /= (len||1);
     if(Math.abs(vx) > 0.2) my.dir = vx > 0 ? 1 : -1;
     my.face = Math.abs(vy) > Math.abs(vx) ? (vy > 0 ? 2 : 0) : (vx > 0 ? 3 : 1); // 0 up,1 left,2 down,3 right
-    const sp = 168 * speedFactor();
+    const snapA = Math.PI/4; // 8-way aim follows the movement/pad direction (diagonals included)
+    my.aim = Math.round(Math.atan2(vy, vx)/snapA) * snapA;
+    const sp = my.dead ? 168 : 168 * speedFactor(); // ghosts float at plain speed
     const nx = my.x + vx * sp * dt, ny = my.y + vy * sp * dt;
-    if(!blocked(nx, my.y)) my.x = nx;
-    if(!blocked(my.x, ny)) my.y = ny;
+    if(my.dead || !blocked(nx, my.y)) my.x = nx;   // ghosts pass through everything (map edge only)
+    if(my.dead || !blocked(my.x, ny)) my.y = ny;
     my.x = clamp(my.x, 24, WORLD_W-24); my.y = clamp(my.y, 24, WORLD_H-24);
     if(my.fishing && Math.hypot(vx,vy) > 0.1){ my.fishing = null; hideProgress(); toast("釣りが中断した"); }
+    if(!my.dead){
+      // separation: other players and bears never stack on the same spot as me
+      for(const pid in players){ if(pid === uid) continue; const p = players[pid]; if(!p || p.dead || typeof p.x !== "number") continue;
+        const dx = my.x - p.x, dy = my.y - p.y, d = Math.hypot(dx,dy);
+        if(d > 0.01 && d < 30){ my.x = p.x + dx/d*30; my.y = p.y + dy/d*30; } }
+      for(const bid in bears){ const b = bears[bid]; if(!b || !b.alive) continue;
+        const dx = my.x - b.x, dy = my.y - b.y, d = Math.hypot(dx,dy);
+        if(d > 0.01 && d < 38){ my.x = b.x + dx/d*38; my.y = b.y + dy/d*38; } }
+      my.x = clamp(my.x, 24, WORLD_W-24); my.y = clamp(my.y, 24, WORLD_H-24);
+    }
   }
-  // auto-pickup ground items (after their pickup cooldown time)
+  // auto-pickup ground items (after their pickup cooldown time) — ghosts cannot pick up
+  if(my.dead){ checkCtx(); return; }
   for(const id in groundItems){
     const it = groundItems[id]; if(!it) continue;
     if(nowMs() < (it.at||0) + 2000) continue;
@@ -915,6 +1001,9 @@ function stepMovement(dt){
 }
 function blocked(x,y){
   if(isWater(x,y)) return true;
+  // solids: the bonfire and the shared box are never walked through / overlapped
+  if(Math.hypot(x - FIRE_POS.x, y - FIRE_POS.y) < 36) return true;
+  if(Math.abs(x - BOX_POS.x) < 42 && Math.abs(y - BOX_POS.y) < 32) return true;
   for(let i=0;i<NODES.length;i++){
     const nd = NODES[i];
     if(nd.type !== "tree") continue;
@@ -924,7 +1013,7 @@ function blocked(x,y){
   return false;
 }
 function claimGroundItem(id, it){
-  if(soloMode){ delete groundItems[id]; my.inv[it.type] = (my.inv[it.type]||0)+1; if(ITEM_DEF[it.type].tool){ my.inv[it.type]--; my.tools.push({ kind: it.type, dur: it.dur||ITEM_DEF[it.type].dur }); } AudioSys.se("pickup"); renderInv(); return; }
+  if(soloMode){ delete groundItems[id]; my.inv[it.type] = (my.inv[it.type]||0)+1; if(ITEM_DEF[it.type].tool){ my.inv[it.type]--; my.tools.push({ kind: it.type, dur: it.dur||ITEM_DEF[it.type].dur }); } if(it.rot){ if(it.type==="fish"||it.type==="meat") my.rotRaw[it.type]++; else if(it.type==="gfish"||it.type==="gmeat") my.rotGrilled[it.type]++; } AudioSys.se("pickup"); renderInv(); return; }
   const ref = roomRef.child("items/" + id);
   // Claim first via a flag transaction so two players can't both take the same item.
   roomRef.child("items/" + id + "/claimedBy").transaction(cur => cur ? undefined : uid, (err, committed)=>{
@@ -933,22 +1022,44 @@ function claimGroundItem(id, it){
       spendHunger();
       if(ITEM_DEF[it.type].tool) my.tools.push({ kind: it.type, dur: it.dur || ITEM_DEF[it.type].dur });
       else my.inv[it.type] = (my.inv[it.type]||0) + 1;
+      if(it.rot){ if(it.type==="fish"||it.type==="meat") my.rotRaw[it.type]++; else if(it.type==="gfish"||it.type==="gmeat") my.rotGrilled[it.type]++; }
       AudioSys.se("pickup"); toast(ITEM_DEF[it.type].icon + " " + ITEM_DEF[it.type].name + "を拾った"); renderInv();
     }
   });
 }
 
+/* ================= Hit effects & status bubbles ================= */
+let fxList = [];
+function addFx(x, y){ fxList.push({ x, y, at: performance.now() }); if(fxList.length > 40) fxList.shift(); }
+/* One bubble above the head, highest priority first: vomit (20s) > HP<=15 > temp<=15 > hunger<=15 */
+function warnBubbleFor(o, now){
+  if(!o) return null;
+  if(o.vomitUntil && now < o.vomitUntil) return "🤮";
+  if(typeof o.hp === "number" && o.hp <= 15) return "🏥";
+  if(typeof o.temp === "number" && o.temp <= 15) return "🥶";
+  if(typeof o.hunger === "number" && o.hunger <= 15) return "🍽️";
+  return null;
+}
+function drawBubble(g, x, y, em){
+  g.save();
+  g.fillStyle = "rgba(255,255,255,0.93)";
+  g.beginPath(); g.moveTo(x-11, y-9); g.lineTo(x+11, y-9); g.lineTo(x+11, y+7); g.lineTo(x+3, y+7); g.lineTo(x, y+12); g.lineTo(x-3, y+7); g.lineTo(x-11, y+7); g.closePath(); g.fill();
+  g.font = "12px sans-serif"; g.textAlign = "center"; g.fillText(em, x, y+3);
+  g.restore();
+}
+
 /* ================= Arrows ================= */
-function shootArrow(){
+function shootArrow(angle){
   const bow = hasTool("bow"); if(!bow) return;
   spendHunger();
-  const dirs = { 0:[0,-1], 1:[-1,0], 2:[0,1], 3:[1,0] };
-  const d = dirs[my.face] || [my.dir, 0];
+  // 8-way (diagonals included) from the movement/pad direction, or a free angle when mouse-aimed on PC.
+  // The angle is stored in the shared arrow node so other clients draw the same flight direction.
+  const a = (typeof angle === "number") ? angle : (my.aim || 0);
   const id = "a" + uid + "_" + nowMs();
-  const ar = { id, x: my.x, y: my.y - 6, vx: d[0]*560, vy: d[1]*560, by: uid, ts: nowMs() };
+  const ar = { id, x: my.x, y: my.y - 6, vx: Math.cos(a)*560, vy: Math.sin(a)*560, by: uid, ts: nowMs(), ang: a };
   myArrows.push(ar);
   if(!soloMode){
-    roomRef.child("arrows/" + id).set({ x: Math.round(ar.x), y: Math.round(ar.y), dir: my.face, by: uid, ts: ar.ts });
+    roomRef.child("arrows/" + id).set({ x: Math.round(ar.x), y: Math.round(ar.y), ang: a, by: uid, ts: ar.ts });
     setTimeout(()=>{ if(roomRef) roomRef.child("arrows/" + id).remove(); }, 2600);
   }
   damageTool(bow, 1); AudioSys.se("bow"); renderInv();
@@ -961,6 +1072,7 @@ function updateArrows(dt){
     // bears
     for(const bid in bears){ const b = bears[bid]; if(b && b.alive && Math.hypot(b.x-ar.x, b.y-ar.y) < 30){
       ar.hitDone = true;
+      addFx(b.x, b.y - 10);
       if(soloMode) hostApplyBearHit({ bear: bid, dmg: 4, by: uid });
       else roomRef.child("bearHits").push({ bear: bid, dmg: 4, by: uid, ts: nowMs() });
       toast("🏹 クマに命中！"); return;
@@ -968,11 +1080,12 @@ function updateArrows(dt){
     // rabbits
     for(const nd of NODES){ if(nd.type !== "rabbit") continue; if(nodesState[nd.id] && nodesState[nd.id].gone) continue;
       const rp = rabbitPos(nd);
-      if(Math.hypot(rp.x-ar.x, rp.y-ar.y) < 22){ ar.hitDone = true; claimNode(nd, ()=>{ my.inv.meat++; AudioSys.se("pickup"); toast("🐰 ウサギを倒した！肉+1"); renderInv(); }); return; }
+      if(Math.hypot(rp.x-ar.x, rp.y-ar.y) < 22){ ar.hitDone = true; addFx(rp.x, rp.y - 6); claimNode(nd, ()=>{ my.inv.meat++; AudioSys.se("pickup"); toast("🐰 ウサギを倒した！肉+1"); renderInv(); }); return; }
     }
     // players
     for(const pid in players){ if(pid === uid) continue; const p = players[pid];
-      if(p && Math.hypot(p.x-ar.x, p.y-ar.y) < 26){ ar.hitDone = true;
+      if(p && !p.dead && Math.hypot(p.x-ar.x, p.y-ar.y) < 26){ ar.hitDone = true;
+        addFx(p.x, p.y - 10);
         if(!soloMode) roomRef.child("events/" + pid).push({ type:"punch", dmg:6, from: uid, ts: nowMs() });
         toast("🏹 プレイヤーに命中！"); return; }
     }
@@ -988,7 +1101,7 @@ function updateRabbits(dt){
     if(nodesState[nd.id] && nodesState[nd.id].gone) continue;
     const rp = rabbitPos(nd);
     let threat = null;
-    for(const pid in players){ const p = players[pid]; if(p && Math.hypot(p.x-rp.x, p.y-rp.y) < 130){ threat = p; break; } }
+    for(const pid in players){ const p = players[pid]; if(p && !p.dead && Math.hypot(p.x-rp.x, p.y-rp.y) < 130){ threat = p; break; } }
     if(threat){
       const dx = rp.x - threat.x, dy = rp.y - threat.y, d = Math.hypot(dx,dy)||1;
       rp.x = clamp(rp.x + dx/d * 190 * dt, 30, WORLD_W-30); rp.y = clamp(rp.y + dy/d * 190 * dt, 30, WORLD_H-30);
@@ -1011,6 +1124,7 @@ function claimNode(nd, onSuccess){
 }
 function hitTree(nd){
   spendHunger();
+  addFx(nd.x, nd.y - 12);
   const axe = hasTool("axe");
   const dmg = axe ? 4 : 1;
   if(!axe){ my.hp = clamp(my.hp - 0.6, 0, 100); }
@@ -1045,6 +1159,7 @@ function nearestOf(list, maxD){
 }
 function doUse(){
   if(phase !== "playing" || !my) return;
+  if(my.dead){ toast("👻 幽霊は何もできない"); return; }
   AudioSys.ensure();
   const t = nowMs();
   if(t - my.useCd < 300) return;
@@ -1052,11 +1167,14 @@ function doUse(){
   const entries = invEntries();
   const sel = entries[my.sel];
   // 0) near the shared box: deposit the selected item (box panel is take-out only).
-  //    Deposit wins over eating/using while the box panel is open; tools can't be boxed.
-  if(ctxKind === "box" && sel && sel.toolIdx === undefined && boxState.hasOwnProperty(sel.kind) && (my.inv[sel.kind]||0) > 0){
-    boxMove(sel.kind, true);
-    toast("📦 " + ITEM_DEF[sel.kind].name + "を箱に入れた");
-    return;
+  //    Deposit wins over eating/using while the box panel is open. ALL items incl. tools can be boxed.
+  if(ctxKind === "box" && sel){
+    if(sel.toolIdx !== undefined){ boxDepositTool(sel.toolIdx); return; }
+    if(boxState.hasOwnProperty(sel.kind) && (my.inv[sel.kind]||0) > 0){
+      boxMove(sel.kind, true);
+      toast("📦 " + ITEM_DEF[sel.kind].name + "を箱に入れた");
+      return;
+    }
   }
   // facilities open panels instead (ctx buttons handle details)
   // 1) selected bow -> shoot
@@ -1068,10 +1186,22 @@ function doUse(){
       return;
     } else { toast("湖の近くで使おう"); return; }
   }
-  // 3) selected food -> eat
+  // 3) selected food -> eat (a secretly-rotten grilled one triggers the vomit effect instead of nourishment)
   if(sel && ITEM_DEF[sel.kind].eat){
-    my.inv[sel.kind]--; my.hunger = clamp(my.hunger + ITEM_DEF[sel.kind].eat, 0, 100);
-    AudioSys.se("eat"); toast(ITEM_DEF[sel.kind].icon + " 食べて空腹+" + ITEM_DEF[sel.kind].eat); renderInv(); syncMe(true); return;
+    const kind = sel.kind;
+    my.inv[kind]--;
+    if((my.rotGrilled[kind]||0) > 0){
+      my.rotGrilled[kind]--;
+      my.hp = clamp(my.hp - 20, 0, 100);
+      my.hunger = clamp(my.hunger - 10, 0, 100);
+      my.temp = clamp(my.temp - 100, 0, 100); // effectively zeroed
+      my.vomitUntil = nowMs() + 20000; // vomit bubble above head + slowed, 20s (synced to others via syncMe)
+      AudioSys.se("stomach"); toast("🤮 腐っていた！ゲロを吐いた…（体力-20・空腹-10・体温0）", 3200);
+    } else {
+      my.hunger = clamp(my.hunger + ITEM_DEF[kind].eat, 0, 100);
+      AudioSys.se("eat"); toast(ITEM_DEF[kind].icon + " 食べて空腹+" + ITEM_DEF[kind].eat);
+    }
+    renderInv(); syncMe(true); return;
   }
   // 4) bear with axe (selected axe or any axe) within range
   const bearList = Object.keys(bears).filter(id=>bears[id] && bears[id].alive).map(id=>({ id, x: bears[id].x, y: bears[id].y }));
@@ -1080,6 +1210,7 @@ function doUse(){
     spendHunger();
     const axe = hasTool("axe"); damageTool(axe, 1);
     AudioSys.se("axe");
+    addFx(nb.x, nb.y - 10);
     if(soloMode) hostApplyBearHit({ bear: nb.id, dmg: 8, by: uid });
     else roomRef.child("bearHits").push({ bear: nb.id, dmg: 8, by: uid, ts: t });
     toast("🪓 クマを斬った！（クマの反撃に注意）"); renderInv(); return;
@@ -1090,6 +1221,7 @@ function doUse(){
     spendHunger();
     my.hp = clamp(my.hp - 0.6, 0, 100);
     AudioSys.se("punch");
+    addFx(nb.x, nb.y - 10);
     if(soloMode) hostApplyBearHit({ bear: nb.id, dmg: 1, by: uid });
     else roomRef.child("bearHits").push({ bear: nb.id, dmg: 1, by: uid, ts: t });
     toast("👊 素手で殴った！（少しだけ効いた）"); syncMe(true); return;
@@ -1106,10 +1238,11 @@ function doUse(){
     return;
   }
   // 7) punch another player
-  const others = Object.keys(players).filter(id=>id!==uid).map(id=>({ id, x: players[id].x, y: players[id].y }));
+  const others = Object.keys(players).filter(id=>id!==uid && !players[id].dead).map(id=>({ id, x: players[id].x, y: players[id].y }));
   const no = nearestOf(others, 58);
   if(no){
     spendHunger();
+    addFx(no.x, no.y - 10);
     AudioSys.se("punch");
     if(soloMode){ /* no one */ }
     else roomRef.child("events/" + no.id).push({ type:"punch", dmg:5, from: uid, ts: t });
@@ -1119,11 +1252,15 @@ function doUse(){
 }
 function doDrop(){
   if(phase !== "playing" || !my) return;
+  if(my.dead){ toast("👻 幽霊は何もできない"); return; }
   const entries = invEntries();
   const sel = entries[my.sel];
   if(!sel){ toast("捨てる物がない"); return; }
   const dropX = Math.round(my.x), dropY = Math.round(my.y + 56); // a bit BELOW (south)
   const item = { type: sel.kind, x: dropX, y: clamp(dropY, 30, WORLD_H-30), at: nowMs() };
+  // the hidden rotten flag travels with the dropped item (raw rotten stays rotten; grilled rotten stays secret)
+  if((sel.kind === "fish" || sel.kind === "meat") && (my.rotRaw[sel.kind]||0) > 0){ my.rotRaw[sel.kind]--; item.rot = 1; }
+  if((sel.kind === "gfish" || sel.kind === "gmeat") && (my.rotGrilled[sel.kind]||0) > 0){ my.rotGrilled[sel.kind]--; item.rot = 1; }
   if(sel.toolIdx !== undefined){ item.dur = my.tools[sel.toolIdx].dur; my.tools.splice(sel.toolIdx, 1); }
   else my.inv[sel.kind]--;
   if(soloMode){ groundItems["gi" + nowMs()] = item; }
@@ -1141,12 +1278,21 @@ function hideProgress(){ $("progress-wrap").style.display = "none"; }
 
 /* ================= Context panels (fire / box / bench) ================= */
 let ctxKind = null;
+let ctxCorpse = null;
 function checkCtx(){
+  if(my && my.dead){ ctxCorpse = null; if(ctxKind){ ctxKind = null; renderCtx(); } return; } // ghosts get no panels
   const dFire = Math.hypot(my.x-FIRE_POS.x, my.y-FIRE_POS.y);
   const dBox = Math.hypot(my.x-BOX_POS.x, my.y-BOX_POS.y);
   const dBench = Math.hypot(my.x-BENCH_POS.x, my.y-BENCH_POS.y);
   // nearest facility wins (bench/box are to the RIGHT of the fire; their own ranges take priority)
-  const cands = [ { k:"fire", d:dFire }, { k:"box", d:dBox }, { k:"bench", d:dBench } ].filter(c=>c.d < 105).sort((a,b)=>a.d-b.d);
+  const cands = [ { k:"fire", d:dFire }, { k:"box", d:dBox }, { k:"bench", d:dBench } ].filter(c=>c.d < 105);
+  // lootable corpses (meat remaining) compete by distance too
+  let bestCorpse = null, bestCorpseD = 85;
+  for(const cid in corpsesState){ const c = corpsesState[cid]; if(!c || (c.meat||0) <= 0) continue;
+    const d = Math.hypot(c.x-my.x, c.y-my.y); if(d < bestCorpseD){ bestCorpseD = d; bestCorpse = cid; } }
+  if(bestCorpse) cands.push({ k:"corpse", d:bestCorpseD });
+  cands.sort((a,b)=>a.d-b.d);
+  ctxCorpse = bestCorpse;
   const k = cands.length ? cands[0].k : null;
   if(k !== ctxKind){ ctxKind = k; renderCtx(); }
   else if(k && (frameCount % 30 === 0)) renderCtx();
@@ -1162,6 +1308,8 @@ window.__ctxAct = function(act, arg){
   else if(act === "takeout") fireTakeOut(arg);
   else if(act === "recook") fireRecook(arg);
   else if(act === "take") boxMove(arg, false);
+  else if(act === "taketool") boxTakeTool(arg);
+  else if(act === "loot") lootCorpse(arg);
   else if(act === "craft") craftItem(arg);
 };
 function renderCtx(){
@@ -1188,11 +1336,29 @@ function renderCtx(){
     }
     html += "</div></div>";
   } else if(ctxKind === "box"){
-    html += '<div class="ctx-box"><div class="ctx-title">📦 共有アイテムボックス（取り出すだけ）</div><div class="ctx-btns">';
-    for(const k of ["wood","stone","grass","fish","meat","gfish","gmeat"]){
-      html += ctxBtn(ITEM_DEF[k].icon + " 取る", "箱" + (boxState[k]||0), "take|" + k, (boxState[k]||0) <= 0, true);
+    // Empty box: NO contents UI at all (take-out display turns ON only when something is inside).
+    // ALL item types can be stored, including tools — each tool instance keeps its remaining durability.
+    const toolList = boxToolEntries();
+    const totalInBox = ["wood","stone","grass","fish","meat","gfish","gmeat"].reduce((s,k)=>s+(boxState[k]||0),0) + toolList.length;
+    html += '<div class="ctx-box"><div class="ctx-title">📦 共有アイテムボックス（取り出すだけ）</div>';
+    if(totalInBox > 0){
+      html += '<div class="ctx-btns">';
+      for(const k of ["wood","stone","grass","fish","meat","gfish","gmeat"]){
+        if((boxState[k]||0) <= 0) continue;
+        html += ctxBtn(ITEM_DEF[k].icon + " 取る", "箱" + (boxState[k]||0), "take|" + k, false, true);
+      }
+      toolList.forEach(t=>{
+        html += ctxBtn(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name + "を取る", "耐久" + t.dur, "taketool|" + t.id, false, true);
+      });
+      html += '</div>';
     }
-    html += '</div><div style="font-size:11px;color:#bcd8c2;margin-top:5px;">入れる：下の持ち物を選んで「使う(E)」を押す</div></div>';
+    html += '<div style="font-size:11px;color:#bcd8c2;margin-top:5px;">入れる：下の持ち物（道具もOK）を選んで「👊(E)」を押す</div></div>';
+  } else if(ctxKind === "corpse"){
+    const c = corpsesState[ctxCorpse];
+    if(!c){ box.style.display = "none"; box.innerHTML = ""; return; }
+    html += '<div class="ctx-box"><div class="ctx-title">💀 ' + esc(c.name||"？") + 'の死体（肉 残り' + (c.meat||0) + '）</div><div class="ctx-btns">';
+    html += ctxBtn("🥩 肉を取る", "死体から肉+1", "loot|" + ctxCorpse, (c.meat||0) <= 0, true);
+    html += "</div></div>";
   } else if(ctxKind === "bench"){
     html += '<div class="ctx-box"><div class="ctx-title">🔨 作業台（クラフト）</div><div class="ctx-btns">';
     RECIPES.forEach((r,i)=>{
@@ -1232,7 +1398,9 @@ function fireCook(kind){
   if(fireState.gauge <= 0){ toast("火が消えている！"); return; }
   if((my.inv[kind]||0) <= 0) return;
   my.inv[kind]--;
-  const slot = { kind, readyAt: nowMs() + 15000, by: uid };
+  let rot = 0;
+  if((my.rotRaw[kind]||0) > 0){ my.rotRaw[kind]--; rot = 1; } // grilling a rotten raw one: the result LOOKS identical (hidden flag)
+  const slot = { kind, readyAt: nowMs() + 15000, by: uid, rot };
   if(soloMode){ cookingState["s" + nowMs()] = slot; }
   else roomRef.child("fire/cooking").push(slot);
   toast("🍳 焼き始めた（15秒）"); AudioSys.se("fire"); renderInv(); renderCtx();
@@ -1250,25 +1418,75 @@ function fireTakeOut(sid){
   const out = s.kind === "fish" ? "gfish" : "gmeat";
   if(soloMode){ delete cookingState[sid]; }
   else roomRef.child("fire/cooking/" + sid).remove();
+  if(s.rot) my.rotGrilled[out] = (my.rotGrilled[out]||0) + 1; // hidden rotten grilled (indistinguishable)
   my.inv[out]++; AudioSys.se("cookdone"); toast("✨ " + ITEM_DEF[out].name + "が焼けた！"); renderInv(); renderCtx();
 }
 function boxMove(kind, deposit){
+  // Rotten bookkeeping through the box: totals live in boxState[kind], the hidden rotten subset in
+  // boxState[kind+"R"]. Deposit moves the flag with the item; take-out takes a rotten one first
+  // (same oldest-stock policy as cooking/eating, so the flag is never created or lost in the box).
+  const rk = kind + "R";
   if(deposit){
     if((my.inv[kind]||0) <= 0) return;
     my.inv[kind]--;
-    if(soloMode) boxState[kind] = (boxState[kind]||0)+1;
-    else roomRef.child("box/" + kind).transaction(v => (v||0)+1);
+    const wasRot = (invRot(kind)[kind]||0) > 0;
+    if(wasRot) invRot(kind)[kind]--;
+    if(soloMode){
+      boxState[kind] = (boxState[kind]||0)+1;
+      if(wasRot) boxState[rk] = (boxState[rk]||0)+1;
+    } else {
+      roomRef.child("box/" + kind).transaction(v => (v||0)+1);
+      if(wasRot) roomRef.child("box/" + rk).transaction(v => (v||0)+1);
+    }
   } else {
     if((boxState[kind]||0) <= 0) return;
-    if(soloMode){ boxState[kind]--; my.inv[kind]++; AudioSys.se("pickup"); }
-    else {
+    const takeRot = (boxState[rk]||0) > 0;
+    if(soloMode){
+      boxState[kind]--;
+      if(takeRot){ boxState[rk]--; invRot(kind)[kind]++; }
+      my.inv[kind]++; AudioSys.se("pickup");
+    } else {
       roomRef.child("box/" + kind).transaction(v => (v||0) > 0 ? v-1 : undefined, (err, committed)=>{
-        if(committed){ my.inv[kind]++; AudioSys.se("pickup"); renderInv(); renderCtx(); }
+        if(committed){
+          if(takeRot){ roomRef.child("box/" + rk).transaction(v => (v||0) > 0 ? v-1 : undefined); invRot(kind)[kind]++; }
+          my.inv[kind]++; AudioSys.se("pickup"); renderInv(); renderCtx();
+        }
       });
       renderInv(); return;
     }
   }
   AudioSys.se("decide"); renderInv(); renderCtx();
+}
+/* ---- Shared box: tools are stored as individual instances so durability survives the trip ---- */
+function invRot(kind){ return (kind === "fish" || kind === "meat") ? my.rotRaw : my.rotGrilled; }
+function boxToolEntries(){ return Object.keys(boxToolsState).map(id=>({ id, kind: boxToolsState[id].kind, dur: boxToolsState[id].dur })); }
+function boxDepositTool(toolIdx){
+  const t = my.tools[toolIdx]; if(!t) return;
+  my.tools.splice(toolIdx, 1);
+  if(t.kind === "rod" && my.fishing){ my.fishing = null; hideProgress(); toast("🎣 釣り竿を箱に入れたので釣りを中止した"); }
+  if(soloMode){ boxToolsState["t" + nowMs() + "_" + Math.floor(Math.random()*9999)] = { kind: t.kind, dur: t.dur }; }
+  else roomRef.child("boxTools").push({ kind: t.kind, dur: t.dur });
+  AudioSys.se("decide"); toast("📦 " + ITEM_DEF[t.kind].name + "を箱に入れた（耐久" + t.dur + "）");
+  renderInv(); renderCtx();
+}
+function boxTakeTool(id){
+  const t = boxToolsState[id]; if(!t) return;
+  if(soloMode){ delete boxToolsState[id]; }
+  else roomRef.child("boxTools/" + id).remove();
+  const dur = (t.dur !== undefined ? t.dur : ITEM_DEF[t.kind].dur);
+  my.tools.push({ kind: t.kind, dur });
+  AudioSys.se("pickup"); toast(ITEM_DEF[t.kind].icon + " " + ITEM_DEF[t.kind].name + "を箱から取った（耐久" + dur + "）");
+  renderInv(); renderCtx();
+}
+/* ---- Corpse looting: 1 meat per use action, 3 meat total per corpse ---- */
+function lootCorpse(cid){
+  const c = corpsesState[cid]; if(!c || (c.meat||0) <= 0) return;
+  spendHunger();
+  if(soloMode){ c.meat--; my.inv.meat++; AudioSys.se("pickup"); toast("🥩 死体から肉+1（残り" + c.meat + "）"); renderInv(); renderCtx(); return; }
+  roomRef.child("corpses/" + cid + "/meat").transaction(v => (v||0) > 0 ? v-1 : undefined, (err, committed)=>{
+    if(committed){ my.inv.meat++; AudioSys.se("pickup"); toast("🥩 死体から肉+1"); renderInv(); renderCtx(); }
+    else toast("もう肉は残っていない");
+  });
 }
 function craftItem(idx){
   const r = RECIPES[Number(idx)]; if(!r) return;
@@ -1486,7 +1704,10 @@ function drawWorld(ts){
       ctx2d.fillStyle = "#1f5c2a"; ctx2d.beginPath(); ctx2d.arc(nx, ny-12, 21, 0, Math.PI*2); ctx2d.fill();
       ctx2d.fillStyle = "#2a7038"; ctx2d.beginPath(); ctx2d.arc(nx-8, ny-18, 12, 0, Math.PI*2); ctx2d.fill();
       const hits = (nodesState[nd.id] && nodesState[nd.id].hits) || 0;
-      if(hits > 0){ ctx2d.fillStyle = "#fff"; ctx2d.font = "bold 10px sans-serif"; ctx2d.fillText("✕" + hits, nx, ny-38); }
+      if(hits > 0){ // progress BAR only — no damage numbers for trees
+        ctx2d.fillStyle = "#400"; ctx2d.fillRect(nx-14, ny-40, 28, 4);
+        ctx2d.fillStyle = "#8bc34a"; ctx2d.fillRect(nx-14, ny-40, 28 * clamp(hits/10, 0, 1), 4);
+      }
     } else if(nd.type === "stone"){
       ctx2d.fillStyle = "#9a9a92"; ctx2d.beginPath(); ctx2d.ellipse(nx, ny, 12, 8, 0, 0, Math.PI*2); ctx2d.fill();
       ctx2d.fillStyle = "#b5b5ac"; ctx2d.beginPath(); ctx2d.ellipse(nx-3, ny-2, 6, 4, 0, 0, Math.PI*2); ctx2d.fill();
@@ -1507,7 +1728,20 @@ function drawWorld(ts){
     const ix = it.x - camX, iy = it.y - camY;
     if(ix < -30 || iy < -30 || ix > W+30 || iy > H+30) continue;
     ctx2d.fillStyle = "rgba(0,0,0,0.25)"; ctx2d.beginPath(); ctx2d.ellipse(ix, iy+8, 11, 4, 0, 0, Math.PI*2); ctx2d.fill();
+    const isRotRaw = it.rot && (it.type === "fish" || it.type === "meat");
+    if(isRotRaw){ // rotten raw food on the ground: greenish tint + germ mark (rotten GRILLED looks normal — secret)
+      ctx2d.fillStyle = "rgba(96,190,50,0.45)"; ctx2d.beginPath(); ctx2d.arc(ix, iy, 12, 0, Math.PI*2); ctx2d.fill();
+    }
     ctx2d.font = "17px sans-serif"; ctx2d.textAlign = "center"; ctx2d.fillText(ITEM_DEF[it.type].icon, ix, iy+5);
+    if(isRotRaw){ ctx2d.font = "10px sans-serif"; ctx2d.fillText("🦠", ix+11, iy-7); }
+  }
+  // corpses of dead players (lootable: 3 meat each)
+  for(const cid in corpsesState){ const c = corpsesState[cid]; if(!c) continue;
+    const cxp = c.x - camX, cyp = c.y - camY;
+    if(cxp < -40 || cyp < -40 || cxp > W+40 || cyp > H+40) continue;
+    ctx2d.font = "20px sans-serif"; ctx2d.textAlign = "center"; ctx2d.fillText("💀", cxp, cyp + 4);
+    ctx2d.font = "bold 10px sans-serif"; ctx2d.fillStyle = "#ddd";
+    ctx2d.fillText((c.name||"") + (c.meat > 0 ? " 🥩×" + c.meat : "（肉なし）"), cxp, cyp + 20);
   }
   // bears (drawn at interpolated display position)
   for(const bid in bears){ const b = bears[bid]; if(!b || !b.alive) continue;
@@ -1522,7 +1756,8 @@ function drawWorld(ts){
   ctx2d.strokeStyle = "#d9c9a8"; ctx2d.lineWidth = 2.5;
   for(const aid in arrowsShared){ const a = arrowsShared[aid]; if(!a) continue;
     const age = (nowMs() - a.ts)/1000; if(age > 2.6) continue;
-    const dirs = { 0:[0,-1], 1:[-1,0], 2:[0,1], 3:[1,0] }; const d = dirs[a.dir] || [1,0];
+    const dirs = { 0:[0,-1], 1:[-1,0], 2:[0,1], 3:[1,0] };
+    const d = (typeof a.ang === "number") ? [Math.cos(a.ang), Math.sin(a.ang)] : (dirs[a.dir] || [1,0]);
     const ax = a.x + d[0]*560*age - camX, ay = a.y + d[1]*560*age - camY;
     ctx2d.beginPath(); ctx2d.moveTo(ax - d[0]*16, ay - d[1]*16); ctx2d.lineTo(ax, ay); ctx2d.stroke();
   }
@@ -1538,7 +1773,9 @@ function drawWorld(ts){
     const dpp = dispP[pid];
     const px = (dpp ? dpp.x : p.x) - camX, py = (dpp ? dpp.y : p.y) - camY;
     if(px < -50 || py < -60 || px > W+50 || py > H+50) continue;
+    if(p.dead) continue; // ghosts are invisible to other players
     drawChara(ctx2d, px, py + 16, 1.05, CHARS[p.charId||0], p.dir||1, false, ts);
+    const wbO = warnBubbleFor(p, nowMs()); if(wbO) drawBubble(ctx2d, px, py - 56, wbO);
     ctx2d.font = "bold 11px sans-serif"; ctx2d.textAlign = "center";
     ctx2d.fillStyle = "rgba(0,0,0,0.55)"; const nm = p.name||""; ctx2d.fillRect(px - ctx2d.measureText(nm).width/2 - 3, py - 44, ctx2d.measureText(nm).width + 6, 14);
     ctx2d.fillStyle = "#fff"; ctx2d.fillText(nm, px, py - 33);
@@ -1546,9 +1783,19 @@ function drawWorld(ts){
     ctx2d.fillStyle = "#400"; ctx2d.fillRect(px-14, py-29, 28, 4);
     ctx2d.fillStyle = "#e84c3d"; ctx2d.fillRect(px-14, py-29, 28 * clamp((p.hp||100)/100,0,1), 4);
   }
+  // hit effects (impact pops, ~0.3s)
+  fxList = fxList.filter(f => ts - f.at < 320);
+  fxList.forEach(f=>{
+    const k = (ts - f.at)/320, fx2 = f.x - camX, fy2 = f.y - camY;
+    ctx2d.save(); ctx2d.globalAlpha = 1 - k;
+    ctx2d.font = Math.round(18 + 12*k) + "px sans-serif"; ctx2d.textAlign = "center";
+    ctx2d.fillText("💥", fx2, fy2 - 8 - 16*k);
+    ctx2d.restore();
+  });
   // me
   if(my){
     drawChara(ctx2d, my.x - camX, my.y - camY + 16, 1.1, CHARS[myChar], my.dir, my.moving, ts);
+    const wbM = warnBubbleFor(my, nowMs()); if(wbM) drawBubble(ctx2d, my.x - camX, my.y - camY - 48, wbM);
     ctx2d.font = "bold 11px sans-serif"; ctx2d.textAlign = "center"; ctx2d.fillStyle = "#ffd94a";
     ctx2d.fillText("▼ " + myName, my.x - camX, my.y - camY - 34);
   }
@@ -1573,7 +1820,7 @@ function showRoulette(){
   const draw = ()=>{
     const r = rouletteState;
     if(!r){ info.textContent = "集計中…"; return; }
-    info.innerHTML = "全員の残り体力：" + r.sum + " / " + r.max + " ＝ サバイバー勝利確率 <span style='color:#7be495'>" + r.pct + "%</span>";
+    info.innerHTML = "サバイバー全員の残り体力：" + r.sum + " / " + r.max + " ＝ サバイバー勝利確率 <span style='color:#7be495'>" + r.pct + "%</span>（サイコパスの体力は含まない）";
     const wcv = $("wheel-cv"), g = wcv.getContext("2d");
     const pct = r.pct/100;
     const fracSeed = ((r.seed||1) % 1000)/1000;
@@ -1616,11 +1863,12 @@ function showVote(){
   voteTallied = false;
   const list = $("vote-list"); list.innerHTML = "";
   const myRole = (players[uid] && players[uid].role) || my.role;
+  const iAmDead = !!((players[uid] && players[uid].dead) || (my && my.dead));
   Object.keys(players).forEach(pid=>{
     if(pid === uid) return;
     const b = document.createElement("button");
     b.className = "vote-btn"; b.textContent = "🤔 " + (players[pid].name || "？");
-    b.disabled = myRole !== "survivor";
+    b.disabled = myRole !== "survivor" || iAmDead; // psychopaths have NO voting rights; ghosts neither
     b.onclick = ()=>{
       list.querySelectorAll(".vote-btn").forEach(x=>x.classList.remove("sel")); b.classList.add("sel");
       AudioSys.se("vote");
@@ -1629,13 +1877,14 @@ function showVote(){
     };
     list.appendChild(b);
   });
-  if(myRole !== "survivor") $("vote-status").textContent = "あなたは投票できません（見守り中）";
+  if(iAmDead) $("vote-status").textContent = "👻 幽霊は投票できません（見守り中）";
+  else if(myRole !== "survivor") $("vote-status").textContent = "🔪 サイコパスは投票できません（見守り中）";
   renderVoteStatus();
   if(isHost && !soloMode){
     const deadline = nowMs() + 30000;
     clearInterval(voteTimerInt);
     voteTimerInt = setInterval(()=>{
-      const survIds = Object.keys(players).filter(id=>players[id].role === "survivor");
+      const survIds = Object.keys(players).filter(id=>players[id].role === "survivor" && !players[id].dead);
       const done = survIds.every(id=>votesState[id]);
       if((done && survIds.length) || nowMs() > deadline){
         clearInterval(voteTimerInt);
@@ -1646,8 +1895,8 @@ function showVote(){
 }
 function renderVoteStatus(){
   if(phase !== "vote") return;
-  const total = Object.keys(players).filter(id=>players[id].role === "survivor").length;
-  const done = Object.keys(votesState).length;
+  const total = Object.keys(players).filter(id=>players[id].role === "survivor" && !players[id].dead).length;
+  const done = Object.keys(votesState).filter(id=>players[id] && players[id].role === "survivor" && !players[id].dead).length;
   $("vote-status").textContent = "投票済み：" + done + " / " + total + " 人（サバイバー全員が投票するか30秒で締切）";
 }
 function showResult(){
