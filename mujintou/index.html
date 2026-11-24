@@ -71,6 +71,7 @@
   .ctx-btn.blue { background:#3a6ea5; box-shadow:0 2px 0 #244a70; }
   .ctx-btn:disabled { background:#666; box-shadow:none; opacity:.65; }
   .ctx-btn small { display:block; font-weight:600; font-size:10px; opacity:.85; }
+  #banner { left:50%; transform:translateX(-50%); top:30%; background:rgba(20,40,20,.92); border:3px solid #ffd94a; color:#ffe9b0; padding:14px 30px; border-radius:16px; font-size:clamp(26px,6vw,40px); font-weight:900; display:none; z-index:10; white-space:nowrap; box-shadow:0 10px 30px rgba(0,0,0,.6); }
   #toast { left:50%; transform:translateX(-50%); top:88px; background:rgba(0,0,0,.82); color:#ffe9b0; padding:7px 16px; border-radius:20px; font-size:14px; font-weight:800; display:none; z-index:9; white-space:nowrap; max-width:94vw; overflow:hidden; text-overflow:ellipsis; }
   #progress-wrap { left:50%; transform:translateX(-50%); bottom:270px; width:min(300px,70vw); display:none; z-index:6; text-align:center; }
   #progress-label { font-size:13px; font-weight:900; text-shadow:1px 1px 2px #000; margin-bottom:3px; }
@@ -88,7 +89,7 @@
   #inv-weight { right:12px; bottom:150px; font-size:12px; font-weight:900; background:rgba(10,20,14,.8); padding:3px 9px; border-radius:8px; z-index:7; }
   #btn-use, #btn-drop { width:76px; height:76px; border-radius:50%; font-weight:900; z-index:7; color:#fff; }
   #btn-use { right:14px; bottom:14px; background:#2e9e4f; font-size:24px; box-shadow:0 4px 0 #1c6330; border:2px solid #bff0cd; }
-  #btn-drop { right:102px; bottom:14px; background:#7a5a2c; font-size:13px; box-shadow:0 4px 0 #4c3715; border:2px solid #e8d9ae; width:62px; height:62px; }
+  #btn-drop { right:102px; bottom:14px; background:#7a5a2c; font-size:14px; box-shadow:0 4px 0 #4c3715; border:2px solid #e8d9ae; } /* same 76px diameter as 👊 (from the shared rule above) */
   /* overlays */
   .overlay { position:fixed; inset:0; background:rgba(5,10,8,.86); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:20; padding:14px; text-align:center; }
   .overlay.on { display:flex; }
@@ -96,6 +97,9 @@
   #wheel-cv { image-rendering:auto; }
   .vote-btn { display:block; width:min(420px,88vw); margin:6px auto; background:#22392c; border:2px solid #6d8a76; color:#fff; font-size:16px; font-weight:800; padding:11px; }
   .vote-btn.sel { border-color:#ffd94a; background:#5a4a10; }
+  /* big vote countdown: the remaining seconds must be readable at a glance */
+  #vote-count { font-size:68px; font-weight:900; color:#ffd94a; text-shadow:3px 3px 0 #7a2c00; line-height:1.05; min-height:74px; }
+  #vote-note { font-weight:800; color:#ff9c8a; font-size:14px; margin-top:2px; }
   #result-list { list-style:none; padding:0; margin:10px 0; }
   #result-list li { margin:4px 0; font-size:16px; font-weight:700; }
   .psy { color:#ff8a75; } .sur { color:#7be495; }
@@ -122,7 +126,7 @@
       <button class="btn sub" id="btn-join">コードで参加</button>
     </div>
     <div class="err" id="title-err"></div>
-    <div class="note">📖 あそびかた：8分間生きのびよう。焚き火（画面中央）の火を絶やすな！ 木材・石・草を集めて作業台で道具を作り、魚や肉を焼いて空腹を満たす。体力は回復しない。1日の終わりにサバイバー全員の残り体力の割合でルーレット勝敗！ サイコパスに止まっても、投票でサイコパスを当てれば救済勝ち。<br>🖥️ PC：WASD/矢印キー移動、E=使う、Q=捨てる 📱 スマホ：左下パッド＋右下ボタン</div>
+    <div class="note">📖 あそびかた：8分間生きのびよう。焚き火（画面中央）の火を絶やすな！ 木材・石・草を集めて作業台で道具を作り、魚や肉を焼いて空腹を満たす。体力は回復しない。1日の終わりにサバイバー全員の残り体力の割合でルーレット勝敗！ サイコパスに止まっても、投票でサイコパスを当てれば救済勝ち。<br>🏠 作業台の上（北）に家を建てよう：木材40・石30・草50を集めて完成させると、その場で即ルーレット！ 時間切れまでに未完成だと、サバイバーの体力が半分になってしまう…。<br>🖥️ PC：WASD/矢印キー移動、E=使う、Q=捨てる 📱 スマホ：左下パッド＋右下ボタン</div>
     <div class="row" style="margin-top:8px;"><button class="btn ghost" id="btn-solo">オフラインで1人練習（Firebase不要）</button></div>
   </div>
 </div>
@@ -159,6 +163,7 @@
     <button id="btn-mute">🔊 音ON</button>
   </div>
   <div class="hud" id="toast"></div>
+  <div class="hud" id="banner"></div>
   <div class="hud" id="progress-wrap"><div id="progress-label"></div><div id="progress-bar"><div id="progress-fill"></div></div></div>
   <div class="hud" id="ctx"></div>
   <div class="hud" id="pad"><div id="pad-knob"></div></div>
@@ -180,6 +185,8 @@
 <div class="overlay" id="ov-vote">
   <h2>🗳️ 救済投票</h2>
   <div style="font-weight:700;max-width:440px;">ルーレットはサイコパスに止まった…！ でも投票でサイコパスを当てればサバイバーの逆転勝ち。サイコパスだと思う人を選んでね（サバイバーだけ投票できます。サイコパスは投票権なし。票が割れたらサイコパスの勝ち）。</div>
+  <div id="vote-count">30</div>
+  <div id="vote-note">⏳ 投票しないと無効です（投票した人だけ集計されます）</div>
   <div id="vote-list" style="margin-top:10px;"></div>
   <div id="vote-status" class="note"></div>
 </div>
@@ -366,6 +373,8 @@ document.addEventListener("pointerdown", ()=>{ AudioSys.ensure(); }, { once:fals
 const FIRE_POS = { x: WORLD_W/2, y: WORLD_H/2 };
 const BOX_POS  = { x: WORLD_W/2 + 130, y: WORLD_H/2 - 10 };
 const BENCH_POS= { x: WORLD_W/2 + 260, y: WORLD_H/2 - 10 };
+const HOUSE_POS= { x: BENCH_POS.x, y: BENCH_POS.y - 170 }; // house construction site: just NORTH (above) the workbench
+const HOUSE_NEED = { wood:40, stone:30, grass:50 };        // shared materials required to finish the house
 const LAKE = { x: WORLD_W/2, y: WORLD_H - 330, rx: 900, ry: 300 };
 function isWater(x,y){ const dx=(x-LAKE.x)/LAKE.rx, dy=(y-LAKE.y)/LAKE.ry; return dx*dx+dy*dy < 1; }
 function nearLake(x,y){ const dx=(x-LAKE.x)/(LAKE.rx+95), dy=(y-LAKE.y)/(LAKE.ry+95); const d=dx*dx+dy*dy; return d>=0.55 && isWater(x,y)===false && d<1.35; }
@@ -412,6 +421,11 @@ let fireState = { gauge:6, lastTick:0, relightAt:0 };
 let boxState = { wood:0, stone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 };
 let corpsesState = {};     // uid -> {x,y,name,charId,meat,at} (shared corpses of dead players)
 let boxToolsState = {};    // id -> {kind,dur} (tools stored in the shared box, durability kept)
+let houseState = { wood:0, stone:0, grass:0, done:false }; // shared house-building progress (room node "house"; local in solo)
+let houseDoneHandled = false; // this client already celebrated the completion (banner + host end scheduling)
+let houseTimeoutApplied = false; // the day ended with the house unfinished and the halving was applied
+let dayEndPending = false;   // host is inside the timeout-halving wait before tallying the roulette
+let dayEnded = false;        // host already ran the day-end tally this match
 let cookingState = {};     // slotId -> {kind,readyAt,by}
 let metaState = { host:"", hostBeat:0, endAt:0 };
 let rouletteState = null, resultState = null, votesState = {};
@@ -477,8 +491,9 @@ function invWeight(){
   return w;
 }
 function hasTool(kind){ return my.tools.find(t=>t.kind===kind); }
-/* Action hunger cost: each action (chop hit, pickup, punch, shot, craft, cast) costs a fixed 0.2 hunger. */
-function spendHunger(n){ if(my) my.hunger = clamp(my.hunger - (n === undefined ? 0.2 : n), 0, 100); }
+/* Action hunger cost: each action (chop hit, pickup, punch, shot, craft, cast) costs a fixed 0.8 hunger.
+   (Hunger drains were quadrupled by user request: base/action rates are all 4x the original values.) */
+function spendHunger(n){ if(my) my.hunger = clamp(my.hunger - (n === undefined ? 0.8 : n), 0, 100); }
 function damageTool(tool, amount){
   tool.dur -= (amount||1);
   if(tool.dur <= 0){ my.tools = my.tools.filter(t=>t!==tool); toast("🔨 "+ITEM_DEF[tool.kind].name+"が壊れた！"); renderInv();
@@ -566,6 +581,7 @@ function enterRoom(code, asHost){
     roomRef.child("meta").onDisconnect().update({ hostBeat: 0 });
     roomRef.child("fire").set({ gauge:6, lastTick: firebase.database.ServerValue.TIMESTAMP, relightAt:0 });
     roomRef.child("box").set({ wood:0, stone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 });
+    roomRef.child("house").set({ wood:0, stone:0, grass:0, done:false });
   }
   attachRoomListeners();
   phase = "lobby"; showLobby();
@@ -609,6 +625,10 @@ function attachRoomListeners(){
   roomRef.child("fire").on("value", s=>{ const f = s.val(); if(f){ fireState = f; cookingState = f.cooking || {}; } });
   roomRef.child("box").on("value", s=>{ if(s.val()) boxState = s.val(); if(ctxKind==="box") renderCtx(); });
   roomRef.child("boxTools").on("value", s=>{ boxToolsState = s.val() || {}; if(ctxKind==="box") renderCtx(); });
+  roomRef.child("house").on("value", s=>{ const h = s.val(); if(!h) return; const wasDone = houseState.done;
+    houseState = { wood:h.wood||0, stone:h.stone||0, grass:h.grass||0, done:!!h.done };
+    if(houseState.done && !wasDone) onHouseComplete(); // completion moment: celebrate on EVERY client
+    if(ctxKind==="house") renderCtx(); });
   roomRef.child("corpses").on("value", s=>{ corpsesState = s.val() || {}; });
   roomRef.child("nodes").on("value", s=>{ nodesState = s.val() || {}; });
   roomRef.child("items").on("value", s=>{ groundItems = s.val() || {}; });
@@ -623,6 +643,14 @@ function attachRoomListeners(){
     if(!ev || !my || phase!=="playing") return;
     if(ev.type==="punch" || ev.type==="bear"){
       hurtMe(ev.dmg||5, ev.type); // immediate death check inside — HP 0 means die NOW, any role
+    }
+    else if(ev.type==="halve"){
+      // day ended with the house unfinished: the host orders every living survivor's HP halved.
+      // Each client owns its HP, so the halving happens here; the host tallies ~2s later.
+      if(my.role === "survivor" || (players[uid] && players[uid].role === "survivor")){
+        applyHalve();
+        toast("🏠💦 家が完成しなかった…サバイバーの体力が半分に！", 3600);
+      }
     }
   });
   if(isHost){
@@ -647,6 +675,7 @@ function hostStartGame(){
   if(ids.length < 2 && !soloMode) return;
   if(soloMode && ids.length < 1) return;
   wipeoutDone = false; // new match: re-arm the survivor-wipeout check
+  houseDoneHandled = false; houseTimeoutApplied = false; dayEndPending = false; dayEnded = false; // house/day-end state re-armed
   const n = ids.length;
   const psychoCount = n >= 6 ? 2 : 1;
   const shuffled = ids.slice();
@@ -657,7 +686,7 @@ function hostStartGame(){
     metaState = { host: uid, hostBeat: startAt, phase:"playing", endAt: startAt + DAY_MS };
     players[uid].role = "survivor"; my.role = "survivor";
     fireState = { gauge:6, lastTick:startAt, relightAt:0 };
-    corpsesState = {}; boxToolsState = {}; my.dead = false; players[uid].dead = false;
+    corpsesState = {}; boxToolsState = {}; houseState = { wood:0, stone:0, grass:0, done:false }; my.dead = false; players[uid].dead = false;
     bears = {}; for(let i=0;i<4;i++){ bears["b"+i] = { x: 600+i*700, y: 420, hp:BEAR_HP, alive:true }; }
     phase = "playing"; startGameClient(); return;
   }
@@ -671,6 +700,7 @@ function hostStartGame(){
   roomRef.child("bears").set(bObj);
   roomRef.child("nodes").remove(); roomRef.child("items").remove(); roomRef.child("votes").remove(); roomRef.child("corpses").remove(); roomRef.child("boxTools").remove();
   roomRef.child("roulette").remove(); roomRef.child("result").remove();
+  roomRef.child("house").set({ wood:0, stone:0, grass:0, done:false });
   roomRef.child("fire").set({ gauge:6, lastTick: startAt, relightAt:0 });
   roomRef.child("meta").update({ phase:"playing", endAt: startAt + DAY_MS, hostBeat: startAt });
   AudioSys.se("decide");
@@ -788,6 +818,7 @@ function hostMoveBears(t){
     if(df < 48){ const sc = 48/(df||1); b.x = FIRE_POS.x + (b.x - FIRE_POS.x)*sc; b.y = FIRE_POS.y + (b.y - FIRE_POS.y)*sc; changed = true; }
     if(Math.abs(b.x - BOX_POS.x) < 54 && Math.abs(b.y - BOX_POS.y) < 42){ b.x += (b.x < BOX_POS.x ? -1 : 1) * (54 - Math.abs(b.x - BOX_POS.x)); changed = true; }
     if(Math.abs(b.x - BENCH_POS.x) < 56 && Math.abs(b.y - BENCH_POS.y) < 42){ b.x += (b.x < BENCH_POS.x ? -1 : 1) * (56 - Math.abs(b.x - BENCH_POS.x)); changed = true; }
+    if(Math.abs(b.x - HOUSE_POS.x) < 58 && Math.abs(b.y - HOUSE_POS.y) < 44){ b.x += (b.x < HOUSE_POS.x ? -1 : 1) * (58 - Math.abs(b.x - HOUSE_POS.x)); changed = true; }
   });
   for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++){
     const A = bears[ids[i]], B = bears[ids[j]];
@@ -813,9 +844,44 @@ function hostApplyBearHit(h){
     roomRef.child("bears/" + h.bear + "/hp").set(b.hp);
   }
 }
+/* Halve MY OWN hp (timeout penalty). HP is owned by each client, so the host cannot do this
+   directly — it pushes a "halve" event and every survivor client runs this. Dead players stay
+   at 0, and halving NEVER kills by itself: a living survivor keeps at least 0.5 HP. */
+function applyHalve(){
+  if(!my || my.dead) return;
+  if(my.hp > 0) my.hp = Math.max(0.5, my.hp / 2);
+  syncMe(true); // push the halved value back so the host's roulette math sees it
+}
 function hostEndDay(){
+  if(dayEnded || dayEndPending) return; // tally already done / halving wait already running
+  // HOUSE RULE — timeout without a finished house: every survivor's HP is HALVED before the
+  // roulette math. (If the house IS complete, the day already ended at the completion moment
+  // via onHouseComplete -> hostEndDay, so this branch only ever runs when incomplete.)
+  if(!houseState.done && !houseTimeoutApplied){
+    houseTimeoutApplied = true;
+    dayEndPending = true;
+    if(soloMode){
+      applyHalve(); // solo: the only survivor is me
+      toast("🏠💦 家が完成しなかった…体力が半分に！", 3600);
+      setTimeout(()=>{ dayEndPending = false; finishDayEnd(); }, 400);
+    } else {
+      Object.keys(players).forEach(id=>{
+        const p = players[id];
+        if(p && p.role === "survivor" && !p.dead) roomRef.child("events/" + id).push({ type:"halve", ts: nowMs() });
+      });
+      // wait ~2s: the halved HP values sync back (120ms interval) before the tally reads them
+      setTimeout(()=>{ dayEndPending = false; finishDayEnd(); }, 2000);
+    }
+    return;
+  }
+  finishDayEnd();
+}
+function finishDayEnd(){
+  if(dayEnded) return;
+  dayEnded = true;
   // Roulette basis: SURVIVORS ONLY — survivor win % = (sum of survivors' remaining HP) / (survivors x 100).
-  // Psychopaths' HP is excluded entirely. Dead survivors count as 0 (their synced HP is 0).
+  // The max is (number of survivors) x 100 — never a fixed number. Psychopaths' HP is excluded
+  // entirely. Dead survivors count as 0 (their synced HP is 0).
   const ids = Object.keys(players);
   const survIds = ids.filter(id=> players[id] && players[id].role === "survivor");
   const useIds = survIds.length ? survIds : ids;
@@ -824,11 +890,12 @@ function hostEndDay(){
   const pct = max > 0 ? Math.round(sum / max * 100) : 0;
   const result = (Math.random()*100) < pct ? "survivor" : "psychopath";
   const seed = Math.floor(Math.random()*100000);
+  const extra = { halved: !!(houseTimeoutApplied && !houseState.done), houseDone: !!houseState.done };
   if(soloMode){
-    rouletteState = { pct, result, seed, sum, max, survCount: useIds.length };
+    rouletteState = Object.assign({ pct, result, seed, sum, max, survCount: useIds.length }, extra);
     metaState.phase = "roulette"; phase = "roulette"; showRoulette(); return;
   }
-  roomRef.child("roulette").set({ pct, result, seed, sum, max, survCount: useIds.length });
+  roomRef.child("roulette").set(Object.assign({ pct, result, seed, sum, max, survCount: useIds.length }, extra));
   roomRef.child("meta").update({ phase:"roulette" });
 }
 function hostTallyVotes(){
@@ -860,6 +927,7 @@ function startGameClient(){
   document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("on"));
   AudioSys.stopTitle(); AudioSys.startWind();
   gameStartedAt = nowMs();
+  houseDoneHandled = false; // new match on this client: the next house completion celebrates again
   if(my) my.dead = false;
   // my role: read own node (others' roles are never displayed)
   const me = players[uid];
@@ -896,6 +964,57 @@ function hostPhaseProgression(){
     else { roomRef.child("result").set({ winner:"survivor", rescued:false, topVoted:"" }); roomRef.child("meta").update({ phase:"result" }); }
   }
 }
+/* Big center banner (house completion announcement) */
+function showBanner(msg, ms){
+  const b = $("banner"); if(!b) return;
+  b.textContent = msg; b.style.display = "block";
+  if(showBanner._t) clearTimeout(showBanner._t);
+  showBanner._t = setTimeout(()=>{ b.style.display = "none"; }, ms || 3000);
+}
+/* The moment the last material goes in: EVERY client celebrates, and the host ends the day
+   ~3 seconds later — straight to the roulette, regardless of the remaining time. */
+function onHouseComplete(){
+  if(houseDoneHandled) return;
+  houseDoneHandled = true;
+  showBanner("🏠 家完成！", 3000);
+  AudioSys.se("craft");
+  if(isHost) setTimeout(()=>{ if(phase === "playing") hostEndDay(); }, 3000);
+}
+/* Deposit 1 unit of a building material into the SHARED house progress (called from doUse
+   with the selected material while near the site). Never accepts more than the required count. */
+function houseDeposit(kind){
+  if(!my || my.dead || houseState.done) return;
+  if(!HOUSE_NEED[kind]) return;
+  if((houseState[kind]||0) >= HOUSE_NEED[kind]){ toast("🏠 " + ITEM_DEF[kind].name + "はもう十分！"); return; }
+  if((my.inv[kind]||0) <= 0){ toast(ITEM_DEF[kind].name + "がない"); return; }
+  my.inv[kind]--;
+  spendHunger();
+  AudioSys.se("decide");
+  if(soloMode){
+    houseState[kind]++;
+    toast("🏠 " + ITEM_DEF[kind].name + "を入れた（" + houseState[kind] + "/" + HOUSE_NEED[kind] + "）");
+    if(houseState.wood >= HOUSE_NEED.wood && houseState.stone >= HOUSE_NEED.stone && houseState.grass >= HOUSE_NEED.grass){
+      houseState.done = true; onHouseComplete();
+    }
+  } else {
+    roomRef.child("house/" + kind).transaction(v=>{
+      const cur = v || 0;
+      return cur >= HOUSE_NEED[kind] ? undefined : cur + 1; // cap at the required count, even under races
+    }, (err, committed)=>{
+      if(!committed){ my.inv[kind]++; toast("🏠 " + ITEM_DEF[kind].name + "はもう十分！"); renderInv(); return; }
+      // if that was the last piece overall, flip the shared done flag — the house listener
+      // then fires onHouseComplete() on every client (host included) exactly once each.
+      roomRef.child("house").once("value").then(s=>{
+        const h = s.val() || {};
+        if(!h.done && (h.wood||0) >= HOUSE_NEED.wood && (h.stone||0) >= HOUSE_NEED.stone && (h.grass||0) >= HOUSE_NEED.grass){
+          roomRef.child("house/done").set(true);
+        }
+      });
+    });
+    toast("🏠 " + ITEM_DEF[kind].name + "を入れた（" + Math.min((houseState[kind]||0) + 1, HOUSE_NEED[kind]) + "/" + HOUSE_NEED[kind] + "）");
+  }
+  renderInv(); renderCtx();
+}
 function syncMe(force){
   if(!my) return;
   // backstop death check (runs every 120ms): even if some damage path missed the immediate
@@ -913,15 +1032,16 @@ function statTick(){
   if(phase !== "playing" || !my) return;
   if(my.dead){ updateStatHud(); return; } // ghosts: no drains, HP stays 0
   const dt = 0.25; // this tick runs every 250ms; rates below are per-second
-  // hunger: base time drain 0.14/s + moving bonus 0.05/s + fishing bonus 0.03/s (actions also cost a fixed 0.2 each, see spendHunger)
-  my.hunger = clamp(my.hunger - (0.14 + (my.moving ? 0.05 : 0) + (my.fishing ? 0.03 : 0)) * dt, 0, 100);
+  // hunger (rates QUADRUPLED by user request): base time drain 0.56/s + moving bonus 0.20/s
+  // + fishing bonus 0.12/s (actions also cost a fixed 0.8 each, see spendHunger)
+  my.hunger = clamp(my.hunger - (0.56 + (my.moving ? 0.20 : 0) + (my.fishing ? 0.12 : 0)) * dt, 0, 100);
   const lit = fireState.gauge > 0;
   const dFire = Math.hypot(my.x - FIRE_POS.x, my.y - FIRE_POS.y);
   if(lit && dFire < 280) my.temp = clamp(my.temp + 2.2*dt, 0, 100); // near-fire recovery is NOT affected by the outer
   else {
-    // temp drain doubled AGAIN (was 0.60/s, originally 0.30/s). Wearing the アウター (just holding it
-    // counts as equipped) halves the DRAIN only: -1.20/s -> -0.60/s.
-    const tempDrain = hasTool("outer") ? 0.60 : 1.20;
+    // temp drain doubled AGAIN (was 1.20/s; before that 0.60/s, originally 0.30/s). Wearing the
+    // アウター (just holding it counts as equipped) halves the DRAIN only: -2.40/s -> -1.20/s.
+    const tempDrain = hasTool("outer") ? 1.20 : 2.40;
     my.temp = clamp(my.temp - tempDrain*dt, 0, 100);
   }
   let drain = 0;
@@ -997,6 +1117,11 @@ document.addEventListener("dblclick", e=>e.preventDefault(), { passive:false });
 document.addEventListener("wheel", e=>{ if(e.ctrlKey) e.preventDefault(); }, { passive:false }); // trackpad pinch
 let lastTapEnd = 0;
 document.addEventListener("touchend", e=>{
+  // MULTI-TOUCH: game controls fire on pointerdown and manage themselves. Never swallow a tap
+  // that lands ON a control — with a single global last-tap timer, the pad finger lifting would
+  // otherwise eat a second finger's button / item / panel tap landing within 350ms of it.
+  const t = e.target;
+  if(t && t.closest && t.closest("button, .inv-cell, .ctx-btn, input, textarea, #pad")) return;
   const now = Date.now();
   if(now - lastTapEnd <= 350) e.preventDefault(); // rapid second tap = double-tap: swallow it (no zoom, no double action)
   lastTapEnd = now;
@@ -1022,14 +1147,18 @@ document.addEventListener("keyup", e=>{ keys[e.key.toLowerCase()] = false; });
     padVec = { x: dx/max, y: dy/max };
     if(Math.hypot(padVec.x, padVec.y) < 0.18) padVec = { x:0, y:0 };
   }
-  pad.addEventListener("pointerdown", e=>{ pid = e.pointerId; pad.setPointerCapture(pid); setVec(e.clientX, e.clientY); });
+  // the pad tracks ONLY its own pointerId: a second finger landing on the pad is ignored,
+  // and touches on buttons / items (other elements, other pointerIds) are never interfered with
+  pad.addEventListener("pointerdown", e=>{ if(pid !== null) return; pid = e.pointerId; try{ pad.setPointerCapture(pid); }catch(err){} setVec(e.clientX, e.clientY); });
   pad.addEventListener("pointermove", e=>{ if(e.pointerId===pid) setVec(e.clientX, e.clientY); });
   const end = e=>{ if(e.pointerId===pid){ pid = null; padVec = {x:0,y:0}; knob.style.transform = "translate(0,0)"; } };
   pad.addEventListener("pointerup", end); pad.addEventListener("pointercancel", end);
 })();
-/* 👊 button: a tap fires once; HOLDING it repeats doUse() every ~280ms (continuous attacks).
-   Pointer events drive it; the trailing click after pointerup is swallowed via useClickSuppress
-   so a hold never double-fires. If pointer events are unavailable the plain click still works. */
+/* 👊 button: a tap fires once; HOLDING it repeats doUse() every 560ms (continuous attacks —
+   the repeat speed was halved from 280ms by user request). Pointer events drive it, so it also
+   works as a second finger's tap while the other finger holds the pad (multi-touch); the
+   trailing click after pointerup is swallowed via useClickSuppress so a hold never
+   double-fires. If pointer events are unavailable the plain click still works. */
 let useHoldTimer = null, useClickSuppress = false;
 $("btn-use").addEventListener("pointerdown", e=>{
   e.preventDefault();
@@ -1037,7 +1166,7 @@ $("btn-use").addEventListener("pointerdown", e=>{
   useClickSuppress = true;
   doUse();
   if(useHoldTimer) clearInterval(useHoldTimer);
-  useHoldTimer = setInterval(()=>{ doUse(); }, 280);
+  useHoldTimer = setInterval(()=>{ doUse(); }, 560);
 });
 const stopUseHold = ()=>{ if(useHoldTimer){ clearInterval(useHoldTimer); useHoldTimer = null; } };
 $("btn-use").addEventListener("pointerup", stopUseHold);
@@ -1046,7 +1175,11 @@ $("btn-use").addEventListener("pointerleave", stopUseHold);
 $("btn-use").addEventListener("click", ()=>{ AudioSys.ensure(); if(useClickSuppress){ useClickSuppress = false; return; } doUse(); });
 // long-press / right-click menus must never pop up over the game screen
 $("scr-game").addEventListener("contextmenu", e=>e.preventDefault());
-$("btn-drop").addEventListener("click", ()=>{ AudioSys.ensure(); doDrop(); });
+/* 捨てる button: fires on pointerdown (not click) so it responds to a second finger while the
+   pad is being held; the trailing click is swallowed the same way as the 👊 button. */
+let dropClickSuppress = false;
+$("btn-drop").addEventListener("pointerdown", e=>{ e.preventDefault(); AudioSys.ensure(); dropClickSuppress = true; doDrop(); });
+$("btn-drop").addEventListener("click", ()=>{ AudioSys.ensure(); if(dropClickSuppress){ dropClickSuppress = false; return; } doDrop(); });
 
 /* ================= Frame loop / movement ================= */
 const cv = $("cv"), ctx2d = cv.getContext("2d");
@@ -1119,6 +1252,7 @@ function blocked(x,y){
   if(Math.hypot(x - FIRE_POS.x, y - FIRE_POS.y) < 36) return true;
   if(Math.abs(x - BOX_POS.x) < 42 && Math.abs(y - BOX_POS.y) < 32) return true;
   if(Math.abs(x - BENCH_POS.x) < 44 && Math.abs(y - BENCH_POS.y) < 30) return true;
+  if(Math.abs(x - HOUSE_POS.x) < 48 && Math.abs(y - HOUSE_POS.y) < 34) return true; // house site is solid too
   for(let i=0;i<NODES.length;i++){
     const nd = NODES[i];
     if(nd.type !== "tree") continue;
@@ -1287,10 +1421,12 @@ function doUse(){
   if(my.dead){ toast("👻 幽霊は何もできない"); return; }
   AudioSys.ensure();
   const t = nowMs();
-  if(t - my.useCd < 280) return; // matches the 👊 hold-repeat interval (~280ms) so held repeats land
+  if(t - my.useCd < 560) return; // matches the 👊 hold-repeat interval (560ms) so held repeats land
   my.useCd = t;
   const entries = invEntries();
   const sel = entries[my.sel];
+  // 0h) near the house site: deposit the SELECTED building material, 1 per press (hold-repeat works)
+  if(ctxKind === "house" && sel && sel.toolIdx === undefined && HOUSE_NEED[sel.kind]){ houseDeposit(sel.kind); return; }
   // 0) near the shared box: deposit the selected item (box panel is take-out only).
   //    Deposit wins over eating/using while the box panel is open. ALL items incl. tools can be boxed.
   if(ctxKind === "box" && sel){
@@ -1410,8 +1546,10 @@ function checkCtx(){
   const dFire = Math.hypot(my.x-FIRE_POS.x, my.y-FIRE_POS.y);
   const dBox = Math.hypot(my.x-BOX_POS.x, my.y-BOX_POS.y);
   const dBench = Math.hypot(my.x-BENCH_POS.x, my.y-BENCH_POS.y);
+  const dHouse = Math.hypot(my.x-HOUSE_POS.x, my.y-HOUSE_POS.y);
   // nearest facility wins (bench/box are to the RIGHT of the fire; their own ranges take priority)
   const cands = [ { k:"fire", d:dFire }, { k:"box", d:dBox }, { k:"bench", d:dBench } ].filter(c=>c.d < 105);
+  if(dHouse < 110) cands.push({ k:"house", d:dHouse }); // house site (north of the bench), slightly larger range
   // lootable corpses (meat remaining) compete by distance too
   let bestCorpse = null, bestCorpseD = 85;
   for(const cid in corpsesState){ const c = corpsesState[cid]; if(!c || (c.meat||0) <= 0) continue;
@@ -1485,6 +1623,13 @@ function renderCtx(){
     html += '<div class="ctx-box"><div class="ctx-title">💀 ' + esc(c.name||"？") + 'の死体（肉 残り' + (c.meat||0) + '）</div><div class="ctx-btns">';
     html += ctxBtn("🥩 肉を取る", "死体から肉+1", "loot|" + ctxCorpse, (c.meat||0) <= 0, true);
     html += "</div></div>";
+  } else if(ctxKind === "house"){
+    const hs = houseState;
+    html += '<div class="ctx-box"><div class="ctx-title">🏠 家づくり（素材を入れて完成させよう）</div>';
+    html += '<div style="font-size:14px;font-weight:800;">🪵 木材 ' + (hs.wood||0) + '/' + HOUSE_NEED.wood + '　🪨 石 ' + (hs.stone||0) + '/' + HOUSE_NEED.stone + '　🌿 草 ' + (hs.grass||0) + '/' + HOUSE_NEED.grass + '</div>';
+    if(hs.done) html += '<div style="font-size:12px;color:#7be495;margin-top:4px;">🏠 完成！</div>';
+    else html += '<div style="font-size:11px;color:#bcd8c2;margin-top:4px;">入れる：下の持ち物で素材を選んで「👊(E)」を押す（1回で1個・長押しでもOK）</div>';
+    html += '</div>';
   } else if(ctxKind === "bench"){
     html += '<div class="ctx-box"><div class="ctx-title">🔨 作業台（クラフト）</div><div class="ctx-btns">';
     RECIPES.forEach((r,i)=>{
@@ -1636,7 +1781,9 @@ function renderInv(){
     d.className = "inv-cell" + (i===my.sel ? " sel" : "");
     d.innerHTML = '<div class="ic">' + ITEM_DEF[e.kind].icon + '</div><div class="ct">' + (e.toolIdx!==undefined ? "" : "×"+e.count) + '</div>' +
                   (e.dur !== undefined ? '<div class="dur">耐久' + e.dur + '</div>' : "");
-    d.onclick = ()=>{
+    // pointerdown (not click): the tap must register even while another finger holds the pad
+    d.addEventListener("pointerdown", e=>{
+      e.preventDefault();
       // One-tap deposit: while the shared box panel is open, tapping an item puts it straight
       // into the box (1 unit, or the tool with its durability) — no 👊 press needed.
       // The select + 👊(E) deposit flow keeps working too; away from the box a tap just selects.
@@ -1650,7 +1797,7 @@ function renderInv(){
         }
       }
       my.sel = i; AudioSys.se("decide"); renderInv();
-    };
+    });
     bar.appendChild(d);
   });
   if(!entries.length) bar.innerHTML = '<div class="inv-cell"><div class="ic">🎒</div><div class="ct">空</div></div>';
@@ -1817,6 +1964,27 @@ function drawWorld(ts){
   ctx2d.fillStyle = "#cfd8dc"; ctx2d.fillRect(sx-14, sy-16, 16, 6);
   ctx2d.fillStyle = "#8a5a2b"; ctx2d.fillRect(sx+8, sy-18, 14, 5);
   ctx2d.fillStyle = "#fff"; ctx2d.fillText("作業台", sx, sy-24);
+  // house construction site (north of the workbench): 🚧 + foundation while building,
+  // a frame past 50% of the materials, and a finished house once complete
+  sx = HOUSE_POS.x - camX; sy = HOUSE_POS.y - camY;
+  if(houseState.done){
+    ctx2d.fillStyle = "#a5713f"; ctx2d.fillRect(sx-40, sy-14, 80, 42);
+    ctx2d.fillStyle = "#8a4b2a"; ctx2d.beginPath(); ctx2d.moveTo(sx-48, sy-14); ctx2d.lineTo(sx, sy-44); ctx2d.lineTo(sx+48, sy-14); ctx2d.closePath(); ctx2d.fill();
+    ctx2d.fillStyle = "#5e3817"; ctx2d.fillRect(sx-9, sy+2, 18, 26);
+    ctx2d.fillStyle = "#ffe9b0"; ctx2d.fillRect(sx-30, sy-4, 12, 12); ctx2d.fillRect(sx+18, sy-4, 12, 12);
+    ctx2d.font = "bold 12px sans-serif"; ctx2d.fillStyle = "#fff"; ctx2d.fillText("🏠 家", sx, sy-52);
+  } else {
+    const hTotal = (houseState.wood||0) + (houseState.stone||0) + (houseState.grass||0);
+    const hNeedTotal = HOUSE_NEED.wood + HOUSE_NEED.stone + HOUSE_NEED.grass;
+    ctx2d.fillStyle = "#b09a72"; ctx2d.fillRect(sx-44, sy+16, 88, 10); // foundation
+    if(hTotal * 2 >= hNeedTotal){ // past 50%: wooden frame goes up
+      ctx2d.fillStyle = "#8a5a2b";
+      ctx2d.fillRect(sx-38, sy-20, 6, 38); ctx2d.fillRect(sx+32, sy-20, 6, 38); ctx2d.fillRect(sx-38, sy-22, 76, 6);
+    }
+    ctx2d.font = "20px sans-serif"; ctx2d.fillText("🚧", sx, sy+10);
+    ctx2d.font = "bold 11px sans-serif"; ctx2d.fillStyle = "#fff";
+    ctx2d.fillText("家づくり " + hTotal + "/" + hNeedTotal, sx, sy-32);
+  }
   // bonfire
   sx = FIRE_POS.x - camX; sy = FIRE_POS.y - camY;
   ctx2d.fillStyle = "#6e4a26"; ctx2d.fillRect(sx-26, sy+6, 52, 9);
@@ -1967,7 +2135,8 @@ function showRoulette(){
   const draw = ()=>{
     const r = rouletteState;
     if(!r){ info.textContent = "集計中…"; return; }
-    info.innerHTML = "サバイバー全員の残り体力：" + r.sum + " / " + r.max + " ＝ サバイバー勝利確率 <span style='color:#7be495'>" + r.pct + "%</span>（サイコパスの体力は含まない）";
+    info.innerHTML = (r.houseDone ? "🏠 家完成！<br>" : (r.halved ? "🏠💦 家が完成しなかった…サバイバーの体力が半分になった！<br>" : "")) +
+      "サバイバー全員の残り体力：" + r.sum + " / " + r.max + " ＝ サバイバー勝利確率 <span style='color:#7be495'>" + r.pct + "%</span>（サイコパスの体力は含まない）";
     const wcv = $("wheel-cv"), g = wcv.getContext("2d");
     const pct = r.pct/100;
     const fracSeed = ((r.seed||1) % 1000)/1000;
@@ -2003,7 +2172,7 @@ function showRoulette(){
   if(rouletteState) draw();
   else { const iv = setInterval(()=>{ if(rouletteState){ clearInterval(iv); draw(); } }, 300); setTimeout(()=>clearInterval(iv), 8000); }
 }
-let voteTimerInt = null, voteTallied = false;
+let voteTimerInt = null, voteTallied = false, voteCountInt = null;
 function showVote(){
   document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("on"));
   $("ov-vote").classList.add("on");
@@ -2027,6 +2196,15 @@ function showVote(){
   if(iAmDead) $("vote-status").textContent = "👻 幽霊は投票できません（見守り中）";
   else if(myRole !== "survivor") $("vote-status").textContent = "🔪 サイコパスは投票できません（見守り中）";
   renderVoteStatus();
+  // BIG countdown (every client): 30 seconds to vote — not voting means your vote is simply
+  // not counted (the tally only ever counts cast votes; see hostTallyVotes).
+  const vDeadline = nowMs() + 30000;
+  clearInterval(voteCountInt);
+  const vcEl = $("vote-count");
+  const updVc = ()=>{ const s = Math.max(0, Math.ceil((vDeadline - nowMs())/1000));
+    if(vcEl){ vcEl.textContent = s; vcEl.style.color = s <= 5 ? "#ff8a75" : "#ffd94a"; } };
+  updVc();
+  voteCountInt = setInterval(()=>{ updVc(); if(nowMs() >= vDeadline) clearInterval(voteCountInt); }, 250);
   if(isHost && !soloMode){
     const deadline = nowMs() + 30000;
     clearInterval(voteTimerInt);
@@ -2047,6 +2225,7 @@ function renderVoteStatus(){
   $("vote-status").textContent = "投票済み：" + done + " / " + total + " 人（サバイバー全員が投票するか30秒で締切）";
 }
 function showResult(){
+  clearInterval(voteCountInt);
   document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("on"));
   $("ov-result").classList.add("on");
   AudioSys.stopWind();
