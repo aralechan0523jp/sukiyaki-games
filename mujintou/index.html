@@ -45,7 +45,9 @@
   .tag.you { background:#57b96a; color:#06280f; }
   /* ---------- Game ---------- */
   #scr-game { padding:0; overflow:hidden; background:#000; }
-  #cv { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #cv { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  /* double-tap / pinch zoom kill: game controls never accept browser gestures */
+  #pad, #pad-knob, #btn-use, #btn-drop, #inv-bar, .inv-cell, .ctx-btn { touch-action:none; }
   .hud { position:absolute; z-index:5; }
   #hud-stats { top:42px; left:6px; background:rgba(10,20,14,.78); border:2px solid #d9a441; border-radius:8px; padding:3px 7px; width:min(178px,46vw); }
   .bar-row { display:flex; align-items:center; gap:4px; font-size:10px; font-weight:800; margin:1px 0; line-height:1.1; }
@@ -205,6 +207,8 @@ const FIREBASE_CONFIG = {
 };
 const WORLD_W = 3840, WORLD_H = 2880;
 const DAY_MS = 8 * 60 * 1000;
+const TREE_HP = 30; // trees have real HP: bare hands 3/hit (10 hits), axe 10/hit (3 hits) — same feel as before
+const BEAR_HP = 30; // bears: HP bar shows REMAINING hp (same style as trees), never damage numbers
 const ITEM_DEF = {
   wood:  { name:"木材",   icon:"🪵", w:10 },
   stone: { name:"石",     icon:"🪨", w:3 },
@@ -396,7 +400,7 @@ let roomCode = null, roomRef = null, myRef = null, isHost = false;
 let myName = "", myChar = 0;
 let phase = "menu"; // lobby, playing, roulette, vote, result
 let players = {};          // uid -> player data (from RTDB)
-let nodesState = {};       // id -> {gone,hits}
+let nodesState = {};       // id -> {gone,hp} (trees: hp counts DOWN from TREE_HP; legacy "hits" nodes are converted on read)
 let groundItems = {};      // id -> {type,x,y,at}
 let bears = {};            // id -> {x,y,hp,alive}
 let arrowsShared = {};     // id -> {x,y,dir,by,ts}
@@ -487,6 +491,23 @@ function speedFactor(){
   if(nowMs() < (my.vomitUntil||0)) f *= 0.5; // vomit: slowed for 20s
   return f;
 }
+/* Central damage entry point: EVERY instant HP loss to the local player goes through here,
+   so death is decided IMMEDIATELY at the moment HP hits 0 — for survivors AND psychopaths
+   alike (death used to depend only on the periodic statTick check, and a psychopath whose
+   HP reached 0 via an event could keep playing if that check was missed/interrupted).
+   src: "bear" | "punch" -> hit fx + sound + toast here; "vomit" | "self" -> caller already
+   gave its own feedback, so only the HP change + death check + sync happen here. */
+function hurtMe(dmg, src){
+  if(!my || my.dead || !(dmg > 0)) return;
+  my.hp = clamp(my.hp - dmg, 0, 100);
+  if(src === "bear" || src === "punch"){
+    addFx(my.x, my.y - 10);
+    AudioSys.se(src === "bear" ? "bear" : "punch");
+    toast(src === "bear" ? "🐻 クマに攻撃された！" : "👊 誰かに殴られた！");
+  }
+  if(my.hp <= 0 && phase === "playing"){ die(); return; } // die() syncs the dead state itself
+  syncMe(true);
+}
 
 /* ================= Firebase / Solo plumbing ================= */
 function fbInit(){
@@ -517,7 +538,7 @@ function buildCharGrid(){
     drawChara(cv.getContext("2d"), 18, 50, 0.9, c, 1, false, 0); // full body incl. hair spikes & face fits the card
     d.appendChild(cv);
     const lb = document.createElement("div"); lb.textContent = c.n; d.appendChild(lb);
-    d.onclick = ()=>{ myChar = i; AudioSys.ensure(); AudioSys.se("decide"); buildCharGrid(); };
+    d.onclick = ()=>{ myChar = i; saveProfile(); AudioSys.ensure(); AudioSys.se("decide"); buildCharGrid(); };
     g.appendChild(d);
   });
 }
@@ -568,7 +589,13 @@ function renderLobbyList(){
   $("lobby-err").textContent = isHost && n < 4 ? ("現在 " + n + " 人。開始には4人必要です（テスト開始は2人〜）") : "";
 }
 function attachRoomListeners(){
-  roomRef.child("players").on("value", s=>{ players = s.val() || {}; if(phase==="lobby") renderLobbyList(); });
+  roomRef.child("players").on("value", s=>{
+    players = s.val() || {};
+    if(phase==="lobby") renderLobbyList();
+    // Server-side dead flag wins: if the host enforced my death (hostLoop) but my own client
+    // never ran die() (e.g. a psychopath stuck at HP 0), convert to a ghost right now.
+    if(my && !my.dead && phase !== "lobby" && players[uid] && players[uid].dead) becomeGhostFromServer();
+  });
   roomRef.child("meta").on("value", s=>{
     const m = s.val() || {}; metaState = m;
     const ph = m.phase || "lobby";
@@ -591,11 +618,7 @@ function attachRoomListeners(){
     const ev = s.val(); s.ref.remove();
     if(!ev || !my || phase!=="playing") return;
     if(ev.type==="punch" || ev.type==="bear"){
-      my.hp = clamp(my.hp - (ev.dmg||5), 0, 100);
-      addFx(my.x, my.y - 10);
-      AudioSys.se(ev.type==="bear" ? "bear" : "punch");
-      toast(ev.type==="bear" ? "🐻 クマに攻撃された！" : "👊 誰かに殴られた！");
-      syncMe(true);
+      hurtMe(ev.dmg||5, ev.type); // immediate death check inside — HP 0 means die NOW, any role
     }
   });
   if(isHost){
@@ -630,7 +653,7 @@ function hostStartGame(){
     players[uid].role = "survivor"; my.role = "survivor";
     fireState = { gauge:6, lastTick:startAt, relightAt:0 };
     corpsesState = {}; boxToolsState = {}; my.dead = false; players[uid].dead = false;
-    bears = {}; for(let i=0;i<4;i++){ bears["b"+i] = { x: 600+i*700, y: 420, hp:30, alive:true }; }
+    bears = {}; for(let i=0;i<4;i++){ bears["b"+i] = { x: 600+i*700, y: 420, hp:BEAR_HP, alive:true }; }
     phase = "playing"; startGameClient(); return;
   }
   ids.forEach(id=>{
@@ -639,7 +662,7 @@ function hostStartGame(){
   });
   // bears: 6 in the northern forest
   const bObj = {};
-  for(let i=0;i<6;i++){ bObj["b"+i] = { x: 400 + i*560 + Math.floor(Math.random()*200), y: 300 + Math.floor(Math.random()*450), hp:30, alive:true, atkAt:0 }; }
+  for(let i=0;i<6;i++){ bObj["b"+i] = { x: 400 + i*560 + Math.floor(Math.random()*200), y: 300 + Math.floor(Math.random()*450), hp:BEAR_HP, alive:true, atkAt:0 }; }
   roomRef.child("bears").set(bObj);
   roomRef.child("nodes").remove(); roomRef.child("items").remove(); roomRef.child("votes").remove(); roomRef.child("corpses").remove(); roomRef.child("boxTools").remove();
   roomRef.child("roulette").remove(); roomRef.child("result").remove();
@@ -656,6 +679,22 @@ function hostLoop(){
   // heartbeat
   if(soloMode){ metaState.hostBeat = t; }
   else roomRef.child("meta/hostBeat").set(t);
+  // host enforcement: ANY player (survivor or psychopath — no exceptions) sitting at hp<=0
+  // without the dead flag is force-killed by the host, so death never depends on the victim's
+  // own client noticing. The victim's client honors the flag via the players listener.
+  if(!soloMode){
+    for(const pid in players){
+      const p = players[pid];
+      if(!p || p.dead || typeof p.hp !== "number" || p.hp > 0) continue;
+      p.dead = true; // local mirror: don't rewrite every tick while the snapshot catches up
+      roomRef.child("players/" + pid + "/dead").set(true);
+      if(!corpsesState[pid]){
+        const c = { x: Math.round(p.x || FIRE_POS.x), y: Math.round(p.y || FIRE_POS.y), name: p.name || "", charId: p.charId || 0, meat: 3, at: t };
+        corpsesState[pid] = c; // local mirror; the corpses listener will confirm the same node
+        roomRef.child("corpses/" + pid).set(c);
+      }
+    }
+  }
   // fire decay: -1 per 20s (1 gauge = 20 seconds; full 6 gauges = 120s)
   if(fireState.relightAt && fireState.relightAt > 0 && t >= fireState.relightAt){
     fireState = { gauge:1, lastTick:t, relightAt:0 };
@@ -717,7 +756,7 @@ function hostMoveBears(t){
       else if(!b.atkAt || t - b.atkAt > 1300){
         b.atkAt = t; changed = true;
         if(!soloMode) roomRef.child("events/" + target.id).push({ type:"bear", dmg:12, from:bid, ts:t });
-        else if(target.id === uid){ my.hp = clamp(my.hp-12,0,100); AudioSys.se("bear"); toast("🐻 クマに攻撃された！"); }
+        else if(target.id === uid){ hurtMe(12, "bear"); }
       }
     } else {
       if(Math.random() < 0.3){ b.x += (Math.random()*60-30); b.y += (Math.random()*60-30); b.x = clamp(b.x,80,WORLD_W-80); b.y = clamp(b.y,120,1000); changed = true; }
@@ -839,6 +878,9 @@ function hostPhaseProgression(){
 }
 function syncMe(force){
   if(!my) return;
+  // backstop death check (runs every 120ms): even if some damage path missed the immediate
+  // check in hurtMe(), HP<=0 while playing ALWAYS means death — role-independent.
+  if(phase === "playing" && !my.dead && my.hp <= 0){ die(); } // die() sets dead first, then syncs
   const data = { x: Math.round(my.x), y: Math.round(my.y), dir: my.dir, face: my.face,
                  hp: Math.round(my.hp*10)/10, hunger: Math.round(my.hunger*10)/10, temp: Math.round(my.temp*10)/10,
                  dead: !!my.dead, vomitUntil: my.vomitUntil||0,
@@ -898,6 +940,17 @@ function die(){
   AudioSys.se("bear");
   showRoleHud(); syncMe(true);
 }
+/* The host marked me dead in the shared state (players/<uid>/dead) but my own client never
+   ran die() — become a ghost now. Same end state as die() EXCEPT no corpse is written here:
+   the host already created corpses/<uid> when it enforced the death. */
+function becomeGhostFromServer(){
+  if(!my || my.dead) return;
+  my.dead = true; my.hp = 0;
+  my.fishing = null; hideProgress();
+  if(ctxKind){ ctxKind = null; renderCtx(); }
+  toast("💀 死んでしまった…幽霊になって見守ろう", 4200);
+  showRoleHud(); syncMe(true);
+}
 function updateStatHud(){
   $("bar-hp").firstElementChild.style.width = my.hp + "%";
   $("bar-hunger").firstElementChild.style.width = my.hunger + "%";
@@ -908,6 +961,24 @@ function updateStatHud(){
   $("hud-timer").textContent = mm + ":" + String(ss).padStart(2,"0");
 }
 /* (top-right bonfire chip removed per user feedback; fire state is shown in the fire context panel and on the bonfire itself) */
+
+/* ================= Zoom kill (smartphones: no double-tap / pinch zoom anywhere) =================
+   The viewport meta (maximum-scale=1, user-scalable=no) and touch-action:none CSS are the
+   first line; these JS guards cover iOS Safari, which ignores parts of both. */
+document.addEventListener("gesturestart", e=>e.preventDefault());
+document.addEventListener("gesturechange", e=>e.preventDefault());
+document.addEventListener("gestureend", e=>e.preventDefault());
+document.addEventListener("dblclick", e=>e.preventDefault(), { passive:false });
+document.addEventListener("wheel", e=>{ if(e.ctrlKey) e.preventDefault(); }, { passive:false }); // trackpad pinch
+let lastTapEnd = 0;
+document.addEventListener("touchend", e=>{
+  const now = Date.now();
+  if(now - lastTapEnd <= 350) e.preventDefault(); // rapid second tap = double-tap: swallow it (no zoom, no double action)
+  lastTapEnd = now;
+}, { passive:false });
+document.addEventListener("touchmove", e=>{
+  if(e.target && e.target.id === "cv") e.preventDefault(); // canvas drags are gameplay, never page gestures
+}, { passive:false });
 
 /* ================= Input ================= */
 const keys = {};
@@ -1122,26 +1193,36 @@ function claimNode(nd, onSuccess){
     else if(!committed) toast("他の人が取った！");
   });
 }
+/* Remaining HP of a tree node (TREE_HP when untouched). Legacy nodes written by older
+   builds stored accumulated damage as "hits" out of 10 — convert proportionally. */
+function treeHpLeft(nd){
+  const st = nodesState[nd.id]; if(!st) return TREE_HP;
+  if(typeof st.hp === "number") return st.hp;
+  if(typeof st.hits === "number") return Math.max(0, TREE_HP - st.hits * 3);
+  return TREE_HP;
+}
 function hitTree(nd){
   spendHunger();
   addFx(nd.x, nd.y - 12);
   const axe = hasTool("axe");
-  const dmg = axe ? 4 : 1;
-  if(!axe){ my.hp = clamp(my.hp - 0.6, 0, 100); }
+  const dmg = axe ? 10 : 3; // tree HP 30: axe fells in 3 hits, bare hands in 10 (same feel as the old hit counts)
+  if(!axe){ hurtMe(0.6, "self"); if(my.dead) return; } // bare-hand recoil can kill — and then the hit doesn't land
   AudioSys.se(axe ? "axe" : "punch");
   if(axe) damageTool(axe, 1);
   if(soloMode){
-    const st = nodesState[nd.id] || { hits:0 };
-    st.hits = (st.hits||0) + dmg;
-    if(st.hits >= 10){ st.gone = true; my.inv.wood++; AudioSys.se("treefall"); toast("🪵 木材+1（重さ10）"); }
+    const st = nodesState[nd.id] || { hp: TREE_HP };
+    if(typeof st.hp !== "number") st.hp = (typeof st.hits === "number") ? Math.max(0, TREE_HP - st.hits * 3) : TREE_HP;
+    st.hp -= dmg;
+    if(st.hp <= 0){ st.hp = 0; st.gone = true; my.inv.wood++; AudioSys.se("treefall"); toast("🪵 木材+1（重さ10）"); }
     nodesState[nd.id] = st; renderInv(); return;
   }
   let claimByMe = false;
   roomRef.child("nodes/" + nd.id).transaction(cur=>{
     if(cur && cur.gone) return cur;
-    cur = cur || { hits:0, gone:false };
-    cur.hits = (cur.hits||0) + dmg;
-    if(cur.hits >= 10){ cur.gone = true; cur.claimBy = uid; claimByMe = true; }
+    cur = cur || { hp: TREE_HP, gone:false };
+    if(typeof cur.hp !== "number") cur.hp = (typeof cur.hits === "number") ? Math.max(0, TREE_HP - cur.hits * 3) : TREE_HP;
+    cur.hp -= dmg;
+    if(cur.hp <= 0){ cur.hp = 0; cur.gone = true; cur.claimBy = uid; claimByMe = true; }
     return cur;
   }, (err, committed, snap)=>{
     const v = snap && snap.val();
@@ -1192,11 +1273,11 @@ function doUse(){
     my.inv[kind]--;
     if((my.rotGrilled[kind]||0) > 0){
       my.rotGrilled[kind]--;
-      my.hp = clamp(my.hp - 20, 0, 100);
       my.hunger = clamp(my.hunger - 10, 0, 100);
       my.temp = clamp(my.temp - 100, 0, 100); // effectively zeroed
       my.vomitUntil = nowMs() + 20000; // vomit bubble above head + slowed, 20s (synced to others via syncMe)
       AudioSys.se("stomach"); toast("🤮 腐っていた！ゲロを吐いた…（体力-20・空腹-10・体温0）", 3200);
+      hurtMe(20, "vomit"); // HP-20 through the central path: dies immediately if this empties HP
     } else {
       my.hunger = clamp(my.hunger + ITEM_DEF[kind].eat, 0, 100);
       AudioSys.se("eat"); toast(ITEM_DEF[kind].icon + " 食べて空腹+" + ITEM_DEF[kind].eat);
@@ -1219,7 +1300,8 @@ function doUse(){
     // bare-hand punch: only 1 damage (bear HP 30; bow=4, axe=8) — possible in principle, impractical alone.
     // Same risk feel as bare-hand tree chopping: costs the puncher 0.6 HP, and the bear is in attack range anyway.
     spendHunger();
-    my.hp = clamp(my.hp - 0.6, 0, 100);
+    hurtMe(0.6, "self");
+    if(my.dead){ renderInv(); return; } // died from the recoil cost — the punch never lands
     AudioSys.se("punch");
     addFx(nb.x, nb.y - 10);
     if(soloMode) hostApplyBearHit({ bear: nb.id, dmg: 1, by: uid });
@@ -1703,10 +1785,10 @@ function drawWorld(ts){
       ctx2d.fillStyle = "#6e4a26"; ctx2d.fillRect(nx-4, ny+2, 8, 14);
       ctx2d.fillStyle = "#1f5c2a"; ctx2d.beginPath(); ctx2d.arc(nx, ny-12, 21, 0, Math.PI*2); ctx2d.fill();
       ctx2d.fillStyle = "#2a7038"; ctx2d.beginPath(); ctx2d.arc(nx-8, ny-18, 12, 0, Math.PI*2); ctx2d.fill();
-      const hits = (nodesState[nd.id] && nodesState[nd.id].hits) || 0;
-      if(hits > 0){ // progress BAR only — no damage numbers for trees
+      const hpLeft = treeHpLeft(nd);
+      if(hpLeft < TREE_HP){ // HP BAR only — remaining HP shrinks from the right as the tree takes damage; no damage numbers
         ctx2d.fillStyle = "#400"; ctx2d.fillRect(nx-14, ny-40, 28, 4);
-        ctx2d.fillStyle = "#8bc34a"; ctx2d.fillRect(nx-14, ny-40, 28 * clamp(hits/10, 0, 1), 4);
+        ctx2d.fillStyle = "#8bc34a"; ctx2d.fillRect(nx-14, ny-40, 28 * clamp(hpLeft/TREE_HP, 0, 1), 4);
       }
     } else if(nd.type === "stone"){
       ctx2d.fillStyle = "#9a9a92"; ctx2d.beginPath(); ctx2d.ellipse(nx, ny, 12, 8, 0, 0, Math.PI*2); ctx2d.fill();
@@ -1749,8 +1831,9 @@ function drawWorld(ts){
     const bx = (dbp ? dbp.x : b.x) - camX, by = (dbp ? dbp.y : b.y) - camY;
     if(bx < -50 || by < -50 || bx > W+50 || by > H+50) continue;
     drawBear(ctx2d, bx, by, ts);
+    // HP BAR only, same style as trees: remaining HP (hp/BEAR_HP) shrinks from the right as damage lands; no damage numbers
     ctx2d.fillStyle = "#400"; ctx2d.fillRect(bx-20, by-44, 40, 5);
-    ctx2d.fillStyle = "#e84c3d"; ctx2d.fillRect(bx-20, by-44, 40 * clamp(b.hp/30,0,1), 5);
+    ctx2d.fillStyle = "#e84c3d"; ctx2d.fillRect(bx-20, by-44, 40 * clamp(b.hp/BEAR_HP,0,1), 5);
   }
   // shared arrows (from RTDB, extrapolated)
   ctx2d.strokeStyle = "#d9c9a8"; ctx2d.lineWidth = 2.5;
@@ -1792,12 +1875,17 @@ function drawWorld(ts){
     ctx2d.fillText("💥", fx2, fy2 - 8 - 16*k);
     ctx2d.restore();
   });
-  // me
+  // me (my own ghost IS drawn — translucent with a 👻 marker, so I can tell I'm dead;
+  //     other clients never draw me at all, see the players loop above)
   if(my){
-    drawChara(ctx2d, my.x - camX, my.y - camY + 16, 1.1, CHARS[myChar], my.dir, my.moving, ts);
-    const wbM = warnBubbleFor(my, nowMs()); if(wbM) drawBubble(ctx2d, my.x - camX, my.y - camY - 48, wbM);
+    const mxp = my.x - camX, myp = my.y - camY;
+    if(my.dead) ctx2d.save(), ctx2d.globalAlpha = 0.45; // ghostly translucency on my own screen only
+    drawChara(ctx2d, mxp, myp + 16, 1.1, CHARS[myChar], my.dir, my.moving, ts);
+    if(my.dead) ctx2d.restore();
+    if(my.dead) drawBubble(ctx2d, mxp, myp - 62, "👻");
+    else { const wbM = warnBubbleFor(my, nowMs()); if(wbM) drawBubble(ctx2d, mxp, myp - 48, wbM); }
     ctx2d.font = "bold 11px sans-serif"; ctx2d.textAlign = "center"; ctx2d.fillStyle = "#ffd94a";
-    ctx2d.fillText("▼ " + myName, my.x - camX, my.y - camY - 34);
+    ctx2d.fillText("▼ " + myName, mxp, myp - 34);
   }
   // zone labels
   ctx2d.font = "bold 15px sans-serif"; ctx2d.fillStyle = "rgba(255,255,255,0.75)"; ctx2d.textAlign = "left";
@@ -1920,9 +2008,26 @@ function showResult(){
 
 /* ================= Title wiring ================= */
 function titleError(msg){ $("title-err").textContent = msg; }
+/* ---- Profile persistence: remember the player's name + character on this device ----
+   Saved to localStorage whenever the name is typed or the character is picked (and again
+   when entering a room), then restored on the next visit — works for online and solo. */
+const PROFILE_KEY = "mj_profile_v1";
+function saveProfile(){
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify({ name: myName, char: myChar })); } catch(e){ /* storage unavailable (private mode etc.) */ }
+}
+function loadProfile(){
+  try {
+    const p = JSON.parse(localStorage.getItem(PROFILE_KEY) || "null");
+    if(!p) return;
+    if(typeof p.name === "string" && p.name){ myName = p.name.slice(0, 10); $("in-name").value = myName; }
+    if(typeof p.char === "number" && p.char >= 0 && p.char < CHARS.length) myChar = Math.floor(p.char);
+  } catch(e){ /* broken storage: start fresh */ }
+}
+$("in-name").addEventListener("input", ()=>{ myName = $("in-name").value.trim(); saveProfile(); });
 $("btn-create").addEventListener("click", ()=>{
   AudioSys.ensure(); AudioSys.startTitle();
   myName = $("in-name").value.trim(); if(!myName){ titleError("なまえを入力してね"); return; }
+  saveProfile();
   if(!fbInit()){ titleError("Firebaseの読み込みに失敗しました。通信を確認して再読み込みしてください（またはオフライン練習をどうぞ）"); return; }
   soloMode = false;
   const code = String(Math.floor(1000 + Math.random()*9000));
@@ -1936,6 +2041,7 @@ $("btn-join").addEventListener("click", ()=>{
   myName = $("in-name").value.trim(); if(!myName){ titleError("なまえを入力してね"); return; }
   const code = $("in-code").value.trim();
   if(!/^\d{4}$/.test(code)){ titleError("4桁のルームコードを入力してね"); return; }
+  saveProfile();
   if(!fbInit()){ titleError("Firebaseの読み込みに失敗しました"); return; }
   soloMode = false;
   db.ref("rooms/" + code + "/meta").once("value").then(s=>{
@@ -1946,6 +2052,7 @@ $("btn-join").addEventListener("click", ()=>{
 $("btn-solo").addEventListener("click", ()=>{
   AudioSys.ensure();
   myName = $("in-name").value.trim() || "あなた";
+  saveProfile();
   soloMode = true;
   enterRoom("SOLO", true);
   toast("オフライン練習：ホスト開始ボタンで始められます（テスト開始）");
@@ -1959,6 +2066,7 @@ $("btn-mute").addEventListener("click", ()=>{
   $("btn-mute").textContent = AudioSys.muted ? "🔇 音OFF" : "🔊 音ON";
   if(AudioSys.master) AudioSys.master.gain.value = AudioSys.muted ? 0 : 0.9;
 });
+loadProfile(); // restore saved name + character BEFORE the grid renders the selection
 buildCharGrid();
 </script>
 </body>
