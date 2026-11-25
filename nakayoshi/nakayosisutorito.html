@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="color-scheme" content="light" />
+<link rel="icon" href="data:," />
+<title>なかよしストリート</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+:root{
+  --cream:#fff6df; --cream2:#ffefc4; --ink:#2b2118; --navy:#1d2a6b; --gold:#f5b921;
+  --red:#e4572e; --blue:#2e7fd9; --green:#3aa655; --yellow:#e8a812; --purple:#8b4fc4;
+  --card:#fffdf6; --line:#d9c48f;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation; overscroll-behavior:none;}
+input,textarea{user-select:text; -webkit-user-select:text; -webkit-touch-callout:default; touch-action:auto;}
+body{margin:0; font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif; background:var(--cream); color:var(--ink);}
+button{min-height:44px; font-family:inherit; cursor:pointer;}
+.wrap{max-width:560px; margin:0 auto; padding:10px 10px 90px;}
+/* ===== title ===== */
+#titleScreen{padding-top:14px; text-align:center;}
+.game-title{font-size:34px; font-weight:900; color:var(--navy); letter-spacing:.04em; margin:6px 0 2px; text-shadow:2px 2px 0 var(--gold);}
+.subtitle{font-size:15px; font-weight:700; color:#7a4b12; margin:0 0 10px;}
+.izakaya{background:linear-gradient(180deg,#3a2415,#5a3418); border:4px solid #8a5a22; border-radius:14px; padding:14px 6px 10px; color:#ffe9b0; margin-bottom:12px;}
+.izakaya .faces{display:flex; justify-content:center; gap:2px; flex-wrap:nowrap;}
+.izakaya p{margin:8px 0 0; font-size:12px; font-weight:700;}
+.pick-label{font-weight:900; font-size:16px; margin:10px 0 6px;}
+.char-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.char-btn{background:var(--card); border:3px solid var(--line); border-radius:12px; padding:8px 6px; display:flex; align-items:center; gap:8px; font-size:17px; font-weight:900; text-align:left;}
+.char-btn small{display:block; font-size:11px; font-weight:700; color:#8a6d3b;}
+.char-btn.sel{border-color:var(--gold); background:#fff3cf; box-shadow:0 0 0 2px var(--gold);}
+#startBtn{width:100%; margin:8px 0 12px; font-size:22px; font-weight:900; background:var(--red); color:#fff; border:3px solid #a83a1c; border-radius:14px; padding:12px; box-shadow:0 4px 0 #a83a1c; position:sticky; top:8px; z-index:20;}
+#startBtn:active{transform:translateY(3px); box-shadow:0 1px 0 #a83a1c;}
+.howto{background:var(--card); border:2px solid var(--line); border-radius:12px; padding:10px 14px; text-align:left; font-size:13px; line-height:1.7; margin-top:14px;}
+.howto b{color:var(--navy);}
+/* ===== game ===== */
+#gameScreen{display:none;}
+.topbar{display:flex; justify-content:space-between; align-items:center; font-weight:900; font-size:13px; margin-bottom:6px;}
+.topbar .goal{background:var(--navy); color:#fff; border-radius:999px; padding:4px 12px;}
+#board{display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr); gap:3px; aspect-ratio:1/1; width:100%;}
+.cell{position:relative; border-radius:7px; border:2px solid var(--line); background:#fffdf6; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1px; overflow:hidden; min-height:0;}
+.cell .ic{font-size:clamp(13px,4.4vw,22px); line-height:1;}
+.cell .nm{font-size:clamp(7px,2.3vw,11px); font-weight:800; line-height:1.15; text-align:center;}
+.cell .pr{font-size:clamp(6px,2vw,10px); font-weight:700; color:#7a5b1e;}
+.cell.a-red{border-color:var(--red); background:#ffe9e2;} .cell.a-blue{border-color:var(--blue); background:#e2efff;}
+.cell.a-green{border-color:var(--green); background:#e4f6e8;} .cell.a-yellow{border-color:#c98f06; background:#fff3cf;}
+.cell.a-purple{border-color:var(--purple); background:#f1e6fb;}
+.cell.bank{background:var(--navy); color:#fff; border-color:#0f1745;} .cell.bank .pr{color:#ffd76a;}
+.cell.suit{background:#fff; font-size:clamp(16px,5.5vw,26px);}
+.cell.suit.red-s{color:#d92b3a;} .cell.suit.blk-s{color:#222;}
+.cell.special{background:#ffe3f1; border-color:#d95f9e;}
+.cell .owner{position:absolute; top:1px; left:1px; width:13px; height:13px; border-radius:50%; border:2px solid #fff; font-size:8px; color:#fff; font-weight:900; display:flex; align-items:center; justify-content:center;}
+.cell .mono{position:absolute; bottom:1px; right:1px; background:var(--gold); color:#5c3a00; font-size:7px; font-weight:900; border-radius:4px; padding:0 3px;}
+.cell .inv{position:absolute; top:1px; right:1px; font-size:8px; font-weight:900; color:#b97b00;}
+.cell .tokens{position:absolute; bottom:1px; left:1px; display:flex; gap:1px;}
+.tok{width:15px; height:15px; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 2px rgba(0,0,0,.35); font-size:8px; font-weight:900; color:#fff; display:flex; align-items:center; justify-content:center; position:relative;}
+.tok.cur{outline:2px solid var(--gold); outline-offset:0;}
+.tok .hif{position:absolute; top:-9px; right:-9px; font-size:11px; filter:drop-shadow(0 0 3px #a855f7);}
+#centerPanel{grid-column:2/8; grid-row:2/8; background:linear-gradient(180deg,#fffdf6,#ffefc4); border:3px solid var(--gold); border-radius:12px; padding:8px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; overflow:hidden; text-align:center;}
+#centerPanel h2{margin:2px 0; font-size:clamp(14px,4.5vw,20px); color:var(--navy);}
+#centerPanel .bankinfo{font-size:clamp(9px,2.8vw,12px); font-weight:700; line-height:1.5;}
+#diceView{font-size:clamp(34px,11vw,54px); line-height:1.1; min-height:1.1em;}
+#turnMsg{font-size:clamp(11px,3.4vw,14px); font-weight:900; min-height:1.4em;}
+.marks-row{display:flex; gap:4px; margin-top:4px; flex-wrap:wrap; justify-content:center;}
+.mchip{font-size:10px; font-weight:800; border:1.5px solid var(--line); border-radius:999px; padding:1px 7px; background:#fff;}
+.mchip .on{color:#d92b3a;} .mchip .off{color:#bbb;}
+/* players */
+#players{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px;}
+.pcard{background:var(--card); border:2.5px solid var(--line); border-radius:10px; padding:6px 8px; font-size:12px; display:flex; gap:7px; align-items:center;}
+.pcard.cur{border-color:var(--gold); box-shadow:0 0 0 2px var(--gold);}
+.pcard.out{opacity:.45;}
+.pcard .inf{flex:1; line-height:1.35;}
+.pcard .nm{font-weight:900; font-size:13px;}
+.pcard .hifbadge{background:#7c3aed; color:#fff; border-radius:4px; font-size:9px; padding:0 4px; font-weight:900;}
+/* controls */
+#diceBtn{width:100%; margin-top:10px; font-size:22px; font-weight:900; background:var(--red); color:#fff; border:3px solid #a83a1c; border-radius:14px; padding:12px; box-shadow:0 4px 0 #a83a1c;}
+#diceBtn:disabled{background:#b9a888; border-color:#8a7c5c; box-shadow:none;}
+#log{background:#2b2118; color:#ffe9b0; border-radius:10px; padding:8px 10px; font-size:12px; line-height:1.6; height:118px; overflow-y:auto; margin-top:10px; text-align:left;}
+/* modal */
+#modalBg{display:none; position:fixed; inset:0; background:rgba(30,20,5,.55); z-index:50; align-items:center; justify-content:center; padding:16px;}
+#modal{background:var(--card); border:3px solid var(--gold); border-radius:16px; padding:18px; max-width:420px; width:100%; text-align:center;}
+#modal h3{margin:0 0 8px; font-size:19px;}
+#modal p{font-size:14px; line-height:1.6; margin:4px 0 12px;}
+#modal .row{display:flex; gap:8px;}
+#modal button{flex:1; font-size:16px; font-weight:900; border-radius:10px; padding:10px; border:2px solid var(--line); background:#fff;}
+#modal button.primary{background:var(--red); color:#fff; border-color:#a83a1c;}
+/* result */
+#resultScreen{display:none; text-align:center; padding-top:16px;}
+.podium{display:flex; align-items:flex-end; justify-content:center; gap:8px; margin:18px 0;}
+.pod{display:flex; flex-direction:column; align-items:center; gap:4px; font-weight:900;}
+.pod .bar{width:64px; border-radius:8px 8px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:6px; color:#fff; font-size:20px;}
+#againBtn{font-size:19px; font-weight:900; background:var(--red); color:#fff; border:3px solid #a83a1c; border-radius:14px; padding:12px 26px;}
+.ranklist{text-align:left; background:var(--card); border:2px solid var(--line); border-radius:12px; padding:10px 14px; font-size:14px; line-height:1.9;}
+/* ===== mode / online ===== */
+.mode-tabs{display:flex; gap:8px; margin:10px 0 4px;}
+.mode-tab{flex:1; font-size:17px; font-weight:900; border-radius:12px; padding:11px 6px; border:3px solid var(--line); background:var(--card); color:var(--ink);}
+.mode-tab.sel{border-color:var(--gold); background:#fff3cf; box-shadow:0 0 0 2px var(--gold);}
+#onlinePanel{background:var(--card); border:2px solid var(--line); border-radius:12px; padding:12px 14px; text-align:left; font-size:14px;}
+#onlinePanel label{font-weight:900; display:block; margin:8px 0 4px;}
+#onlinePanel input{width:100%; font-size:18px; font-weight:700; padding:10px; border:2px solid var(--line); border-radius:10px; font-family:inherit; background:#fff;}
+#codeInput{text-transform:uppercase; letter-spacing:.25em; text-align:center; font-size:22px !important;}
+.mp-btn{width:100%; margin-top:10px; font-size:18px; font-weight:900; border-radius:12px; padding:11px; border:3px solid var(--navy); background:var(--navy); color:#fff;}
+.mp-btn.sub{background:#fff; color:var(--navy);}
+.mp-btn:disabled{background:#b9a888; border-color:#8a7c5c; color:#fff;}
+.mp-msg{font-size:13px; font-weight:700; color:#b03030; min-height:1.3em; margin-top:8px;}
+.mp-note{font-size:12px; color:#7a5b1e; line-height:1.6; margin-top:6px;}
+.char-btn:disabled{opacity:.38; filter:grayscale(.7); cursor:not-allowed;}
+.char-btn .taken{font-size:10px; font-weight:900; color:#b03030; display:block;}
+/* ===== lobby ===== */
+#lobbyScreen{display:none; text-align:center; padding-top:14px;}
+.room-code{font-size:42px; font-weight:900; letter-spacing:.3em; color:var(--navy); background:#fff3cf; border:3px dashed var(--gold); border-radius:14px; padding:10px 4px 10px 14px; margin:10px 0;}
+.seat-list{display:flex; flex-direction:column; gap:8px; margin:10px 0; text-align:left;}
+.seat{display:flex; align-items:center; gap:10px; background:var(--card); border:2.5px solid var(--line); border-radius:12px; padding:8px 12px; font-size:15px; font-weight:800;}
+.seat.me{border-color:var(--gold); box-shadow:0 0 0 2px var(--gold);}
+.seat .st{margin-left:auto; font-size:12px; font-weight:900; color:#7a5b1e;}
+.seat .st.off{color:#b03030;}
+#lobbyStartBtn{width:100%; font-size:21px; font-weight:900; background:var(--red); color:#fff; border:3px solid #a83a1c; border-radius:14px; padding:12px; box-shadow:0 4px 0 #a83a1c; margin-top:8px;}
+#lobbyStartBtn:disabled{background:#b9a888; border-color:#8a7c5c; box-shadow:none;}
+.leave-btn{width:100%; margin-top:10px; font-size:14px; font-weight:900; border-radius:10px; padding:9px; border:2px solid var(--line); background:#fff; color:#7a5b1e;}
+#roomLbl{font-size:12px; font-weight:900; color:var(--navy);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== TITLE ===== -->
+  <section id="titleScreen">
+    <h1 class="game-title">なかよしストリート</h1>
+    <p class="subtitle">最高の仲間と 最高の時間…♡</p>
+    <div class="mode-tabs">
+      <button class="mode-tab sel" id="tabSolo" type="button">👤 1人＋CPU</button>
+      <button class="mode-tab" id="tabOnline" type="button">🌐 オンライン対戦</button>
+    </div>
+    <div id="soloPanel">
+      <button id="startBtn">▶ ゲームスタート</button>
+      <div class="izakaya">
+        <div class="faces" id="titleFaces"></div>
+        <p>居酒屋に集まった4人で、お店を買いまくって大富豪を目指そう！</p>
+      </div>
+      <p class="pick-label">🎮 あなたのキャラを選んでね（残り3人はCPU）</p>
+      <div class="char-grid" id="charGrid"></div>
+    </div>
+    <div id="onlinePanel" style="display:none;">
+      <label for="nameInput">あなたの名前</label>
+      <input id="nameInput" type="text" maxlength="10" placeholder="例：ゆき" autocomplete="off">
+      <button class="mp-btn" id="createRoomBtn" type="button">🏠 部屋を作る（ホスト）</button>
+      <label for="codeInput">部屋コードで入室</label>
+      <input id="codeInput" type="text" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
+      <button class="mp-btn sub" id="joinRoomBtn" type="button">🚪 コードを入れて入室する</button>
+      <p class="mp-msg" id="mpMsg"></p>
+      <p class="mp-note">ホストが部屋を作ると4文字のコードが出るよ。みんなに教えて、コードを入れて入室してね。最大4人、空いた枠はCPUが入るよ。</p>
+    </div>
+    <div class="howto">
+      <b>あそびかた</b><br>
+      ・サイコロを振って28マスのボードを1周しよう。<br>
+      ・空き店舗は買える。自分の店は増資、他人の店は買い物料を払うよ。<br>
+      ・同じ色の4店を全部持つと<b>独占</b>！買い物料が2倍。<br>
+      ・♠♦♥♣を通り過ぎて全部集め、銀行に戻ると<b>サラリー＋レベルアップ</b>。<br>
+      ・総資産 <b>5,000G</b> 以上で銀行に戻ったら優勝！<br>
+      ・おじゃまキャラ<b>ひふみ</b>は一周が一番遅い人にくっつくよ。くっつかれるとサラリー半分・毎ターン−100G・店収入半分。誰かのマスに止まる／通り過ぎると、その人に<b>なすりつけ</b>られる！離れるのはサラリーを受け取ったときだけ。<br>
+      ・<b>オンライン対戦</b>は部屋コードで最大4人。自分の番だけ操作できて、切れた人はCPUが代わりに進めてくれるよ。
+    </div>
+  </section>
+
+  <!-- ===== LOBBY ===== -->
+  <section id="lobbyScreen">
+    <h1 class="game-title" style="font-size:26px;">🌐 オンライン対戦ロビー</h1>
+    <p class="subtitle">みんなに部屋コードを教えてね</p>
+    <div class="room-code" id="roomCodeBig">----</div>
+    <div class="seat-list" id="seatList"></div>
+    <p class="pick-label">🎮 あなたのキャラ（先に取られたキャラは選べないよ）</p>
+    <div class="char-grid" id="lobbyCharGrid"></div>
+    <button id="lobbyStartBtn" style="display:none;">▶ ゲームスタート（空き枠はCPU）</button>
+    <p class="mp-note" id="lobbyWaitMsg" style="display:none;">ホストがスタートするのを待っているよ…</p>
+    <button class="leave-btn" id="lobbyLeaveBtn" type="button">← ロビーを出る</button>
+  </section>
+
+  <!-- ===== GAME ===== -->
+  <section id="gameScreen">
+    <div class="topbar"><span>🏘️ なかよしストリート</span><span class="goal">目標総資産 5,000G</span><span id="roundLbl">1周目</span></div>
+    <div class="topbar" id="onlineBar" style="display:none;"><span id="roomLbl"></span><span id="connLbl">🟢 接続中</span></div>
+    <div id="board"></div>
+    <div id="players"></div>
+    <button id="diceBtn">🎲 サイコロを振る</button>
+    <div id="log"></div>
+    <button class="leave-btn" id="gameLeaveBtn" type="button" style="display:none;">🚪 部屋を出る（あなたの枠はCPUが引き継ぎます）</button>
+  </section>
+
+  <!-- ===== RESULT ===== -->
+  <section id="resultScreen">
+    <h1 class="game-title" style="font-size:28px;">🏆 結果発表 🏆</h1>
+    <p class="subtitle" id="winMsg"></p>
+    <div class="podium" id="podium"></div>
+    <div class="ranklist" id="rankList"></div>
+    <br>
+    <button id="againBtn" onclick="location.reload()">🔁 もう一度あそぶ</button>
+  </section>
+</div>
+
+<div id="modalBg"><div id="modal"><h3 id="mTitle"></h3><p id="mBody"></p><div class="row" id="mBtns"></div></div></div>
+
+<script>
+"use strict";
+/* no-zoom / no-select guards (inputs stay usable) */
+document.addEventListener("gesturestart", function(e){ e.preventDefault(); }, {passive:false});
+document.addEventListener("dblclick", function(e){ if(!/INPUT|TEXTAREA/.test(e.target.tagName)) e.preventDefault(); }, {passive:false});
+/* double-tap zoom is disabled via touch-action: manipulation + user-scalable=no;
+   no touchend guard here, so fast taps on buttons always register. */
+/* ============ data ============ */
+var AREAS = {
+  red:{name:"飲食", color:"#e4572e"}, blue:{name:"お買い物", color:"#2e7fd9"},
+  green:{name:"遊び", color:"#3aa655"}, yellow:{name:"市場", color:"#c98f06"}, purple:{name:"おしゃれ", color:"#8b4fc4"}
+};
+// board order: index 0..27
+var BOARD = [
+  {t:"bank", nm:"銀行 START", ic:"🏦"},
+  {t:"shop", area:"red", nm:"居酒屋", ic:"🏮", price:200},
+  {t:"shop", area:"red", nm:"ラーメン屋", ic:"🍜", price:220},
+  {t:"shop", area:"red", nm:"焼き鳥屋", ic:"🍢", price:240},
+  {t:"shop", area:"red", nm:"寿司屋", ic:"🍣", price:260},
+  {t:"suit", suit:"♠", red:false},
+  {t:"shop", area:"blue", nm:"コンビニ", ic:"🏪", price:240},
+  {t:"shop", area:"blue", nm:"薬局", ic:"💊", price:260},
+  {t:"shop", area:"blue", nm:"本屋", ic:"📚", price:280},
+  {t:"shop", area:"blue", nm:"雑貨屋", ic:"🧺", price:300},
+  {t:"suit", suit:"♦", red:true},
+  {t:"shop", area:"green", nm:"カラオケ", ic:"🎤", price:280},
+  {t:"shop", area:"green", nm:"ゲームセンター", ic:"🕹️", price:300},
+  {t:"shop", area:"green", nm:"映画館", ic:"🎬", price:320},
+  {t:"shop", area:"green", nm:"ボウリング", ic:"🎳", price:340},
+  {t:"suit", suit:"♥", red:true},
+  {t:"shop", area:"yellow", nm:"パン屋", ic:"🍞", price:300},
+  {t:"shop", area:"yellow", nm:"八百屋", ic:"🥬", price:320},
+  {t:"shop", area:"yellow", nm:"肉屋", ic:"🥩", price:340},
+  {t:"shop", area:"yellow", nm:"花屋", ic:"💐", price:360},
+  {t:"suit", suit:"♣", red:false},
+  {t:"shop", area:"purple", nm:"服屋", ic:"👕", price:340},
+  {t:"shop", area:"purple", nm:"靴屋", ic:"👟", price:360},
+  {t:"shop", area:"purple", nm:"美容室", ic:"💇", price:380},
+  {t:"shop", area:"purple", nm:"時計屋", ic:"⌚", price:400},
+  {t:"chance", nm:"チャンス", ic:"🎁"},
+  {t:"event", nm:"イベント", ic:"🎲"},
+  {t:"rest", nm:"休憩", ic:"☕"}
+];
+var CHARS = [
+  {name:"ぺし", desc:"黒髪・黒服", color:"#3b3b98", hair:"#1c1c22", skin:"#ffd9b3", cloth:"#26262e", hairStyle:"short"},
+  {name:"あゆ", desc:"茶髪ロング・白服", color:"#e2703a", hair:"#8a4b21", skin:"#ffe0bd", cloth:"#f5f0e6", hairStyle:"long"},
+  {name:"ハゲ", desc:"黒髪・黒服（小柄）", color:"#2f9e63", hair:"#1c1c22", skin:"#ffd9b3", cloth:"#26262e", hairStyle:"short", small:true},
+  {name:"王子", desc:"黒い帽子・金髪・白シャツ", color:"#c9a227", hair:"#f2c94c", skin:"#ffe0bd", cloth:"#f5f0e6", hairStyle:"hat"}
+];
+var GOAL = 5000, START_CASH = 1000;
+
+/* ============ avatars (inline SVG chibi) ============ */
+function avatarSVG(c, size){
+  size = size||44;
+  var hat = c.hairStyle==="hat" ? '<rect x="9" y="2" width="22" height="7" rx="2" fill="#1c1c22"/><rect x="6" y="8" width="28" height="3" rx="1.5" fill="#1c1c22"/>' : "";
+  var hairTop = c.hairStyle==="hat" ? '<path d="M11 11 h18 v5 h-18 z" fill="'+c.hair+'"/>' :
+    '<path d="M10.6 15.5 a10 10 0 0 1 18.8 0 z" fill="'+c.hair+'"/>';
+  var longSides = c.hairStyle==="long" ? '<rect x="7" y="12" width="5" height="18" rx="2" fill="'+c.hair+'"/><rect x="28" y="12" width="5" height="18" rx="2" fill="'+c.hair+'"/>' : "";
+  var sc = c.small ? ' transform="translate(3 3) scale(0.86)"' : "";
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 40 40" aria-hidden="true"><g'+sc+'>'
+    + '<path d="M11 40 v-6 a9 5 0 0 1 18 0 v6 z" fill="'+c.cloth+'" stroke="#999" stroke-width="0.6"/>'
+    + '<circle cx="20" cy="19" r="10" fill="'+c.skin+'"/>'
+    + '<circle cx="16.5" cy="20" r="1.4" fill="#222"/><circle cx="23.5" cy="20" r="1.4" fill="#222"/>'
+    + '<path d="M17 24.5 q3 2.4 6 0" stroke="#b3543a" stroke-width="1.6" fill="none" stroke-linecap="round"/>'
+    + longSides + hairTop + hat
+    + '</g></svg>';
+}
+var HIFUMI_SVG = '<svg width="44" height="44" viewBox="0 0 40 40" aria-hidden="true">'
+  + '<ellipse cx="20" cy="9" rx="9" ry="6" fill="#1c1c22"/>'
+  + '<circle cx="12" cy="5" r="2.4" fill="#f7a8c4"/><circle cx="20" cy="3" r="2.4" fill="#f7a8c4"/><circle cx="28" cy="5" r="2.4" fill="#f7a8c4"/>'
+  + '<circle cx="20" cy="17" r="9" fill="#ffffff" stroke="#ddd"/>'
+  + '<circle cx="16.8" cy="17" r="1.2" fill="#333"/><circle cx="23.2" cy="17" r="1.2" fill="#333"/>'
+  + '<path d="M17.5 22.5 h5" stroke="#d92b3a" stroke-width="1.8" stroke-linecap="round"/>'
+  + '<path d="M10 40 v-7 l10 -5 10 5 v7 z" fill="#7ec3e8"/>'
+  + '<rect x="12" y="31" width="16" height="4" fill="#d92b3a"/><circle cx="17" cy="33" r="1.1" fill="#ffd7e2"/><circle cx="23" cy="33" r="1.1" fill="#ffd7e2"/>'
+  + '</svg>';
+
+/* ============ state ============ */
+/* Single game-state object: every piece of shared game state lives here so a
+   future multiplayer build can snapshot/sync this one object (e.g. Firebase)
+   and apply remote actions, instead of chasing scattered globals. */
+var G = { players:[], owners:[], invests:[], cur:0, humanIdx:0, hifumi:-1, gameOver:false, lapCount:1, turn:0, winner:-1, lastDice:0, msg:"", logs:[] };
+var busy = false;
+function snapshotState(){ return JSON.parse(JSON.stringify({ players:G.players, owners:G.owners, invests:G.invests, cur:G.cur, hifumi:G.hifumi, gameOver:G.gameOver, lapCount:G.lapCount, turn:G.turn, winner:G.winner, lastDice:G.lastDice, msg:G.msg, logs:G.logs.slice(-80) })); }
+function applyState(s){
+  G.players=s.players||[]; G.owners=s.owners||G.owners; G.invests=s.invests||G.invests; G.cur=s.cur||0; G.hifumi=(s.hifumi==null?-1:s.hifumi); G.gameOver=!!s.gameOver; G.lapCount=s.lapCount||1; G.turn=s.turn||0; G.winner=(s.winner==null?-1:s.winner); G.lastDice=s.lastDice||0; G.msg=s.msg||""; G.logs=s.logs||[];
+  renderTokens(); renderLog(); showDice(G.lastDice); if (G.msg) setMsg(G.msg);
+}
+for (var i=0;i<28;i++){ G.owners.push(-1); G.invests.push(0); }
+
+function shopValue(idx){ var s=BOARD[idx]; return s.price + G.invests[idx]*Math.round(s.price*0.5); }
+function tollOf(idx){
+  var s=BOARD[idx]; var base = Math.round(s.price*0.25) + G.invests[idx]*Math.round(s.price*0.15);
+  if (isMonopoly(s.area)) base *= 2;
+  return base;
+}
+function isMonopoly(area){
+  var own = null;
+  for (var i=0;i<28;i++){ if (BOARD[i].t==="shop" && BOARD[i].area===area){ if (G.owners[i]===-1) return false; if (own===null) own=G.owners[i]; else if (G.owners[i]!==own) return false; } }
+  return own!==null;
+}
+function monopolyOwner(area){ return isMonopoly(area) ? G.owners[BOARD.findIndex(function(b){return b.t==="shop"&&b.area===area;})] : -1; }
+function assets(p){ var a=p.cash; for (var i=0;i<28;i++) if (G.owners[i]===p.idx) a+=shopValue(i); return a; }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+/* ============ board layout: perimeter coords ============ */
+function cellPos(idx){
+  if (idx<=7) return {r:8, c:idx+1};            // bottom row L->R
+  if (idx<=13) return {r:8-(idx-7), c:8};        // right side up
+  if (idx<=21) return {r:1, c:8-(idx-14)};       // top row R->L
+  return {r:1+(idx-21), c:1};                    // left side down
+}
+
+/* ============ render ============ */
+var boardEl = document.getElementById("board");
+function buildBoard(){
+  boardEl.innerHTML = "";
+  var center = document.createElement("div"); center.id="centerPanel";
+  center.innerHTML = '<h2>🏦 銀行</h2>'
+    + '<div class="bankinfo">♠♦♥♣を全部通って戻ると<br>サラリー＋レベルアップ！<br>（Lvが上がるほど増額）</div>'
+    + '<div id="diceView">🎲</div><div id="turnMsg">キャラを選んでスタート！</div>'
+    + '<div class="marks-row" id="marksRow"></div>';
+  boardEl.appendChild(center);
+  BOARD.forEach(function(s, idx){
+    var d = document.createElement("div"); var p = cellPos(idx);
+    d.style.gridRow = p.r; d.style.gridColumn = p.c; d.id = "cell"+idx;
+    if (s.t==="shop"){ d.className="cell a-"+s.area; d.innerHTML='<div class="ic">'+s.ic+'</div><div class="nm">'+s.nm+'</div><div class="pr">'+s.price+'G</div>'; }
+    else if (s.t==="bank"){ d.className="cell bank"; d.innerHTML='<div class="ic">🏦</div><div class="nm">銀行<br>START</div>'; }
+    else if (s.t==="suit"){ d.className="cell suit "+(s.red?"red-s":"blk-s"); d.innerHTML='<div>'+s.suit+'</div>'; }
+    else { d.className="cell special"; d.innerHTML='<div class="ic">'+s.ic+'</div><div class="nm">'+s.nm+'</div>'; }
+    boardEl.appendChild(d);
+  });
+  renderTokens();
+}
+function renderTokens(){
+  BOARD.forEach(function(s, idx){
+    var cell = document.getElementById("cell"+idx); if(!cell) return;
+    var old = cell.querySelectorAll(".tok,.owner,.mono,.inv"); old.forEach(function(e){ e.remove(); });
+    if (s.t==="shop" && G.owners[idx]!==-1){
+      var o=document.createElement("div"); o.className="owner"; o.style.background=G.players[G.owners[idx]].c.color; o.textContent=G.players[G.owners[idx]].c.name[0]; cell.appendChild(o);
+      if (G.invests[idx]>0){ var iv=document.createElement("div"); iv.className="inv"; iv.textContent="Lv"+(G.invests[idx]+1); cell.appendChild(iv); }
+      if (isMonopoly(s.area) && monopolyOwner(s.area)===G.owners[idx]){ var m=document.createElement("div"); m.className="mono"; m.textContent="独占！"; cell.appendChild(m); }
+    }
+    var here = G.players.filter(function(p){ return !p.out && p.pos===idx; });
+    if (here.length){
+      var tw=document.createElement("div"); tw.className="tokens";
+      here.forEach(function(p){
+        var t=document.createElement("div"); t.className="tok"+(p.idx===G.cur&&!G.gameOver?" cur":""); t.style.background=p.c.color; t.textContent=p.c.name[0];
+        if (G.hifumi===p.idx){ var h=document.createElement("span"); h.className="hif"; h.textContent="👻"; t.appendChild(h); }
+        tw.appendChild(t);
+      });
+      cell.appendChild(tw);
+    }
+  });
+  renderPlayers(); renderMarks();
+}
+function renderMarks(){
+  var row=document.getElementById("marksRow"); if(!row) return;
+  row.innerHTML = G.players.filter(function(p){return !p.out;}).map(function(p){
+    var ms=["♠","♦","♥","♣"].map(function(s){ return '<span class="'+(p.marks[s]?"on":"off")+'">'+s+'</span>'; }).join("");
+    return '<span class="mchip">'+p.c.name+" "+ms+'</span>';
+  }).join("");
+}
+function renderPlayers(){
+  var el=document.getElementById("players");
+  el.innerHTML = G.players.map(function(p){
+    var shops=0; for(var i=0;i<28;i++) if(G.owners[i]===p.idx) shops++;
+    return '<div class="pcard'+(p.idx===G.cur&&!G.gameOver?" cur":"")+(p.out?" out":"")+'">'
+      + avatarSVG(p.c, 38)
+      + '<div class="inf"><span class="nm" style="color:'+p.c.color+'">'+p.c.name+'</span>'
+      + (p.pname?'（'+escapeHtml(p.pname)+'）':'')
+      + (MP.mode==="online" ? (p.cpu?'（CPU）':(p.idx===G.humanIdx?'（あなた）':(p.connected===false?'（切断・CPU代行）':''))) : (p.idx===G.humanIdx?'（あなた）':'（CPU）'))
+      + (G.hifumi===p.idx?' <span class="hifbadge">ひふみ憑き</span>':'')
+      + (p.out?'<br>💸 破産…':'<br>💰 '+p.cash+'G ／ 総資産 '+assets(p)+'G<br>Lv.'+p.level+' ・ 店 '+shops+'軒')
+      + '</div></div>';
+  }).join("");
+  document.getElementById("roundLbl").textContent = G.lapCount+"周目";
+}
+function log(msg){
+  G.logs.push(msg); if (G.logs.length>120) G.logs.splice(0, G.logs.length-120);
+  var el=document.getElementById("log"); var d=document.createElement("div"); d.textContent=msg; el.appendChild(d); el.scrollTop=el.scrollHeight;
+}
+function renderLog(){
+  var el=document.getElementById("log"); el.innerHTML="";
+  G.logs.forEach(function(m){ var d=document.createElement("div"); d.textContent=m; el.appendChild(d); });
+  el.scrollTop=el.scrollHeight;
+}
+function setMsg(m){ G.msg=m; var e=document.getElementById("turnMsg"); if(e) e.textContent=m; }
+var DICE_FACE=["⚀","⚁","⚂","⚃","⚄","⚅"];
+function showDice(n){ if(n) G.lastDice=n; var e=document.getElementById("diceView"); if(e) e.textContent = n? DICE_FACE[n-1] : "🎲"; }
+
+/* ============ modal ============ */
+function ask(title, body, btns){
+  return new Promise(function(res){
+    var bg=document.getElementById("modalBg");
+    document.getElementById("mTitle").textContent=title;
+    document.getElementById("mBody").innerHTML=body;
+    var row=document.getElementById("mBtns"); row.innerHTML="";
+    btns.forEach(function(b, i){
+      var btn=document.createElement("button"); btn.textContent=b.label; if(i===0) btn.className="primary";
+      btn.onclick=function(){ bg.style.display="none"; res(b.value); };
+      row.appendChild(btn);
+    });
+    bg.style.display="flex";
+  });
+}
+function notice(title, body){ return ask(title, body, [{label:"OK", value:true}]); }
+
+/* ============ money / bankruptcy ============ */
+function pay(p, amount, reason){
+  // returns true if paid (auto-sell if needed)
+  if (p.cash >= amount){ p.cash -= amount; return true; }
+  // auto-sell cheapest shops first
+  var mine=[]; for(var i=0;i<28;i++) if(G.owners[i]===p.idx) mine.push(i);
+  mine.sort(function(a,b){ return shopValue(a)-shopValue(b); });
+  for (var k=0;k<mine.length && p.cash<amount;k++){
+    var idx=mine[k]; p.cash += shopValue(idx); G.owners[idx]=-1; G.invests[idx]=0;
+    log("　"+p.c.name+" は "+BOARD[idx].nm+" を売却して精算（+"+shopValue(idx)+"G）");
+  }
+  if (p.cash >= amount){ p.cash -= amount; return true; }
+  // bankrupt
+  p.cash = 0; p.out = true;
+  for(var i2=0;i2<28;i++) if(G.owners[i2]===p.idx){ G.owners[i2]=-1; G.invests[i2]=0; }
+  if (G.hifumi===p.idx) G.hifumi=-1;
+  log("💸 "+p.c.name+" は破産してしまった…！");
+  return false;
+}
+
+/* ============ G.hifumi ============ */
+function slowestPlayer(){
+  // 一番遅い = 完了した周回数（レベル-1）が一番少なく、同周回なら現在マス位置が一番後ろ
+  var alive = G.players.filter(function(p){return !p.out;});
+  if (!alive.length) return null;
+  return alive.slice().sort(function(a,b){
+    if (a.level!==b.level) return a.level-b.level;
+    return a.pos-b.pos;
+  })[0];
+}
+function summonHifumi(){
+  if (G.hifumi!==-1 || G.gameOver) return;
+  var target = slowestPlayer();
+  if (!target) return;
+  G.hifumi = target.idx;
+  log("👻 おじゃまキャラ「ひふみ」が現れた！ 一周が一番遅い "+target.c.name+" にくっついた！");
+  setMsg("ひふみが "+target.c.name+" にくっついた！");
+}
+function hifumiTransferCheck(mover){
+  // if the G.hifumi carrier passes/lands on another player, or another player passes the carrier
+  if (G.hifumi===-1 || G.gameOver) return;
+  var carrier = G.players[G.hifumi];
+  if (carrier.out){ G.hifumi=-1; return; }
+  G.players.forEach(function(other){
+    if (other.out || other.idx===G.hifumi) return;
+    if (other.pos===carrier.pos && mover && (mover.idx===carrier.idx || mover.idx===other.idx)){
+      log("👻 "+carrier.c.name+" がひふみを "+other.c.name+" になすりつけた！");
+      setMsg(carrier.c.name+" がひふみを "+other.c.name+" になすりつけた！");
+      G.hifumi = other.idx;
+    }
+  });
+}
+
+/* ============ movement ============ */
+async function movePlayer(p, steps){
+  for (var s=0;s<steps;s++){
+    p.pos = (p.pos+1)%28;
+    var cell = BOARD[p.pos];
+    if (cell.t==="suit" && !p.marks[cell.suit]){ p.marks[cell.suit]=true; log("　"+p.c.name+" は "+cell.suit+" をゲット！"); }
+    hifumiTransferCheck(p);
+    renderTokens(); syncPush();
+    if (p.pos===0){
+      // returned to bank
+      var all = p.marks["♠"]&&p.marks["♦"]&&p.marks["♥"]&&p.marks["♣"];
+      if (all){
+        p.level++;
+        var salary = 300 + p.level*100;
+        if (G.hifumi===p.idx){ salary = Math.floor(salary/2); G.hifumi=-1; log("👻 サラリーを受け取ったので、ひふみは離れていった！"); }
+        p.cash += salary;
+        p.marks = {};
+        G.lapCount = Math.max(G.lapCount, p.level);
+        log("🏦 "+p.c.name+" が1周！ サラリー "+salary+"G ＋ レベルアップ → Lv."+p.level);
+        setMsg(p.c.name+" サラリー "+salary+"G！ Lv."+p.level);
+        renderTokens(); syncPush();
+        if (assets(p) >= GOAL){ await winGame(p); return false; }
+        if (G.hifumi===-1 && Math.random()<0.35){ summonHifumi(); renderTokens(); }
+      }
+    }
+    await sleep(260);
+    if (G.gameOver) return false;
+  }
+  return true;
+}
+
+/* ============ landing actions ============ */
+async function landAction(p){
+  var cell = BOARD[p.pos];
+  if (cell.t==="shop"){
+    var idx=p.pos;
+    if (G.owners[idx]===-1){
+      if (p.cash >= cell.price){
+        var buy = true;
+        if (isLocalTurn(p)){ buy = await ask(cell.ic+" "+cell.nm, AREAS[cell.area].name+"エリアのお店だよ。<br>価格 <b>"+cell.price+"G</b>（所持金 "+p.cash+"G）<br>買うと止まった人から買い物料がもらえるよ。", [{label:"買う！", value:true},{label:"買わない", value:false}]); }
+        else { buy = p.cash >= cell.price + 150; }
+        if (buy){ p.cash -= cell.price; G.owners[idx]=p.idx; log("🛒 "+p.c.name+" は "+cell.nm+" を買った！（"+cell.price+"G）");
+          if (isMonopoly(cell.area) && monopolyOwner(cell.area)===p.idx){ log("🎉 "+p.c.name+" が "+AREAS[cell.area].name+"エリアを独占！ 買い物料2倍！"); if(isLocalTurn(p)) await notice("🎉 独占！", AREAS[cell.area].name+"エリアの4店を全部そろえた！<br>このエリアの買い物料が2倍になったよ。"); }
+        } else log("　"+p.c.name+" は "+cell.nm+" を買わなかった。");
+      } else log("　"+p.c.name+" はお金が足りず "+cell.nm+" を買えなかった。");
+    } else if (G.owners[idx]===p.idx){
+      var cost = Math.round(cell.price*0.5);
+      if (G.invests[idx]>=3){ log("　"+p.c.name+" の "+cell.nm+" は最大まで増資済み。"); }
+      else if (p.cash >= cost){
+        var inv = true;
+        if (isLocalTurn(p)){ inv = await ask(cell.ic+" "+cell.nm+"（自分の店）", "増資すると店の価値と買い物料が上がるよ。<br>増資費 <b>"+cost+"G</b>（所持金 "+p.cash+"G）→ Lv."+(G.invests[idx]+2), [{label:"増資する！", value:true},{label:"しない", value:false}]); }
+        else { inv = p.cash >= cost + 250; }
+        if (inv){ p.cash -= cost; G.invests[idx]++; log("🏗️ "+p.c.name+" は "+cell.nm+" に増資した！（Lv."+(G.invests[idx]+1)+"）"); }
+      }
+    } else {
+      var owner = G.players[G.owners[idx]];
+      var toll = tollOf(idx);
+      if (G.hifumi===owner.idx) toll = Math.floor(toll/2);
+      log("💸 "+p.c.name+" は "+owner.c.name+" の "+cell.nm+" に止まり、買い物料 "+toll+"G を払った。"+(isMonopoly(cell.area)?"（独占中！）":""));
+      var ok = pay(p, toll, "toll");
+      if (ok && !owner.out) owner.cash += toll;
+      renderTokens();
+    }
+  }
+  else if (cell.t==="chance" || cell.t==="event"){
+    await chanceEvent(p, cell.t);
+  }
+  else if (cell.t==="rest"){ log("☕ "+p.c.name+" は休憩マスで一息ついた。"); }
+  else if (cell.t==="suit"){ log("　"+p.c.name+" は "+cell.suit+" マスに止まった（取得済み）。"); }
+  else if (cell.t==="bank"){ log("🏦 "+p.c.name+" は銀行に止まった。"); }
+  renderTokens();
+}
+async function chanceEvent(p, kind){
+  var r = Math.random();
+  if (r < 0.28){ var g=200+Math.floor(Math.random()*3)*100; p.cash+=g; log("🎁 "+p.c.name+"：臨時収入！ +"+g+"G"); if(isLocalTurn(p)) await notice("🎁 ラッキー！","臨時収入で <b>+"+g+"G</b> もらった！"); }
+  else if (r < 0.5){ var l=150+Math.floor(Math.random()*2)*100; log("🎲 "+p.c.name+"：出費がかさんだ… −"+l+"G"); if(isLocalTurn(p)) await notice("💦 出費…","みんなで飲みすぎた！ <b>−"+l+"G</b>"); pay(p, l, "event"); }
+  else if (r < 0.68){ log("🎲 "+p.c.name+"：勢いで3マス進む！"); if(isLocalTurn(p)) await notice("💨 すすめ！","勢いがついて <b>3マス進む</b>！"); var ok=await movePlayer(p,3); if(ok&&!G.gameOver) await landAction(p); }
+  else if (r < 0.86){ if (G.hifumi===-1){ summonHifumi(); if(isLocalTurn(p)) await notice("👻 ひふみ登場！","おじゃまキャラ「ひふみ」が現れて、一周が一番遅いプレイヤーにくっついた！"); } else { p.cash+=100; log("🎁 "+p.c.name+"：常連さんから +100G"); } }
+  else { G.players.forEach(function(x){ if(!x.out) x.cash+=50; }); log("🎉 全員にボーナス +50G！"); if(isLocalTurn(p)) await notice("🎉 ボーナス","全員に <b>+50G</b> のボーナス！"); }
+  renderTokens();
+}
+
+/* ============ turn flow ============ */
+async function takeTurn(p){
+  if (G.gameOver || p.out) return;
+  setMsg(p.c.name+" の番"+(isLocalTurn(p)?"（あなた）":(p.cpu?"（CPU）":"")));
+  renderTokens(); syncPush();
+  // G.hifumi upkeep
+  if (G.hifumi===p.idx){
+    log("👻 ひふみにくっつかれている "+p.c.name+" は −100G…");
+    pay(p, 100, "hifumi");
+    if (p.out){ renderTokens(); syncPush(); return; }
+  }
+  var roll;
+  if (isLocalTurn(p)){
+    var btn=document.getElementById("diceBtn");
+    btn.disabled=false; btn.textContent="🎲 サイコロを振る（"+p.c.name+"）";
+    roll = await new Promise(function(res){ btn.onclick=function(){ btn.disabled=true; res(1+Math.floor(Math.random()*6)); }; });
+  } else {
+    await sleep(650);
+    roll = 1+Math.floor(Math.random()*6);
+  }
+  // dice animation
+  for (var a=0;a<6;a++){ showDice(1+Math.floor(Math.random()*6)); await sleep(70); }
+  showDice(roll);
+  log("🎲 "+p.c.name+" はサイコロで "+roll+"！");
+  syncPush();
+  var ok = await movePlayer(p, roll);
+  if (!ok || G.gameOver) return;
+  await landAction(p);
+  if (G.gameOver) return;
+  renderTokens();
+  // check last survivor
+  var alive = G.players.filter(function(x){return !x.out;});
+  if (alive.length===1){ await winGame(alive[0]); return; }
+}
+async function gameLoop(){
+  while(!G.gameOver && MP.mode==="solo"){
+    var p = G.players[G.cur];
+    if (!p.out){ busy=true; await takeTurn(p); busy=false; }
+    if (G.gameOver) break;
+    G.cur = (G.cur+1)%4;
+  }
+}
+var resultShown = false;
+async function winGame(p){
+  if (G.gameOver) return; G.gameOver=true; G.winner=p.idx;
+  log("🏆 "+p.c.name+" の優勝！");
+  syncPush(true);
+  await sleep(600);
+  showResult(p);
+}
+function showResult(p){
+  if (resultShown) return; resultShown=true;
+  document.getElementById("gameScreen").style.display="none";
+  var rs=document.getElementById("resultScreen"); rs.style.display="block";
+  document.getElementById("winMsg").textContent = p.idx===G.humanIdx ? "🎉 あなたの優勝！ おめでとう！" : p.c.name+" の優勝！ 総資産 "+assets(p)+"G";
+  var sorted = G.players.slice().sort(function(a,b){ return (a.out?-1:assets(a)) < (b.out?-1:assets(b)) ? 1 : -1; });
+  var heights=[110,78,56,40], medals=["👑","🥈","🥉","4位"];
+  var order=[sorted[1],sorted[0],sorted[2],sorted[3]];
+  document.getElementById("podium").innerHTML = order.map(function(x){
+    var rank=sorted.indexOf(x);
+    return '<div class="pod">'+avatarSVG(x.c,44)+'<span>'+x.c.name+'</span><div class="bar" style="height:'+heights[rank]+'px;background:'+x.c.color+'">'+medals[rank]+'</div></div>';
+  }).join("");
+  document.getElementById("rankList").innerHTML = sorted.map(function(x, i){
+    return (i+1)+"位　<b>"+x.c.name+"</b>"+(x.idx===G.humanIdx?"（あなた）":"")+" ― 総資産 "+(x.out?"破産":assets(x)+"G")+" ／ Lv."+x.level;
+  }).join("<br>");
+  window.scrollTo(0,0);
+}
+
+/* ============ online multiplayer (Firebase room codes) ============
+   Same Firebase project as the Rikki/Mai games (sukiyaki-ranking), same
+   init style as ~/workspace/hosting/mai/index.html. Rooms live under
+   /nakayoshi-rooms/<CODE> only; no other paths are touched, and rooms are
+   never listed — you can only reach one by knowing its code.
+   Sync rule: only the device driving the current turn writes the state
+   snapshot. CPU seats and disconnected seats are driven by the host. */
+var MP = { mode:"solo", code:"", seat:-1, isHost:false, room:null, seats:[], status:"", fbDb:null, fbReady:false, driving:false, lastPush:"", lastSeq:0, myUid:"u"+Math.random().toString(36).slice(2,10), left:false };
+var FB_DB_URL = "https://sukiyaki-ranking-default-rtdb.firebaseio.com";
+function ensureFb(){
+  if (MP.fbReady) return true;
+  try {
+    if (typeof firebase === "undefined") return false;
+    if (!firebase.apps.length) firebase.initializeApp({ databaseURL: FB_DB_URL, projectId: "sukiyaki-ranking" });
+    MP.fbDb = firebase.database(); MP.fbReady = true;
+  } catch(e){ MP.fbReady = false; }
+  return MP.fbReady;
+}
+function isLocalTurn(p){ return MP.mode==="online" ? (p.idx===MP.seat) : (p.idx===G.humanIdx); }
+function syncPush(force){
+  if (MP.mode!=="online" || !MP.room || MP.left) return;
+  if (!mpIsDriver()) return;
+  var snap = snapshotState();
+  var json = JSON.stringify(snap);
+  if (!force && json===MP.lastPush) return;
+  MP.lastPush = json; MP.lastSeq++;
+  MP.room.child("state").set({ snap:snap, seq:MP.lastSeq, by:MP.myUid, at:Date.now() });
+}
+/* who drives the current turn on this device? */
+function mpIsDriver(){
+  if (MP.mode!=="online" || !G.players.length) return false;
+  var p = G.players[G.cur];
+  if (!p || p.out) return MP.isHost; // host skips finished players
+  if (p.cpu) return MP.isHost;
+  if (p.idx===MP.seat && p.connected!==false) return true;
+  if (p.connected===false) return MP.isHost; // disconnected human -> host CPU takeover
+  return false;
+}
+function mpSeatTakenBy(seatIdx){ var s=MP.seats[seatIdx]; return !!(s && s.uid); }
+function mpRefreshPlayerConn(){
+  // keep each G.players entry's connected flag in step with the seat table
+  G.players.forEach(function(p, i){ var s=MP.seats[i]; if (s) p.connected = !!s.connected; });
+}
+/* director: runs on every device whenever state/seats change; only the
+   elected driver actually plays the turn out and pushes snapshots. */
+async function mpDirector(){
+  if (MP.mode!=="online" || MP.left || MP.status!=="playing" || MP.driving || G.gameOver) return;
+  if (!mpIsDriver()) return;
+  MP.driving = true;
+  try {
+    while (!G.gameOver && MP.mode==="online" && !MP.left){
+      mpRefreshPlayerConn();
+      var p = G.players[G.cur];
+      if (!p) break;
+      if (!mpIsDriver()) break;
+      if (!p.out){ busy=true; await takeTurn(p); busy=false; }
+      if (G.gameOver) break;
+      G.turn++;
+      G.cur = (G.cur+1)%4;
+      syncPush(true);
+      var alive = G.players.filter(function(x){return !x.out;});
+      if (alive.length===1){ await winGame(alive[0]); break; }
+      // if the next turn belongs to another connected device, hand over
+      if (!mpIsDriver()) break;
+    }
+  } finally { MP.driving = false; busy=false; }
+}
+function mpApplyRemote(data){
+  if (!data || !data.snap) return;
+  if (data.by===MP.myUid) return; // own write echoed back
+  applyState(data.snap);
+  var btn=document.getElementById("diceBtn");
+  var mine = !G.gameOver && G.players[G.cur] && G.players[G.cur].idx===MP.seat;
+  btn.disabled = !mine;
+  btn.textContent = mine ? "🎲 サイコロを振る（"+G.players[MP.seat].c.name+"）" : "🎲 相手の番です…";
+  if (G.gameOver && G.winner>=0 && G.players[G.winner]) showResult(G.players[G.winner]);
+  mpDirector();
+}
+/* ---------- lobby ---------- */
+var CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+function newRoomCode(){ var s=""; for (var i=0;i<4;i++) s+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]; return s; }
+function mpMsg(t){ document.getElementById("mpMsg").textContent = t||""; }
+function myName(){ var v=document.getElementById("nameInput").value.trim(); return v || CHARS[selected].name; }
+function seatCharTaken(ci, exceptSeat){
+  return MP.seats.some(function(s, i){ return i!==exceptSeat && s && s.uid && s.char===ci; });
+}
+function renderLobby(){
+  document.getElementById("roomCodeBig").textContent = MP.code || "----";
+  var list=document.getElementById("seatList"); list.innerHTML="";
+  for (var i=0;i<4;i++){
+    var s=MP.seats[i];
+    var row=document.createElement("div"); row.className="seat"+(i===MP.seat?" me":"");
+    if (s && s.uid){
+      row.innerHTML = avatarSVG(CHARS[s.char||0],38)
+        + "<span>"+CHARS[s.char||0].name+"（"+escapeHtml(s.name||"")+"）"+(i===MP.seat?" ・あなた":"")+"</span>"
+        + '<span class="st'+(s.connected?"":" off")+'">'+(s.connected?"🟢 接続中":"🔴 切断中")+"</span>";
+    } else {
+      row.innerHTML = '<span style="font-size:26px;">🪑</span><span>空き枠（スタート時にCPUが入ります）</span><span class="st">CPU</span>';
+    }
+    list.appendChild(row);
+  }
+  var grid=document.getElementById("lobbyCharGrid"); grid.innerHTML="";
+  CHARS.forEach(function(c, ci){
+    var taken = seatCharTaken(ci, MP.seat);
+    var mine = MP.seats[MP.seat] && MP.seats[MP.seat].char===ci;
+    var b=document.createElement("button"); b.className="char-btn"+(mine?" sel":""); b.disabled=taken;
+    b.innerHTML = avatarSVG(c,44) + "<span>"+c.name+"<small>"+c.desc+"</small>"+(taken?'<span class="taken">使用中</span>':"")+"</span>";
+    b.onclick=function(){ pickLobbyChar(ci); };
+    grid.appendChild(b);
+  });
+  document.getElementById("lobbyStartBtn").style.display = MP.isHost ? "block" : "none";
+  document.getElementById("lobbyWaitMsg").style.display = MP.isHost ? "none" : "block";
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]; }); }
+function pickLobbyChar(ci){
+  if (MP.seat<0 || seatCharTaken(ci, MP.seat)) return;
+  MP.room.child("seats/"+MP.seat+"/char").set(ci);
+}
+function watchRoom(){
+  MP.room.on("value", function(snap){
+    var v = snap.val(); if (!v) return;
+    var rawSeats = v.seats || [];
+    MP.seats = [0,1,2,3].map(function(i){ return rawSeats[i] || null; });
+    MP.status = v.status || "lobby";
+    if (document.getElementById("lobbyScreen").style.display==="block") renderLobby();
+    if (MP.status==="playing" && !MP.left){
+      var inGame = document.getElementById("gameScreen").style.display==="block";
+      var inResult = document.getElementById("resultScreen").style.display==="block";
+      if (!inGame && !inResult) enterOnlineGame(v);
+      if (v.state) mpApplyRemote(v.state);
+      mpRefreshPlayerConn(); renderPlayers();
+      mpDirector();
+    }
+  });
+}
+function claimSeat(code, seatIdx, charIdx, name, isHost){
+  MP.code=code; MP.seat=seatIdx; MP.isHost=isHost; MP.left=false;
+  MP.room = MP.fbDb.ref("nakayoshi-rooms/"+code);
+  var seatRef = MP.room.child("seats/"+seatIdx);
+  seatRef.set({ uid:MP.myUid, name:name, char:charIdx, connected:true });
+  seatRef.child("connected").onDisconnect().set(false);
+  document.getElementById("titleScreen").style.display="none";
+  document.getElementById("lobbyScreen").style.display="block";
+  watchRoom(); renderLobby();
+}
+async function createRoom(){
+  mpMsg("");
+  if (!ensureFb()){ mpMsg("通信の準備ができませんでした。電波の良いところで開き直してね。"); return; }
+  var btn=document.getElementById("createRoomBtn"); btn.disabled=true; btn.textContent="部屋を作っています…";
+  try {
+    for (var tries=0; tries<5; tries++){
+      var code = newRoomCode();
+      var ref = MP.fbDb.ref("nakayoshi-rooms/"+code);
+      var snap = await ref.once("value");
+      if (snap.exists() && snap.val().status==="playing") continue;
+      if (snap.exists() && snap.val().status==="lobby") continue;
+      await ref.set({ status:"lobby", hostUid:MP.myUid, createdAt:Date.now(), seats:[], state:null });
+      claimSeat(code, 0, selected, myName(), true);
+      return;
+    }
+    mpMsg("混み合っているみたい。もう一度押してね。");
+  } catch(e){ mpMsg("部屋を作れませんでした。通信を確認してね。"); }
+  finally { btn.disabled=false; btn.textContent="🏠 部屋を作る（ホスト）"; }
+}
+async function joinRoom(){
+  mpMsg("");
+  if (!ensureFb()){ mpMsg("通信の準備ができませんでした。電波の良いところで開き直してね。"); return; }
+  var code = document.getElementById("codeInput").value.trim().toUpperCase();
+  if (code.length!==4){ mpMsg("部屋コードは4文字だよ。"); return; }
+  var btn=document.getElementById("joinRoomBtn"); btn.disabled=true; btn.textContent="入室しています…";
+  try {
+    var ref = MP.fbDb.ref("nakayoshi-rooms/"+code);
+    var snap = await ref.once("value");
+    if (!snap.exists()){ mpMsg("その部屋コードの部屋が見つからなかったよ。"); return; }
+    var v = snap.val(); var seats = v.seats || [];
+    var name = myName();
+    // rejoin: same name on a disconnected seat -> reclaim it (also mid-game)
+    for (var r=0;r<4;r++){ var rs=seats[r]; if (rs && rs.uid && rs.name===name && !rs.connected){ claimSeat(code, r, rs.char||0, name, v.hostUid===rs.uid); return; } }
+    if (v.status==="playing"){ mpMsg("その部屋はもうゲーム中だよ。"); return; }
+    var free=-1; for (var i=0;i<4;i++){ if (!seats[i] || !seats[i].uid){ free=i; break; } }
+    if (free===-1){ mpMsg("その部屋は満員だよ（4人）。"); return; }
+    var used={}; for (var ui=0;ui<4;ui++){ var us=seats[ui]; if (us && us.uid) used[us.char||0]=true; }
+    var char = used[selected] ? [0,1,2,3].find(function(ci){ return !used[ci]; }) : selected;
+    claimSeat(code, free, char, name, false);
+  } catch(e){ mpMsg("入室できませんでした。通信を確認してね。"); }
+  finally { btn.disabled=false; btn.textContent="🚪 コードを入れて入室する"; }
+}
+function hostStartGame(){
+  if (!MP.isHost || MP.status==="playing") return;
+  var players=[];
+  for (var i=0;i<4;i++){
+    var s=MP.seats[i];
+    if (s && s.uid){ players.push({ idx:i, c:CHARS[s.char||0], cash:START_CASH, level:1, pos:0, marks:{}, out:false, pname:s.name||"", cpu:false, connected:!!s.connected }); }
+    else { players.push({ idx:i, c:CHARS[i], cash:START_CASH, level:1, pos:0, marks:{}, out:false, pname:"", cpu:true, connected:true }); }
+  }
+  // CPU seats must not reuse a character a human picked
+  var usedChars={}; players.forEach(function(p){ if(!p.cpu) usedChars[p.c.name]=true; });
+  players.forEach(function(p){ if (p.cpu && usedChars[p.c.name]){ var free=CHARS.find(function(c){ return !usedChars[c.name]; }); if (free){ p.c=free; usedChars[free.name]=true; } } });
+  G.players=players; G.owners=[]; G.invests=[]; for (var k=0;k<28;k++){ G.owners.push(-1); G.invests.push(0); }
+  G.cur=0; G.hifumi=-1; G.gameOver=false; G.lapCount=1; G.turn=0; G.winner=-1; G.lastDice=0; G.logs=[]; resultShown=false;
+  G.humanIdx=MP.seat;
+  log("🎮 オンライン対戦スタート！ 部屋コード "+MP.code);
+  log("💡 ♠♦♥♣を通り過ぎて集め、銀行に戻るとサラリー＋レベルアップ。総資産 "+GOAL+"G 以上で銀行に戻れば優勝！");
+  setMsg(players[0].c.name+" の番");
+  MP.room.child("status").set("playing");
+  MP.lastPush=""; syncPush(true);
+}
+function enterOnlineGame(v){
+  document.getElementById("titleScreen").style.display="none";
+  document.getElementById("lobbyScreen").style.display="none";
+  document.getElementById("gameScreen").style.display="block";
+  document.getElementById("onlineBar").style.display="flex";
+  document.getElementById("gameLeaveBtn").style.display="block";
+  document.getElementById("roomLbl").textContent = "🌐 部屋 "+MP.code+" ・ あなたは "+(MP.seats[MP.seat]?CHARS[MP.seats[MP.seat].char||0].name:"");
+  G.humanIdx = MP.seat;
+  buildBoard();
+  var dbtn=document.getElementById("diceBtn"); dbtn.disabled=true; dbtn.textContent="🎲 相手の番です…";
+  if (v && v.state && v.state.snap) applyState(v.state.snap);
+  renderTokens();
+  window.scrollTo(0,0);
+}
+function leaveRoom(){
+  MP.left = true;
+  try {
+    if (MP.room && MP.seat>=0){
+      MP.room.child("seats/"+MP.seat+"/connected").set(false);
+      MP.room.child("seats/"+MP.seat+"/connected").onDisconnect().cancel();
+    }
+  } catch(e){}
+  location.reload();
+}
+/* mode tabs */
+document.getElementById("tabSolo").onclick = function(){
+  document.getElementById("tabSolo").classList.add("sel"); document.getElementById("tabOnline").classList.remove("sel");
+  document.getElementById("soloPanel").style.display="block"; document.getElementById("onlinePanel").style.display="none";
+};
+document.getElementById("tabOnline").onclick = function(){
+  document.getElementById("tabOnline").classList.add("sel"); document.getElementById("tabSolo").classList.remove("sel");
+  document.getElementById("soloPanel").style.display="none"; document.getElementById("onlinePanel").style.display="block";
+};
+document.getElementById("createRoomBtn").onclick = function(){ MP.mode="online"; createRoom(); };
+document.getElementById("joinRoomBtn").onclick = function(){ MP.mode="online"; joinRoom(); };
+document.getElementById("lobbyStartBtn").onclick = hostStartGame;
+document.getElementById("lobbyLeaveBtn").onclick = leaveRoom;
+document.getElementById("gameLeaveBtn").onclick = leaveRoom;
+
+/* ============ title / setup ============ */
+var selected = 1; // default あゆ
+function buildTitle(){
+  document.getElementById("titleFaces").innerHTML = CHARS.map(function(c){ return avatarSVG(c,52); }).join("") + HIFUMI_SVG.replace('width="44" height="44"','width="52" height="52"');
+  var grid=document.getElementById("charGrid");
+  grid.innerHTML="";
+  CHARS.forEach(function(c, i){
+    var b=document.createElement("button"); b.className="char-btn"+(i===selected?" sel":"");
+    b.innerHTML = avatarSVG(c,44) + "<span>"+c.name+"<small>"+c.desc+"</small></span>";
+    b.onclick=function(){ selected=i; buildTitle(); };
+    grid.appendChild(b);
+  });
+}
+document.getElementById("startBtn").onclick = function(){
+  MP.mode = "solo";
+  G.humanIdx = selected;
+  var order=[0,1,2,3];
+  G.players = order.map(function(i){ return {idx:i, c:CHARS[i], cash:START_CASH, level:1, pos:0, marks:{}, out:false}; });
+  // turn order starts with human
+  G.players.sort(function(a,b){ return (a.idx===G.humanIdx?0:1)-(b.idx===G.humanIdx?0:1); });
+  G.players.forEach(function(p, i){ p.turnOrder=i; });
+  // re-map: keep G.players array indexed by turn order; G.owners store turn-order index
+  G.players.forEach(function(p){ p.idx = G.players.indexOf(p); });
+  G.humanIdx = 0;
+  G.cur = 0; G.winner = -1; G.logs = []; G.lastDice = 0; resultShown = false;
+  document.getElementById("titleScreen").style.display="none";
+  document.getElementById("gameScreen").style.display="block";
+  buildBoard(); renderTokens();
+  log("🎮 ゲームスタート！ あなたは "+G.players[0].c.name+"。総資産 "+GOAL+"G 以上で銀行に戻れば優勝！");
+  log("💡 ♠♦♥♣を通り過ぎて集め、銀行に戻るとサラリー＋レベルアップ。");
+  document.getElementById("diceBtn").disabled=true;
+  gameLoop();
+};
+buildTitle(); buildBoard();
+</script>
+</body>
+</html>
