@@ -134,7 +134,7 @@
       <button class="btn sub" id="btn-join">コードで参加</button>
     </div>
     <div class="err" id="title-err"></div>
-    <div class="note">📖 あそびかた：8分間生きのびよう。焚き火（画面中央）の火を絶やすな！ 木材・石・草を集めて作業台で道具を作り、魚や肉を焼いて空腹を満たす。体力は回復しない。1日の終わりにサバイバー全員の残り体力の割合でルーレット勝敗！ サイコパスに止まっても、投票でサイコパスを当てれば救済勝ち。<br>🏠 作業台の上（北）に家を建てよう：必要素材はサバイバーの人数で変動（1人分＝木材40・石50・草60、2人なら2倍、3人なら3倍）。完成させるとその場で即ルーレット！ 時間切れまでに未完成だと、サバイバーの体力が半分になってしまう…。<br>🔨 新道具：鎌（草が3つ取れる）・ハンマー（石を砕くとミニ石が落ちる。ミニ石は軽い石として使える）・バッグ（持つだけで荷物容量+50）。マップの木・石・草は👊で回収、落とした物は触れるだけで拾える。<br>🖥️ PC：WASD/矢印キー移動、E=使う、Q=捨てる 📱 スマホ：左下パッド＋右下ボタン</div>
+    <div class="note">📖 あそびかた：8分間生きのびよう。焚き火（画面中央）の火を絶やすな！ 木材・石・草を集めて作業台で道具を作り、魚や肉を焼いて空腹を満たす。体力は回復しない。1日の終わりにサバイバー全員の残り体力の割合でルーレット勝敗！ サイコパスに止まっても、投票でサイコパスを当てれば救済勝ち。<br>🏠 作業台の上（北）に家を建てよう：必要素材はサバイバーの人数で変動（1人分＝木材160・石200・草240、2人なら2倍、3人なら3倍）。完成させるとその場で即ルーレット！ 時間切れまでに未完成だと、サバイバーの体力が半分になってしまう…。<br>🔨 新道具：鎌（草が3つ取れる）・ハンマー（石を砕くとミニ石が落ちる。ミニ石は軽い石として使える）・バッグ（持つだけで荷物容量+50）。マップの木・石・草は👊で回収、落とした物は触れるだけで拾える。<br>🖥️ PC：WASD/矢印キー移動、E=使う、Q=捨てる 📱 スマホ：左下パッド＋右下ボタン</div>
     <div class="row" style="margin-top:8px;"><button class="btn ghost" id="btn-solo">オフラインで1人練習（Firebase不要）</button></div>
   </div>
 </div>
@@ -430,7 +430,7 @@ const HOUSE_POS= { x: BENCH_POS.x, y: BENCH_POS.y - 170 }; // house construction
 /* House requirements SCALE with the number of survivors (fixed at game start):
    base (1 survivor) wood 40 / stone 50 / grass 60 — x2 for 2 survivors, x3 for 3…
    (Grilled food is NOT part of the house recipe any more — materials only.) */
-const HOUSE_BASE = { wood:40, stone:50, grass:60 };
+const HOUSE_BASE = { wood:160, stone:200, grass:240 };
 function newHouseState(survCount){
   const m = Math.max(1, survCount || 1);
   return { wood:0, stone:0, grass:0,
