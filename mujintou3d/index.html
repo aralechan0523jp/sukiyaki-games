@@ -685,13 +685,13 @@ function enterRoom(code, asHost){
     metaState = { host: uid, hostBeat: nowMs(), endAt: 0 };
     phase = "lobby"; showLobby(); return;
   }
-  roomRef = db.ref("rooms3d/" + code);
+  roomRef = db.ref("rooms/" + code);
   myRef = roomRef.child("players/" + uid);
   myRef.set({ name: myName, charId: myChar, x: Math.round(my.x), y: Math.round(my.y), dir:1, face:2,
               hp:100, hunger:100, temp:100, role:"", dead:false, vomitUntil:0, online:true, lastSeen: firebase.database.ServerValue.TIMESTAMP });
   myRef.onDisconnect().remove();
   if(asHost){
-    roomRef.child("meta").set({ host: uid, hostBeat: firebase.database.ServerValue.TIMESTAMP, phase:"lobby", endAt:0 });
+    roomRef.child("meta").set({ host: uid, hostBeat: firebase.database.ServerValue.TIMESTAMP, phase:"lobby", endAt:0, ver:"3d" });
     roomRef.child("meta").onDisconnect().update({ hostBeat: 0 });
     roomRef.child("fire").set({ gauge:6, lastTick: firebase.database.ServerValue.TIMESTAMP, relightAt:0 });
     roomRef.child("box").set({ wood:0, stone:0, mstone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 });
@@ -3093,7 +3093,7 @@ $("btn-create").addEventListener("click", ()=>{
   if(!fbInit()){ titleError("Firebaseの読み込みに失敗しました。通信を確認して再読み込みしてください（またはオフライン練習をどうぞ）"); return; }
   soloMode = false;
   const code = String(Math.floor(1000 + Math.random()*9000));
-  db.ref("rooms3d/" + code + "/meta").once("value").then(s=>{
+  db.ref("rooms/" + code + "/meta").once("value").then(s=>{
     if(s.exists()){ titleError("コードが重なった！もう一度押してね"); return; }
     AudioSys.se("decide"); enterRoom(code, true);
   }).catch(()=>titleError("Firebaseに接続できませんでした"));
@@ -3106,8 +3106,9 @@ $("btn-join").addEventListener("click", ()=>{
   saveProfile();
   if(!fbInit()){ titleError("Firebaseの読み込みに失敗しました"); return; }
   soloMode = false;
-  db.ref("rooms3d/" + code + "/meta").once("value").then(s=>{
+  db.ref("rooms/" + code + "/meta").once("value").then(s=>{
     if(!s.exists()){ titleError("そのコードのルームが見つかりません"); return; }
+    if((s.val() || {}).ver !== "3d"){ titleError("そのコードは2D版のルームだよ。3D版で作ったルームのコードを入れてね"); return; }
     AudioSys.se("decide"); enterRoom(code, false);
   }).catch(()=>titleError("Firebaseに接続できませんでした"));
 });
