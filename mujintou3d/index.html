@@ -2923,9 +2923,9 @@ function r3Sync(ts){
   }
   floaters.forEach(f=>{
     const k = (performance.now() - f.at) / 1000;
-    if(!f._sp){ f._sp = r3TextSprite(f.text, 7.5, f.color); R3.dyn.add(f._sp); }
+    if(!f._sp){ f._sp = r3TextSprite(f.text, 22.5, f.color); R3.dyn.add(f._sp); }
     f._sp.visible = true;
-    f._sp.position.set(w2x(f.x), 8.4 + k * 2.4, w2z(f.y));
+    f._sp.position.set(w2x(f.x), 5.2 + k * 1.2, w2z(f.y));
     f._sp.material.opacity = 1 - k;
   });
   // ---- camera: fixed oblique angle, follows me ----
