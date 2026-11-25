@@ -135,7 +135,7 @@
       <button class="btn sub" id="btn-join">コードで参加</button>
     </div>
     <div class="err" id="title-err"></div>
-    <div class="note">📖 あそびかた：8分間生きのびよう。焚き火（画面中央）の火を絶やすな！ 木材・石・草を集めて作業台で道具を作り、魚や肉を焼いて空腹を満たす。体力は回復しない。1日の終わりにサバイバー全員の残り体力の割合でルーレット勝敗！ サイコパスに止まっても、投票でサイコパスを当てれば救済勝ち。<br>🏠 作業台の上（北）に家を建てよう：必要素材はサバイバーの人数で変動（1人分＝木材40・石50・草60・焼き物10、2人なら2倍、3人なら3倍）。完成させるとその場で即ルーレット！ 時間切れまでに未完成だと、サバイバーの体力が半分になってしまう…。焼き物は焼き肉・焼き魚どちらでもOK。<br>🔨 新道具：鎌（草が3つ取れる）・ハンマー（石を砕くとミニ石が落ちる。ミニ石は軽い石として使える）・バッグ（持つだけで荷物容量+50）。マップの木・石・草は👊で回収、落とした物は触れるだけで拾える。<br>🖥️ PC：WASD/矢印キー移動、E=使う、Q=捨てる 📱 スマホ：左下パッド＋右下ボタン</div>
+    <div class="note">📖 あそびかた：8分間生きのびよう。焚き火（画面中央）の火を絶やすな！ 木材・石・草を集めて作業台で道具を作り、魚や肉を焼いて空腹を満たす。体力は回復しない。1日の終わりにサバイバー全員の残り体力の割合でルーレット勝敗！ サイコパスに止まっても、投票でサイコパスを当てれば救済勝ち。<br>🏠 作業台の上（北）に家を建てよう：必要素材はサバイバーの人数で変動（1人分＝木材40・石50・草60、2人なら2倍、3人なら3倍）。完成させるとその場で即ルーレット！ 時間切れまでに未完成だと、サバイバーの体力が半分になってしまう…。<br>🔨 新道具：鎌（草が3つ取れる）・ハンマー（石を砕くとミニ石が落ちる。ミニ石は軽い石として使える）・バッグ（持つだけで荷物容量+50）。マップの木・石・草は👊で回収、落とした物は触れるだけで拾える。<br>🖥️ PC：WASD/矢印キー移動、E=使う、Q=捨てる 📱 スマホ：左下パッド＋右下ボタン</div>
     <div class="row" style="margin-top:8px;"><button class="btn ghost" id="btn-solo">オフラインで1人練習（Firebase不要）</button></div>
   </div>
 </div>
@@ -232,20 +232,20 @@ const DAY_MS = 8 * 60 * 1000;
 const TREE_HP = 30; // trees have real HP: bare hands 3/hit (10 hits), axe 10/hit (3 hits) — same feel as before
 const BEAR_HP = 30; // bears: HP bar shows REMAINING hp (same style as trees), never damage numbers
 const ITEM_DEF = {
-  wood:  { name:"木材",   icon:"🪵", w:10 },
+  wood:  { name:"木材",   icon:"🪵", w:7 },
   stone: { name:"石",     icon:"🪨", w:3 },
   mstone:{ name:"ミニ石", icon:"🪨", w:1 },
   grass: { name:"草",     icon:"🌿", w:1 },
-  fish:  { name:"魚",     icon:"🐟", w:5 },
-  meat:  { name:"肉",     icon:"🥩", w:5 },
-  gfish: { name:"焼き魚", icon:"🍗", w:5, eat:40 },
-  gmeat: { name:"焼き肉", icon:"🍖", w:5, eat:80 },
-  axe:   { name:"斧",     icon:"🪓", w:5, tool:true, dur:40 },
-  rod:   { name:"釣り竿", icon:"🎣", w:5, tool:true, dur:5 },
-  bow:   { name:"弓矢",   icon:"🏹", w:5, tool:true, dur:10 },
+  fish:  { name:"魚",     icon:"🐟", w:1 },
+  meat:  { name:"肉",     icon:"🥩", w:4 },
+  gfish: { name:"焼き魚", icon:"🍗", w:1, eat:40 },
+  gmeat: { name:"焼き肉", icon:"🍖", w:4, eat:80 },
+  axe:   { name:"斧",     icon:"🪓", w:2, tool:true, dur:40 },
+  rod:   { name:"釣り竿", icon:"🎣", w:2, tool:true, dur:7 },
+  bow:   { name:"弓矢",   icon:"🏹", w:2, tool:true, dur:10 },
   outer: { name:"アウター", icon:"🧥", w:5, tool:true }, // NO dur: never breaks. Held = equipped: halves body-temp drain (see statTick)
-  sickle:{ name:"鎌",     icon:"🔪", w:5, tool:true, dur:40 }, // map grass yields x3 while owned; weapon: bear 4 / tree 5 / player 5 (selected)
-  hammer:{ name:"ハンマー", icon:"🔨", w:5, tool:true, dur:40 }, // smash map stone nodes into mini-stones on the ground
+  sickle:{ name:"鎌",     icon:"🔪", w:2, tool:true, dur:40 }, // map grass yields x3 while owned; weapon: bear 4 / tree 5 / player 5 (selected)
+  hammer:{ name:"ハンマー", icon:"🔨", w:2, tool:true, dur:40 }, // smash map stone nodes into mini-stones on the ground
   bag:   { name:"バッグ", icon:"🎒", w:0, tool:true } // NO dur, weight 0: holding one gives carry capacity +50 (once per player)
 };
 const RECIPES = [
@@ -422,24 +422,29 @@ const FIRE_POS = { x: WORLD_W/2, y: WORLD_H/2 };
 const BOX_POS  = { x: WORLD_W/2 + 130, y: WORLD_H/2 - 10 };
 const BENCH_POS= { x: WORLD_W/2 + 260, y: WORLD_H/2 - 10 };
 const TABLE_POS= { x: WORLD_W/2 - 130, y: WORLD_H/2 - 10 }; // dining table: WEST of the fire (box/bench are east) — grilled food only, max 12
+/* Fixed plate positions on the (enlarged ~1.5x) table: a 4x3 grid in world coords.
+   Eating picks the plate CLOSEST to the eater — where you stand chooses what you eat. */
+function tablePlatePos(i){
+  return { x: TABLE_POS.x - 40 + (i % 4) * 27, y: TABLE_POS.y - 15 + Math.floor(i / 4) * 15 };
+}
 const HOUSE_POS= { x: BENCH_POS.x, y: BENCH_POS.y - 170 }; // house construction site: just NORTH (above) the workbench
 /* House requirements SCALE with the number of survivors (fixed at game start):
-   base (1 survivor) wood 40 / stone 50 / grass 60 / grilled food 10 — x2 for 2 survivors, x3 for 3…
-   The grilled-food quota accepts 焼き肉 OR 焼き魚 (either counts; rotten grilled is indistinguishable and counts too). */
-const HOUSE_BASE = { wood:40, stone:50, grass:60, food:10 };
+   base (1 survivor) wood 40 / stone 50 / grass 60 — x2 for 2 survivors, x3 for 3…
+   (Grilled food is NOT part of the house recipe any more — materials only.) */
+const HOUSE_BASE = { wood:40, stone:50, grass:60 };
 function newHouseState(survCount){
   const m = Math.max(1, survCount || 1);
-  return { wood:0, stone:0, grass:0, food:0,
-           woodReq: HOUSE_BASE.wood*m, stoneReq: HOUSE_BASE.stone*m, grassReq: HOUSE_BASE.grass*m, foodReq: HOUSE_BASE.food*m,
+  return { wood:0, stone:0, grass:0,
+           woodReq: HOUSE_BASE.wood*m, stoneReq: HOUSE_BASE.stone*m, grassReq: HOUSE_BASE.grass*m,
            done:false };
 }
 function houseReq(){ // current requirements (fall back to base x1 before the start state arrives)
   return { wood: houseState.woodReq || HOUSE_BASE.wood, stone: houseState.stoneReq || HOUSE_BASE.stone,
-           grass: houseState.grassReq || HOUSE_BASE.grass, food: houseState.foodReq || HOUSE_BASE.food };
+           grass: houseState.grassReq || HOUSE_BASE.grass };
 }
 function houseCompleteCheck(h){ // h: a house-shaped object (counts + reqs) -> all quotas met?
-  const r = { wood: h.woodReq || HOUSE_BASE.wood, stone: h.stoneReq || HOUSE_BASE.stone, grass: h.grassReq || HOUSE_BASE.grass, food: h.foodReq || HOUSE_BASE.food };
-  return (h.wood||0) >= r.wood && (h.stone||0) >= r.stone && (h.grass||0) >= r.grass && (h.food||0) >= r.food;
+  const r = { wood: h.woodReq || HOUSE_BASE.wood, stone: h.stoneReq || HOUSE_BASE.stone, grass: h.grassReq || HOUSE_BASE.grass };
+  return (h.wood||0) >= r.wood && (h.stone||0) >= r.stone && (h.grass||0) >= r.grass;
 }
 const LAKE = { x: WORLD_W/2, y: WORLD_H - 330, rx: 900, ry: 300 };
 function isWater(x,y){ const dx=(x-LAKE.x)/LAKE.rx, dy=(y-LAKE.y)/LAKE.ry; return dx*dx+dy*dy < 1; }
@@ -736,8 +741,8 @@ function attachRoomListeners(){
   roomRef.child("boxTools").on("value", s=>{ boxToolsState = s.val() || {}; if(ctxKind==="box") renderCtx(); });
   roomRef.child("table").on("value", s=>{ const v = s.val(); tableState = v ? Object.keys(v).sort().map(k=>{ const r = v[k] || {}; r._id = k; return r; }) : []; if(ctxKind==="table") renderCtx(); });
   roomRef.child("house").on("value", s=>{ const h = s.val(); if(!h) return; const wasDone = houseState.done;
-    houseState = { wood:h.wood||0, stone:h.stone||0, grass:h.grass||0, food:h.food||0,
-                   woodReq:h.woodReq||HOUSE_BASE.wood, stoneReq:h.stoneReq||HOUSE_BASE.stone, grassReq:h.grassReq||HOUSE_BASE.grass, foodReq:h.foodReq||HOUSE_BASE.food,
+    houseState = { wood:h.wood||0, stone:h.stone||0, grass:h.grass||0,
+                   woodReq:h.woodReq||HOUSE_BASE.wood, stoneReq:h.stoneReq||HOUSE_BASE.stone, grassReq:h.grassReq||HOUSE_BASE.grass,
                    done:!!h.done };
     if(houseState.done && !wasDone) onHouseComplete(); // completion moment: celebrate on EVERY client
     if(ctxKind==="house") renderCtx(); });
@@ -952,7 +957,7 @@ function hostMoveBears(t){
     if(df < 48){ const sc = 48/(df||1); b.x = FIRE_POS.x + (b.x - FIRE_POS.x)*sc; b.y = FIRE_POS.y + (b.y - FIRE_POS.y)*sc; changed = true; }
     if(Math.abs(b.x - BOX_POS.x) < 54 && Math.abs(b.y - BOX_POS.y) < 42){ b.x += (b.x < BOX_POS.x ? -1 : 1) * (54 - Math.abs(b.x - BOX_POS.x)); changed = true; }
     if(Math.abs(b.x - BENCH_POS.x) < 56 && Math.abs(b.y - BENCH_POS.y) < 42){ b.x += (b.x < BENCH_POS.x ? -1 : 1) * (56 - Math.abs(b.x - BENCH_POS.x)); changed = true; }
-    if(Math.abs(b.x - TABLE_POS.x) < 58 && Math.abs(b.y - TABLE_POS.y) < 44){ b.x += (b.x < TABLE_POS.x ? -1 : 1) * (58 - Math.abs(b.x - TABLE_POS.x)); changed = true; }
+    if(Math.abs(b.x - TABLE_POS.x) < 76 && Math.abs(b.y - TABLE_POS.y) < 52){ b.x += (b.x < TABLE_POS.x ? -1 : 1) * (76 - Math.abs(b.x - TABLE_POS.x)); changed = true; }
     if(Math.abs(b.x - HOUSE_POS.x) < 58 && Math.abs(b.y - HOUSE_POS.y) < 44){ b.x += (b.x < HOUSE_POS.x ? -1 : 1) * (58 - Math.abs(b.x - HOUSE_POS.x)); changed = true; }
   });
   for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++){
@@ -1065,7 +1070,7 @@ function startGameClient(){
   AudioSys.stopTitle(); AudioSys.startWind();
   gameStartedAt = nowMs();
   houseDoneHandled = false; // new match on this client: the next house completion celebrates again
-  aggLast = null; aggAcc = { hp:0, hunger:0, temp:0 }; aggRemote = {}; aggTicks = 0; floaters = []; // fresh floater aggregation per match
+  aggLast = null; aggAcc = { hp:0, hunger:0, temp:0 }; aggRemote = {}; aggTicks = 0; aggMs = 0; floaters = []; // fresh floater aggregation per match
   if(my) my.dead = false;
   // my role: read own node (others' roles are never displayed)
   const me = players[uid];
@@ -1119,9 +1124,9 @@ function onHouseComplete(){
   if(isHost) setTimeout(()=>{ if(phase === "playing") hostEndDay(); }, 3000);
 }
 /* Deposit 1 unit into the SHARED house progress (called from doUse with the selected item
-   while near the site). Materials: wood / stone (ミニ石 counts as stone) / grass.
-   Grilled food: 焼き肉 OR 焼き魚 both feed the single "food" quota — and a secretly rotten
-   grilled one counts too, exactly like a good one (nobody can tell them apart anyway).
+   while near the site). Materials ONLY: wood / stone (ミニ石 counts as stone) / grass.
+   Grilled food is no longer accepted — with grilled food selected near the house, 👊
+   falls through to the normal eating behavior in doUse.
    Never accepts more than the survivor-scaled required count. */
 function houseDeposit(kind){
   if(!my || my.dead || houseState.done) return;
@@ -1129,16 +1134,12 @@ function houseDeposit(kind){
   let counter = null;
   if(kind === "wood" || kind === "grass") counter = kind;
   else if(kind === "stone" || kind === "mstone") counter = "stone";
-  else if(kind === "gfish" || kind === "gmeat") counter = "food";
   if(!counter) return;
-  const label = counter === "food" ? "焼き物" : ITEM_DEF[counter].name;
+  const label = ITEM_DEF[counter].name;
   if((houseState[counter]||0) >= req[counter]){ toast("🏠 " + label + "はもう十分！"); return; }
   if((my.inv[kind]||0) <= 0){ toast(ITEM_DEF[kind].name + "がない"); return; }
-  const wasRot = counter === "food" && (my.rotGrilled[kind]||0) > 0; // rotten grilled goes in first (same stock policy as the box)
-  const wasChar = counter === "food" && !wasRot && (my.charGrilled[kind]||0) > 0; // charred grilled next (worst-first); still counts as grilled food
+  const wasRot = false, wasChar = false; // materials carry no rot/char stock
   my.inv[kind]--;
-  if(wasRot) my.rotGrilled[kind]--;
-  if(wasChar) my.charGrilled[kind]--;
   spendHunger();
   AudioSys.se("decide");
   if(soloMode){
@@ -1199,17 +1200,26 @@ function statTick(){
   if(drain > 0) my.hp = clamp(my.hp - drain*dt, 0, 100);
   if(my.hp <= 0){ die(); updateStatHud(); return; } // HP reached 0 -> death (corpse + ghost)
   if(my.hunger <= 0 && nowMs() - my.lastGrowl > 20000){ my.lastGrowl = nowMs(); AudioSys.se("stomach"); }
-  // fishing progress
+  // fishing: timing minigame — a HIT! moment lands at a random 5-15s after the cast.
+  // The cast already cost 1 rod durability (see doUse); nothing is caught automatically.
   if(my.fishing){
+    const F = my.fishing, ft = nowMs();
     if(!hasTool("rod")){
       // rod was dropped / removed / broken mid-fishing: cancel, no fish
       my.fishing = null; hideProgress(); toast("🎣 釣りを中止した（釣り竿がない）");
     }
-    else if(nowMs() >= my.fishing.readyAt){
-      my.fishing = null; hideProgress();
-      my.inv.fish++; AudioSys.se("pickup"); toast("🎣 魚が釣れた！"); renderInv();
-      const rod = hasTool("rod"); if(rod) damageTool(rod, 1);
-    } else showProgress("🎣 釣り中…", 1 - (my.fishing.readyAt - nowMs())/15000);
+    else if(F.hit && ft > F.hitEnd){
+      // the 0.7s HIT window passed with no 👊 press: the fish got away
+      my.fishing = null; hideProgress(); toast("🎣 逃げられた…");
+    }
+    else if(!F.hit && ft >= F.hitAt){
+      F.hit = true; F.hitEnd = ft + 700; // 0.7s window to press 👊
+      showBanner("🎣 HIT!", 700);
+      AudioSys.se("cookdone");
+      showProgress("🎣 HIT!", 1);
+    }
+    else if(F.hit) showProgress("🎣 HIT!", 1);
+    else showProgress("🎣 釣り中…", Math.min(0.95, (ft - F.castAt)/15000)); // bar fills toward 15s but never reveals the HIT moment
   }
   aggTick(); // floating stat numbers: sample local + remote stat deltas for the per-second aggregator
   updateStatHud();
@@ -1423,7 +1433,7 @@ function blocked(x,y){
   if(Math.hypot(x - FIRE_POS.x, y - FIRE_POS.y) < 36) return true;
   if(Math.abs(x - BOX_POS.x) < 42 && Math.abs(y - BOX_POS.y) < 32) return true;
   if(Math.abs(x - BENCH_POS.x) < 44 && Math.abs(y - BENCH_POS.y) < 30) return true;
-  if(Math.abs(x - TABLE_POS.x) < 46 && Math.abs(y - TABLE_POS.y) < 28) return true; // the dining table is solid too
+  if(Math.abs(x - TABLE_POS.x) < 62 && Math.abs(y - TABLE_POS.y) < 32) return true; // the dining table is solid too (footprint enlarged ~1.5x)
   if(Math.abs(x - HOUSE_POS.x) < 48 && Math.abs(y - HOUSE_POS.y) < 34) return true; // house site is solid too
   for(let i=0;i<NODES.length;i++){
     const nd = NODES[i];
@@ -1468,6 +1478,7 @@ let aggLast = null;                  // my last sampled {hp,hunger,temp}
 let aggAcc = { hp:0, hunger:0, temp:0 };
 let aggRemote = {};                  // pid -> {last:{hp,hunger,temp}, acc:{hp,hunger,temp}}
 let aggTicks = 0;
+let aggMs = 0; // ms accumulated toward the 0.8s floater-flush window
 function aggFlushOne(acc, x, y){
   const hv = Math.round(acc.hp);
   if(Math.abs(hv) >= 1){ addFloater(x, y - 52, (hv > 0 ? "+" : "−") + Math.abs(hv), hv < 0 ? "#ff5040" : "#5be36b"); acc.hp -= hv; }
@@ -1496,7 +1507,9 @@ function aggTick(){
   }
   for(const pid in aggRemote){ if(!players[pid]) delete aggRemote[pid]; }
   aggTicks++;
-  if(aggTicks % 4 === 0){ // statTick runs every 250ms -> flush once per second
+  aggMs += 250; // statTick runs every 250ms
+  if(aggMs >= 800){ // flush once per 0.8s aggregation window
+    aggMs -= 800;
     aggFlushOne(aggAcc, my.x, my.y);
     for(const pid in aggRemote){ const p = players[pid]; if(p && typeof p.x === "number") aggFlushOne(aggRemote[pid].acc, p.x, p.y); }
   }
@@ -1684,7 +1697,7 @@ function applyGrilledEat(kind, isRot, isChar){
     my.hunger = clamp(my.hunger + ITEM_DEF[kind].eat, 0, 100);
     my.charSlowUntil = nowMs() + 5000;
     my.charRedUntil = nowMs() + 5000;
-    AudioSys.se("stomach"); toast("⬛ 焦げていた！（空腹は回復・体力-5）", 2800);
+    AudioSys.se("stomach"); toast("焦げていた！（空腹は回復・体力-5）", 2800);
     hurtMe(5, "char"); // HP-5 through the central path (+ instant −5 floater)
   } else {
     my.hunger = clamp(my.hunger + ITEM_DEF[kind].eat, 0, 100);
@@ -1692,7 +1705,7 @@ function applyGrilledEat(kind, isRot, isChar){
   }
   syncMe(true);
 }
-/* ---- The dining table (west of the bonfire): grilled food sits on plates, eaten FIFO ---- */
+/* ---- The dining table (west of the bonfire): grilled food sits on plates; eating takes the plate nearest to you ---- */
 const TABLE_MAX = 12;
 function tablePlace(kind){
   if((my.inv[kind]||0) <= 0) return;
@@ -1711,9 +1724,17 @@ function tablePlace(kind){
 }
 function tableEat(){
   if(!tableState.length) return;
-  const rec = tableState[0]; // FIFO: the earliest-placed item is eaten first
-  if(soloMode) tableState.shift();
-  else { roomRef.child("table/" + rec._id).remove(); tableState = tableState.slice(1); } // optimistic local removal; the listener confirms
+  // NOT FIFO: eat the item on the plate CLOSEST to where I stand (plates have fixed
+  // positions, see tablePlatePos) — moving around the table chooses what I eat.
+  let bi = 0, bd = Infinity;
+  tableState.forEach((r, i)=>{
+    const p = tablePlatePos(i);
+    const d = Math.hypot(p.x - my.x, p.y - my.y);
+    if(d < bd){ bd = d; bi = i; }
+  });
+  const rec = tableState[bi];
+  if(soloMode) tableState.splice(bi, 1);
+  else { roomRef.child("table/" + rec._id).remove(); tableState = tableState.filter((_, i)=> i !== bi); } // optimistic local removal; the listener confirms
   applyGrilledEat(rec.k, !!rec.rot, !!rec.char);
   renderInv(); renderCtx();
 }
@@ -1731,8 +1752,23 @@ function doUse(){
   my.useCd = t;
   const entries = invEntries();
   const sel = entries[my.sel];
+  // 0f) FISHING: while fishing, 👊 is dedicated to the reel action.
+  //     HIT active (0.7s window) -> catch! Pressing at any other time -> miss: fishing is
+  //     cancelled and the durability spent on the cast is NOT refunded.
+  if(my.fishing){
+    const F = my.fishing;
+    if(F.hit && t <= F.hitEnd){
+      my.fishing = null; hideProgress();
+      const roll = Math.random(); const n = roll < 0.7 ? 1 : (roll < 0.9 ? 2 : 3); // 70% 1 / 20% 2 / 10% 3
+      for(let i = 0; i < n; i++) spawnGround("fish", my.x + (i - (n - 1) / 2) * 22, my.y - 42); // drops NORTH of me, NOT into the inventory
+      AudioSys.se("pickup"); toast("🎣 釣れた！魚×" + n + "が北に落ちた"); renderInv();
+    } else {
+      my.fishing = null; hideProgress(); toast("🎣 早すぎた…釣りはキャンセル（耐久は戻らない）");
+    }
+    return;
+  }
   // 0h) near the house site: deposit the SELECTED building material, 1 per press (hold-repeat works)
-  if(ctxKind === "house" && sel && sel.toolIdx === undefined && (sel.kind === "wood" || sel.kind === "stone" || sel.kind === "mstone" || sel.kind === "grass" || sel.kind === "gfish" || sel.kind === "gmeat")){ houseDeposit(sel.kind); return; }
+  if(ctxKind === "house" && sel && sel.toolIdx === undefined && (sel.kind === "wood" || sel.kind === "stone" || sel.kind === "mstone" || sel.kind === "grass")){ houseDeposit(sel.kind); return; }
   // 0) near the shared box: deposit the selected item (box panel is take-out only).
   //    Deposit wins over eating/using while the box panel is open. ALL items incl. tools can be boxed.
   if(ctxKind === "box" && sel){
@@ -1745,7 +1781,7 @@ function doUse(){
     }
   }
   // 0t) near the table: selected grilled food -> place 1 on the table; otherwise, if the
-  //     table holds food, eat the OLDEST placed item (FIFO) with its normal effects.
+  //     table holds food, eat the item on the plate NEAREST to me with its normal effects.
   if(ctxKind === "table"){
     if(sel && sel.toolIdx === undefined && (sel.kind === "gfish" || sel.kind === "gmeat") && (my.inv[sel.kind]||0) > 0){ tablePlace(sel.kind); return; }
     if(tableState.length){ tableEat(); return; }
@@ -1753,10 +1789,20 @@ function doUse(){
   // facilities open panels instead (ctx buttons handle details)
   // 1) selected bow -> shoot
   if(sel && sel.kind === "bow"){ shootArrow(); return; }
-  // 2) selected rod near lake -> fishing
+  // 2) selected rod near lake -> cast. Casting consumes 1 rod durability IMMEDIATELY;
+  //     if that breaks the rod, the cast never happens. The HIT! moment is scheduled at a
+  //     random 5-15s (hidden); see the reel interception (0f) and statTick for the catch.
   if(sel && sel.kind === "rod"){
     if(nearLake(my.x, my.y)){
-      if(!my.fishing){ spendHunger(); my.fishing = { readyAt: t + 15000 }; showProgress("🎣 釣り中…", 0); AudioSys.se("decide"); }
+      if(!my.fishing){
+        spendHunger();
+        const rod = hasTool("rod"); if(rod) damageTool(rod, 1); // cast cost — may break the rod
+        if(hasTool("rod")){
+          my.fishing = { castAt: t, hitAt: t + 5000 + Math.random() * 10000, hit: false, hitEnd: 0 };
+          showProgress("🎣 釣り中…", 0); AudioSys.se("decide");
+        }
+        renderInv();
+      }
       return;
     } else { toast("湖の近くで使おう"); return; }
   }
@@ -1812,7 +1858,7 @@ function doUse(){
   }
   // 5) tree chop
   const trees = NODES.filter(nd=>nd.type==="tree" && !(nodesState[nd.id] && nodesState[nd.id].gone));
-  const nt = nearestOf(trees, 64);
+  const nt = nearestOf(trees, 42); // tightened (was 64): you must stand close to the tree to chop it
   if(nt){ hitTree(nt); renderInv(); syncMe(true); return; }
   // 6) stone / grass harvest — 👊 ONLY: map nodes never yield to touch (dropped ground items still do).
   //    Hammer owned + stone node -> smash: mini-stones drop on the ground (70% 3 / 20% 5 / 10% 7).
@@ -1938,7 +1984,7 @@ function renderCtx(){
       } else {
         const ready = s.readyAt && nowMs() >= s.readyAt;
         const charred = ready && nowMs() > s.readyAt + 15000; // finished >15s ago and left in the fire -> 焦げ
-        html += ctxBtn(charred ? "⬛ 焦げ" + ITEM_DEF[out].name : (ready ? "✨ " : "⏳ ") + ITEM_DEF[out].name, charred ? "焦げてしまった…" : (ready ? "取り出せる！" : "あと" + Math.ceil((s.readyAt-nowMs())/1000) + "秒"), "takeout|" + sid, !ready, true);
+        html += ctxBtn(charred ? '<span style="display:inline-block;filter:brightness(.25)">' + ITEM_DEF[out].icon + '</span> 焦げ' + ITEM_DEF[out].name : (ready ? "✨ " : "⏳ ") + ITEM_DEF[out].name, charred ? "焦げてしまった…" : (ready ? "取り出せる！" : "あと" + Math.ceil((s.readyAt-nowMs())/1000) + "秒"), "takeout|" + sid, !ready, true);
       }
     }
     html += "</div></div>";
@@ -1969,7 +2015,7 @@ function renderCtx(){
   } else if(ctxKind === "house"){
     const hs = houseState, rq = houseReq();
     html += '<div class="ctx-box"><div class="ctx-title">🏠 家づくり（素材を入れて完成させよう）</div>';
-    html += '<div style="font-size:14px;font-weight:800;">🪵 ' + (hs.wood||0) + '/' + rq.wood + '　🪨 ' + (hs.stone||0) + '/' + rq.stone + '　🌿 ' + (hs.grass||0) + '/' + rq.grass + '　🍖 ' + (hs.food||0) + '/' + rq.food + '</div>';
+    html += '<div style="font-size:14px;font-weight:800;">🪵 ' + (hs.wood||0) + '/' + rq.wood + '　🪨 ' + (hs.stone||0) + '/' + rq.stone + '　🌿 ' + (hs.grass||0) + '/' + rq.grass + '</div>';
     if(hs.done) html += '<div style="font-size:12px;color:#7be495;margin-top:4px;">🏠 完成！</div>';
     html += '</div>';
   } else if(ctxKind === "table"){
@@ -1983,7 +2029,11 @@ function renderCtx(){
         seenT[key].n++;
       });
       html += '<div style="font-size:15px;font-weight:800;">' + partsT.map(p =>
-        (p.tag === "C" ? "⬛" : "") + ITEM_DEF[p.k].icon + (p.tag === "R" ? "🦠" : "") + "×" + p.n
+        (p.tag === "C"
+          ? '<span style="display:inline-block;filter:brightness(.25)">' + ITEM_DEF[p.k].icon + '</span>'
+          : (p.tag === "R"
+            ? '<span style="display:inline-block;filter:sepia(.9) saturate(3.5) hue-rotate(50deg)">' + ITEM_DEF[p.k].icon + '</span>🦠'
+            : ITEM_DEF[p.k].icon)) + "×" + p.n
       ).join("　") + '</div>';
     }
     html += '</div>';
@@ -2054,7 +2104,7 @@ function fireTakeOut(sid){
   const charredOut = !s.rot && nowMs() > s.readyAt + 15000;
   if(s.rot) my.rotGrilled[out] = (my.rotGrilled[out]||0) + 1; // hidden rotten grilled (indistinguishable)
   else if(charredOut) my.charGrilled[out] = (my.charGrilled[out]||0) + 1; // charred stock (visible)
-  my.inv[out]++; AudioSys.se("cookdone"); toast(charredOut ? "⬛ 焦げ" + ITEM_DEF[out].name + "になってしまった…" : "✨ " + ITEM_DEF[out].name + "が焼けた！"); renderInv(); renderCtx();
+  my.inv[out]++; AudioSys.se("cookdone"); toast(charredOut ? "焦げ" + ITEM_DEF[out].name + "になってしまった…" : "✨ " + ITEM_DEF[out].name + "が焼けた！"); renderInv(); renderCtx();
 }
 function boxMove(kind, deposit){
   // Rotten bookkeeping through the box: totals live in boxState[kind], the hidden rotten subset in
@@ -2168,7 +2218,7 @@ function renderInv(){
     const d = document.createElement("div");
     d.className = "inv-cell" + (i===my.sel ? " sel" : "");
     const charN = (ent.kind === "gfish" || ent.kind === "gmeat") ? (my.charGrilled[ent.kind]||0) : 0;
-    d.innerHTML = '<div class="ic"' + (charN ? ' style="filter:brightness(.45)" title="焦げあり"' : "") + '>' + ITEM_DEF[ent.kind].icon + '</div><div class="ct">' + (ent.toolIdx!==undefined ? "" : "×"+ent.count) + '</div>' + (charN ? '<div class="charct">焦げ×' + charN + '</div>' : "") +
+    d.innerHTML = '<div class="ic"' + (charN ? ' style="filter:brightness(.25)" title="焦げあり"' : "") + '>' + ITEM_DEF[ent.kind].icon + '</div><div class="ct">' + (ent.toolIdx!==undefined ? "" : "×"+ent.count) + '</div>' + (charN ? '<div class="charct">焦げ×' + charN + '</div>' : "") +
                   (ent.dur !== undefined && ITEM_DEF[ent.kind].dur ? '<div class="durbar"><i style="width:' + Math.round(clamp(ent.dur / ITEM_DEF[ent.kind].dur, 0, 1) * 100) + '%"></i></div>' : "");
     // pointerdown (not click): the tap must register even while another finger holds the pad.
     // NOTE: the tapped entry is captured as `ent` — naming the event parameter `e` would shadow it.
@@ -2195,7 +2245,7 @@ function renderInv(){
           if(ent.kind === "wood"){ fireAddWood(); return; }
           if(ent.kind === "fish" || ent.kind === "meat"){ fireCook(ent.kind); return; }
         } else if(ctxKind === "house"){
-          if(ent.toolIdx === undefined && (ent.kind === "wood" || ent.kind === "stone" || ent.kind === "mstone" || ent.kind === "grass" || ent.kind === "gfish" || ent.kind === "gmeat")){ houseDeposit(ent.kind); return; }
+          if(ent.toolIdx === undefined && (ent.kind === "wood" || ent.kind === "stone" || ent.kind === "mstone" || ent.kind === "grass")){ houseDeposit(ent.kind); return; }
         } else if(ctxKind === "table"){
           if(ent.toolIdx === undefined && (ent.kind === "gfish" || ent.kind === "gmeat")){ tablePlace(ent.kind); return; }
         }
@@ -2499,9 +2549,9 @@ function r3BuildStatics(){
   const benL = r3TextSprite("作業台", 11); benL.position.y = 6.2; benG.add(benL); S.add(benG);
   // ---- dining table (west of the fire; the plates on it are dynamic, see r3Sync) ----
   const tabG = new THREE.Group(); tabG.position.set(w2x(TABLE_POS.x), 0, w2z(TABLE_POS.y));
-  tabG.add(r3Box(7.6, 0.7, 3.6, 0x8a5a2b, 0, 2.3, 0));
-  tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, -3.2, 1.0, -1.3)); tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, 3.2, 1.0, -1.3));
-  tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, -3.2, 1.0, 1.3)); tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, 3.2, 1.0, 1.3));
+  tabG.add(r3Box(11.4, 0.7, 5.4, 0x8a5a2b, 0, 2.3, 0));
+  tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, -4.8, 1.0, -1.95)); tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, 4.8, 1.0, -1.95));
+  tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, -4.8, 1.0, 1.95)); tabG.add(r3Box(0.7, 2.0, 0.7, 0x54371a, 4.8, 1.0, 1.95));
   const tabL = r3TextSprite("テーブル", 11); tabL.position.y = 6.2; tabG.add(tabL); S.add(tabG);
   // ---- bonfire (flame / light are dynamic refs) ----
   const fireG = new THREE.Group(); fireG.position.set(w2x(FIRE_POS.x), 0, w2z(FIRE_POS.y));
@@ -2549,8 +2599,8 @@ function r3BuildStatics(){
 }
 function r3BuildHouse(){
   const hReq = houseReq();
-  const hTotal = (houseState.wood || 0) + (houseState.stone || 0) + (houseState.grass || 0) + (houseState.food || 0);
-  const hNeed = hReq.wood + hReq.stone + hReq.grass + hReq.food;
+  const hTotal = (houseState.wood || 0) + (houseState.stone || 0) + (houseState.grass || 0);
+  const hNeed = hReq.wood + hReq.stone + hReq.grass;
   const stage = houseState.done ? 2 : (hTotal * 2 >= hNeed ? 1 : 0);
   const key = stage + "_" + hTotal + "/" + hNeed;
   if(key === R3.houseKey) return;
@@ -2680,13 +2730,15 @@ function r3Sync(ts){
     const key = it.type + (isRotVis ? "_rot" : "") + (isChar ? "_char" : "");
     if(!R3.texCache["item_" + key]){
       const c = r3Canvas(112, 96), gg = c.getContext("2d");
-      if(isRotVis){ gg.fillStyle = "rgba(96,190,50,0.45)"; gg.beginPath(); gg.arc(48, 48, 34, 0, Math.PI * 2); gg.fill(); }
       gg.font = "62px sans-serif"; gg.textAlign = "center"; gg.textBaseline = "middle";
       gg.fillText(ITEM_DEF[it.type].icon, 48, 52);
-      if(isChar){ // charred: dark tint over the icon + 焦げ tag
-        gg.fillStyle = "rgba(0,0,0,0.55)"; gg.beginPath(); gg.arc(48, 48, 34, 0, Math.PI * 2); gg.fill();
-        gg.font = "bold 24px sans-serif"; gg.fillStyle = "#ffb3a7"; gg.fillText("焦げ", 48, 86);
+      if(isChar || isRotVis){ // tint the emoji ITSELF: charred near-black / rotten greenish
+        gg.globalCompositeOperation = "source-atop";
+        gg.fillStyle = isChar ? "rgba(0,0,0,0.82)" : "rgba(70,190,60,0.5)";
+        gg.fillRect(0, 0, 112, 96);
+        gg.globalCompositeOperation = "source-over";
       }
+      if(isChar){ gg.font = "bold 24px sans-serif"; gg.fillStyle = "#ffb3a7"; gg.fillText("焦げ", 48, 86); }
       if(isRotVis){ gg.font = "30px sans-serif"; gg.fillText("🦠", 88, 22); }
       R3.texCache["item_" + key] = new THREE.CanvasTexture(c);
     }
@@ -2712,22 +2764,28 @@ function r3Sync(ts){
       R3.tableSig = sig;
       while(R3.tableGrp.children.length) R3.tableGrp.remove(R3.tableGrp.children[0]);
       tableState.slice(0, 12).forEach((r, i) => {
-        const px = -2.7 + (i % 4) * 1.8, pz = -1.2 + Math.floor(i / 4) * 1.2;
-        const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.62, 0.14, 14), r3Mat(0xf5f0e6));
+        const pp = tablePlatePos(i); // same fixed plate spots the nearest-plate eating rule uses
+        const px = (pp.x - TABLE_POS.x) / 10, pz = (pp.y - TABLE_POS.y) / 10;
+        const plate = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 0.85, 0.14, 14), r3Mat(0xf5f0e6));
         plate.position.set(px, 2.72, pz); R3.tableGrp.add(plate);
         const key = r.k + (r.rot ? "_rot" : "") + (r.char ? "_char" : "");
         let tex = R3.texCache["item_" + key];
         if(!tex){
           const c = r3Canvas(112, 96), gg = c.getContext("2d");
-          if(r.rot){ gg.fillStyle = "rgba(96,190,50,0.45)"; gg.beginPath(); gg.arc(48, 48, 34, 0, Math.PI * 2); gg.fill(); }
           gg.font = "62px sans-serif"; gg.textAlign = "center"; gg.textBaseline = "middle";
           gg.fillText(ITEM_DEF[r.k].icon, 48, 52);
-          if(r.char){ gg.fillStyle = "rgba(0,0,0,0.55)"; gg.beginPath(); gg.arc(48, 48, 34, 0, Math.PI * 2); gg.fill(); gg.font = "bold 24px sans-serif"; gg.fillStyle = "#ffb3a7"; gg.fillText("焦げ", 48, 86); }
+          if(r.char || r.rot){ // tint the emoji ITSELF: charred near-black / rotten greenish
+            gg.globalCompositeOperation = "source-atop";
+            gg.fillStyle = r.char ? "rgba(0,0,0,0.82)" : "rgba(70,190,60,0.5)";
+            gg.fillRect(0, 0, 112, 96);
+            gg.globalCompositeOperation = "source-over";
+          }
+          if(r.char){ gg.font = "bold 24px sans-serif"; gg.fillStyle = "#ffb3a7"; gg.fillText("焦げ", 48, 86); }
           if(r.rot){ gg.font = "30px sans-serif"; gg.fillText("🦠", 88, 22); }
           tex = new THREE.CanvasTexture(c); R3.texCache["item_" + key] = tex;
         }
         const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-        sp.scale.set(1.7, 1.45, 1); sp.position.set(px, 3.35, pz); R3.tableGrp.add(sp);
+        sp.scale.set(2.3, 1.95, 1); sp.position.set(px, 3.35, pz); R3.tableGrp.add(sp);
       });
     }
   }
@@ -2865,7 +2923,7 @@ function r3Sync(ts){
   }
   floaters.forEach(f=>{
     const k = (performance.now() - f.at) / 1000;
-    if(!f._sp){ f._sp = r3TextSprite(f.text, 8.25, f.color); R3.dyn.add(f._sp); }
+    if(!f._sp){ f._sp = r3TextSprite(f.text, 4.2, f.color); R3.dyn.add(f._sp); }
     f._sp.visible = true;
     f._sp.position.set(w2x(f.x), 8.4 + k * 2.4, w2z(f.y));
     f._sp.material.opacity = 1 - k;
