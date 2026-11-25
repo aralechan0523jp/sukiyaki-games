@@ -547,13 +547,31 @@ function updateDisp(ts){
 function freshPlayer(x,y){
   return { x:x, y:y, dir:1, face:2, aim:0, moving:false, hp:100, hunger:100, temp:100,
            inv:{ wood:0, stone:0, mstone:0, grass:0, fish:0, meat:0, gfish:0, gmeat:0 },
-           rotRaw:{ fish:0, meat:0 }, rotGrilled:{ gfish:0, gmeat:0 }, charGrilled:{ gfish:0, gmeat:0 },
+           rotRaw:{ fish:0, meat:0 }, rotGrilled:{ gfish:0, gmeat:0 }, charGrilled:{ gfish:0, gmeat:0 }, rotVisGrilled:{ gfish:0, gmeat:0 },
            dead:false, vomitUntil:0, charSlowUntil:0, charRedUntil:0, inWater:false,
            tools:[], sel:0, role:"", punchCd:0, useCd:0, fishing:null, lastGrowl:0 };
 }
 function invEntries(){
+  // Food stocks are SPLIT into separate inventory slots by state, so the player can
+  // choose deliberately: raw fish/meat -> fresh slot + rotten slot (🦠腐り); grilled ->
+  // normal slot + charred slot （焦げ) + visibly-rotten slot (rotted on the ground, 🦠腐り).
+  // The SECRET rotten grilled stock (cooked from rotten raw) stays hidden inside the
+  // normal slot's count — indistinguishable until eaten, by design.
   const e = [];
-  for(const k of Object.keys(ITEM_DEF)) if(!ITEM_DEF[k].tool && my.inv[k] > 0) e.push({ kind:k, count:my.inv[k] });
+  for(const k of Object.keys(ITEM_DEF)){
+    if(ITEM_DEF[k].tool || !(my.inv[k] > 0)) continue;
+    if(k === "fish" || k === "meat"){
+      const rot = Math.min(my.rotRaw[k]||0, my.inv[k]);
+      if(my.inv[k] - rot > 0) e.push({ kind:k, count:my.inv[k] - rot, sub:"fresh" });
+      if(rot > 0) e.push({ kind:k, count:rot, sub:"rot" });
+    } else if(k === "gfish" || k === "gmeat"){
+      const ch = Math.min(my.charGrilled[k]||0, my.inv[k]);
+      const rv = Math.min(my.rotVisGrilled[k]||0, my.inv[k]);
+      if(my.inv[k] - ch - rv > 0) e.push({ kind:k, count:my.inv[k] - ch - rv, sub:"norm" });
+      if(ch > 0) e.push({ kind:k, count:ch, sub:"char" });
+      if(rv > 0) e.push({ kind:k, count:rv, sub:"vrot" });
+    } else e.push({ kind:k, count:my.inv[k] });
+  }
   my.tools.forEach((t,i)=> e.push({ kind:t.kind, count:1, dur:t.dur, toolIdx:i }));
   return e;
 }
@@ -885,12 +903,12 @@ function hostLoop(){
   // renderers draw the germ mark), unlike rotten grilled in an inventory/box, which stays secret.
   for(const gid in groundItems){
     const git = groundItems[gid];
-    if(!git || git.rot || !git.at) continue;
+    if(!git || git.rot || git.rotV || !git.at) continue;
     const rawG = git.type === "fish" || git.type === "meat";
     const grilledG = git.type === "gfish" || git.type === "gmeat";
     if((rawG && t - git.at > 20000) || (grilledG && t - git.at > 15000)){
-      git.rot = 1;
-      if(!soloMode) roomRef.child("items/" + gid + "/rot").set(1);
+      git.rotV = 1; // rotting ON the ground is VISIBLE (germ mark) — unlike the secret rot flag
+      if(!soloMode) roomRef.child("items/" + gid + "/rotV").set(1);
     }
   }
   // node respawn: a harvested tree / stone / grass node comes back 120 seconds after it was
@@ -1444,7 +1462,7 @@ function blocked(x,y){
   return false;
 }
 function claimGroundItem(id, it){
-  if(soloMode){ delete groundItems[id]; my.inv[it.type] = (my.inv[it.type]||0)+1; if(ITEM_DEF[it.type].tool){ my.inv[it.type]--; my.tools.push({ kind: it.type, dur: it.dur||ITEM_DEF[it.type].dur }); } if(it.rot){ if(it.type==="fish"||it.type==="meat") my.rotRaw[it.type]++; else if(it.type==="gfish"||it.type==="gmeat") my.rotGrilled[it.type]++; } if(it.char && (it.type==="gfish"||it.type==="gmeat")) my.charGrilled[it.type]++; AudioSys.se("pickup"); renderInv(); return; }
+  if(soloMode){ delete groundItems[id]; my.inv[it.type] = (my.inv[it.type]||0)+1; if(ITEM_DEF[it.type].tool){ my.inv[it.type]--; my.tools.push({ kind: it.type, dur: it.dur||ITEM_DEF[it.type].dur }); } if(it.rot){ if(it.type==="fish"||it.type==="meat") my.rotRaw[it.type]++; else if(it.type==="gfish"||it.type==="gmeat") my.rotGrilled[it.type]++; } if(it.rotV){ if(it.type==="fish"||it.type==="meat") my.rotRaw[it.type]++; else if(it.type==="gfish"||it.type==="gmeat") my.rotVisGrilled[it.type]++; } if(it.char && (it.type==="gfish"||it.type==="gmeat")) my.charGrilled[it.type]++; AudioSys.se("pickup"); renderInv(); return; }
   const ref = roomRef.child("items/" + id);
   // Claim first via a flag transaction so two players can't both take the same item.
   roomRef.child("items/" + id + "/claimedBy").transaction(cur => cur ? undefined : uid, (err, committed)=>{
@@ -1453,9 +1471,9 @@ function claimGroundItem(id, it){
       spendHunger();
       if(ITEM_DEF[it.type].tool) my.tools.push({ kind: it.type, dur: it.dur || ITEM_DEF[it.type].dur });
       else my.inv[it.type] = (my.inv[it.type]||0) + 1;
-      if(it.rot){ if(it.type==="fish"||it.type==="meat") my.rotRaw[it.type]++; else if(it.type==="gfish"||it.type==="gmeat") my.rotGrilled[it.type]++; }
+      if(it.rot){ if(it.type==="fish"||it.type==="meat") my.rotRaw[it.type]++; else if(it.type==="gfish"||it.type==="gmeat") my.rotGrilled[it.type]++; } if(it.rotV){ if(it.type==="fish"||it.type==="meat") my.rotRaw[it.type]++; else if(it.type==="gfish"||it.type==="gmeat") my.rotVisGrilled[it.type]++; }
       if(it.char && (it.type==="gfish"||it.type==="gmeat")) my.charGrilled[it.type]++;
-      AudioSys.se("pickup"); toast(ITEM_DEF[it.type].icon + " " + (it.char ? "焦げ" : "") + ITEM_DEF[it.type].name + "を拾った"); renderInv();
+      AudioSys.se("pickup"); toast(ITEM_DEF[it.type].icon + " " + (it.char ? "焦げ" : (it.rotV ? "腐った" : "")) + ITEM_DEF[it.type].name + "を拾った"); renderInv();
     }
   });
 }
@@ -1707,19 +1725,23 @@ function applyGrilledEat(kind, isRot, isChar){
 }
 /* ---- The dining table (west of the bonfire): grilled food sits on plates; eating takes the plate nearest to you ---- */
 const TABLE_MAX = 12;
-function tablePlace(kind){
+function tablePlace(kind, sub){
   if((my.inv[kind]||0) <= 0) return;
   if(tableState.length >= TABLE_MAX){ toast("🍽️ テーブルはいっぱい（12個まで）"); return; }
-  const wasRot = (my.rotGrilled[kind]||0) > 0; // worst stock leaves first (rotten > charred > normal), same policy as box/house
-  const wasChar = !wasRot && (my.charGrilled[kind]||0) > 0;
+  // separated slots place exactly what they show: charred slot -> charred plate,
+  // visibly-rotten slot -> visibly-rotten plate (germ shows on the plate). The normal
+  // slot keeps the hidden trap: its secret rotten stock may leave first and stays
+  // secret on the plate too (no germ) — indistinguishable until eaten.
+  let wasRot = false, wasChar = false, wasVis = false;
+  if(sub === "char"){ wasChar = true; my.charGrilled[kind]--; }
+  else if(sub === "vrot"){ wasVis = true; my.rotVisGrilled[kind]--; }
+  else { wasRot = (my.rotGrilled[kind]||0) > 0; if(wasRot) my.rotGrilled[kind]--; }
   my.inv[kind]--;
-  if(wasRot) my.rotGrilled[kind]--;
-  if(wasChar) my.charGrilled[kind]--;
-  const rec = { k: kind }; if(wasRot) rec.rot = 1; if(wasChar) rec.char = 1;
+  const rec = { k: kind }; if(wasRot) rec.rot = 1; if(wasChar) rec.char = 1; if(wasVis) rec.rotV = 1;
   if(soloMode){ rec._id = "t" + nowMs() + "_" + Math.floor(Math.random()*99999); tableState.push(rec); }
   else roomRef.child("table").push(rec);
   AudioSys.se("decide");
-  toast("🍽️ " + (wasChar ? "焦げ" : "") + ITEM_DEF[kind].name + "をテーブルに置いた");
+  toast("🍽️ " + (wasChar ? "焦げ" : (wasVis ? "腐った" : "")) + ITEM_DEF[kind].name + "をテーブルに置いた");
   renderInv(); renderCtx();
 }
 function tableEat(){
@@ -1735,7 +1757,7 @@ function tableEat(){
   const rec = tableState[bi];
   if(soloMode) tableState.splice(bi, 1);
   else { roomRef.child("table/" + rec._id).remove(); tableState = tableState.filter((_, i)=> i !== bi); } // optimistic local removal; the listener confirms
-  applyGrilledEat(rec.k, !!rec.rot, !!rec.char);
+  applyGrilledEat(rec.k, !!(rec.rot || rec.rotV), !!rec.char);
   renderInv(); renderCtx();
 }
 function nearestOf(list, maxD){
@@ -1783,7 +1805,7 @@ function doUse(){
   // 0t) near the table: selected grilled food -> place 1 on the table; otherwise, if the
   //     table holds food, eat the item on the plate NEAREST to me with its normal effects.
   if(ctxKind === "table"){
-    if(sel && sel.toolIdx === undefined && (sel.kind === "gfish" || sel.kind === "gmeat") && (my.inv[sel.kind]||0) > 0){ tablePlace(sel.kind); return; }
+    if(sel && sel.toolIdx === undefined && (sel.kind === "gfish" || sel.kind === "gmeat") && (my.inv[sel.kind]||0) > 0){ tablePlace(sel.kind, sel.sub); return; }
     if(tableState.length){ tableEat(); return; }
   }
   // facilities open panels instead (ctx buttons handle details)
@@ -1809,8 +1831,12 @@ function doUse(){
   // 3) selected grilled food -> eat from my own stock (worst first: rotten > charred > normal)
   if(sel && ITEM_DEF[sel.kind].eat){
     const kind = sel.kind;
-    const isRot = (my.rotGrilled[kind]||0) > 0; if(isRot) my.rotGrilled[kind]--;
-    const isChar = !isRot && (my.charGrilled[kind]||0) > 0; if(isChar) my.charGrilled[kind]--;
+    // separated slots eat exactly what they show; the normal slot's hidden rotten
+    // stock (cooked from rotten raw) is served first — the trap stays secret
+    let isRot = false, isChar = false;
+    if(sel.sub === "vrot"){ isRot = true; my.rotVisGrilled[kind]--; }
+    else if(sel.sub === "char"){ isChar = true; my.charGrilled[kind]--; }
+    else { isRot = (my.rotGrilled[kind]||0) > 0; if(isRot) my.rotGrilled[kind]--; }
     my.inv[kind]--;
     applyGrilledEat(kind, isRot, isChar);
     renderInv(); return;
@@ -1905,11 +1931,18 @@ function doDrop(){
   let dropX = Math.round(my.x + fv[0] * 40), dropY = Math.round(my.y + fv[1] * 40);
   if(blocked(dropX, dropY)){ dropX = Math.round(my.x); dropY = Math.round(my.y + 56); }
   const item = { type: sel.kind, x: clamp(dropX, 30, WORLD_W-30), y: clamp(dropY, 30, WORLD_H-30), at: nowMs(), cd: 2000 }; // player drops keep the 2s pickup delay
-  // the hidden rotten flag travels with the dropped item (raw rotten stays rotten; grilled rotten stays secret)
-  if((sel.kind === "fish" || sel.kind === "meat") && (my.rotRaw[sel.kind]||0) > 0){ my.rotRaw[sel.kind]--; item.rot = 1; }
-  if((sel.kind === "gfish" || sel.kind === "gmeat") && (my.rotGrilled[sel.kind]||0) > 0){ my.rotGrilled[sel.kind]--; item.rot = 1; }
-  // the charred flag travels too — only when a rotten one did not leave first (worst stock first)
-  if((sel.kind === "gfish" || sel.kind === "gmeat") && !item.rot && (my.charGrilled[sel.kind]||0) > 0){ my.charGrilled[sel.kind]--; item.char = 1; }
+  // flags travel with the dropped item, per the separated slot it came from:
+  // the rotten-raw slot and the visibly-rotten grilled slot drop as VISIBLE rot
+  // (rotV: germ shows on the ground); the normal grilled slot's hidden rotten stock
+  // drops as secret rot (rot: no germ, looks normal); the charred slot drops charred.
+  if(sel.toolIdx === undefined){
+    if((sel.kind === "fish" || sel.kind === "meat") && sel.sub === "rot"){ my.rotRaw[sel.kind]--; item.rotV = 1; }
+    if(sel.kind === "gfish" || sel.kind === "gmeat"){
+      if(sel.sub === "vrot"){ my.rotVisGrilled[sel.kind]--; item.rotV = 1; }
+      else if(sel.sub === "char"){ my.charGrilled[sel.kind]--; item.char = 1; }
+      else if((my.rotGrilled[sel.kind]||0) > 0){ my.rotGrilled[sel.kind]--; item.rot = 1; }
+    }
+  }
   if(sel.toolIdx !== undefined){ if(my.tools[sel.toolIdx].dur !== undefined) item.dur = my.tools[sel.toolIdx].dur; my.tools.splice(sel.toolIdx, 1); } // no dur field for indestructible items (Firebase rejects undefined)
   else my.inv[sel.kind]--;
   if(soloMode){ groundItems["gi" + nowMs()] = item; }
@@ -2073,14 +2106,18 @@ function fireAddWood(){
   }
   AudioSys.se("fire"); renderInv(); renderCtx();
 }
-function fireCook(kind){
+function fireCook(kind, subMode){
   if(fireState.gauge <= 0){ toast("火が消えている！"); return; }
   if((my.inv[kind]||0) <= 0) return;
   // up to 5 items cook in parallel (each on its own 15s timer); a 6th is refused
   if(Object.keys(cookingState).filter(k=>cookingState[k]).length >= 5){ toast("🍳 焼けるのは5個まで"); return; }
+  // stock choice: the separated rotten slot cooks a rotten one on purpose; every other
+  // entry point cooks FRESH stock first and falls back to rotten only when none is fresh
+  const useRot = subMode === "rot" ? (my.rotRaw[kind]||0) > 0 : ((my.inv[kind]||0) - (my.rotRaw[kind]||0) <= 0);
+  if(subMode === "rot" && !useRot) return;
   my.inv[kind]--;
   let rot = 0;
-  if((my.rotRaw[kind]||0) > 0){ my.rotRaw[kind]--; rot = 1; } // grilling a rotten raw one: the result LOOKS identical (hidden flag)
+  if(useRot && (my.rotRaw[kind]||0) > 0){ my.rotRaw[kind]--; rot = 1; } // grilling a rotten raw one: the result LOOKS identical (hidden flag)
   const slot = { kind, readyAt: nowMs() + 15000, by: uid, rot };
   if(soloMode){ cookingState["s" + nowMs()] = slot; }
   else roomRef.child("fire/cooking").push(slot);
@@ -2217,8 +2254,10 @@ function renderInv(){
   entries.forEach((ent,i)=>{
     const d = document.createElement("div");
     d.className = "inv-cell" + (i===my.sel ? " sel" : "");
-    const charN = (ent.kind === "gfish" || ent.kind === "gmeat") ? (my.charGrilled[ent.kind]||0) : 0;
-    d.innerHTML = '<div class="ic"' + (charN ? ' style="filter:brightness(.25)" title="焦げあり"' : "") + '>' + ITEM_DEF[ent.kind].icon + '</div><div class="ct">' + (ent.toolIdx!==undefined ? "" : "×"+ent.count) + '</div>' + (charN ? '<div class="charct">焦げ×' + charN + '</div>' : "") +
+    let icStyle = "", subTag = "";
+    if(ent.sub === "char"){ icStyle = ' style="filter:brightness(.25)"'; subTag = '<div class="charct">焦げ</div>'; }
+    else if(ent.sub === "rot" || ent.sub === "vrot"){ icStyle = ' style="filter:hue-rotate(70deg) saturate(2.4)"'; subTag = '<div class="charct" style="color:#8affa0">🦠腐り</div>'; }
+    d.innerHTML = '<div class="ic"' + icStyle + '>' + ITEM_DEF[ent.kind].icon + '</div><div class="ct">' + (ent.toolIdx!==undefined ? "" : "×"+ent.count) + '</div>' + subTag +
                   (ent.dur !== undefined && ITEM_DEF[ent.kind].dur ? '<div class="durbar"><i style="width:' + Math.round(clamp(ent.dur / ITEM_DEF[ent.kind].dur, 0, 1) * 100) + '%"></i></div>' : "");
     // pointerdown (not click): the tap must register even while another finger holds the pad.
     // NOTE: the tapped entry is captured as `ent` — naming the event parameter `e` would shadow it.
@@ -2243,11 +2282,11 @@ function renderInv(){
           }
         } else if(ctxKind === "fire"){
           if(ent.kind === "wood"){ fireAddWood(); return; }
-          if(ent.kind === "fish" || ent.kind === "meat"){ fireCook(ent.kind); return; }
+          if(ent.kind === "fish" || ent.kind === "meat"){ fireCook(ent.kind, ent.sub); return; }
         } else if(ctxKind === "house"){
           if(ent.toolIdx === undefined && (ent.kind === "wood" || ent.kind === "stone" || ent.kind === "mstone" || ent.kind === "grass")){ houseDeposit(ent.kind); return; }
         } else if(ctxKind === "table"){
-          if(ent.toolIdx === undefined && (ent.kind === "gfish" || ent.kind === "gmeat")){ tablePlace(ent.kind); return; }
+          if(ent.toolIdx === undefined && (ent.kind === "gfish" || ent.kind === "gmeat")){ tablePlace(ent.kind, ent.sub); return; }
         }
       }
       my.sel = i; AudioSys.se("decide"); renderInv();
@@ -2725,7 +2764,7 @@ function r3Sync(ts){
     // the texture key carries the item's flags: rotten (raw AND grilled are visible on the
     // ground) and charred (blackened + 焦げ tag). Flags can flip AFTER spawn (rot sets in),
     // so an existing sprite swaps its texture when its key changes.
-    const isRotVis = it.rot && (it.type === "fish" || it.type === "meat" || it.type === "gfish" || it.type === "gmeat");
+    const isRotVis = (it.type === "fish" || it.type === "meat") ? !!(it.rot || it.rotV) : (it.type === "gfish" || it.type === "gmeat") ? !!it.rotV : false;
     const isChar = !!it.char;
     const key = it.type + (isRotVis ? "_rot" : "") + (isChar ? "_char" : "");
     if(!R3.texCache["item_" + key]){
@@ -2758,7 +2797,7 @@ function r3Sync(ts){
   // ---- table plates: white discs + the placed grilled food as billboards (same flag
   //      treatment as ground items: charred darkened + 焦げ tag, rotten marked with the germ) ----
   {
-    const sig = tableState.map(r => r.k + (r.rot ? "R" : "") + (r.char ? "C" : "")).join(",");
+    const sig = tableState.map(r => r.k + (r.rot ? "R" : "") + (r.rotV ? "V" : "") + (r.char ? "C" : "")).join(",");
     if(!R3.tableGrp){ R3.tableGrp = new THREE.Group(); R3.tableGrp.position.set(w2x(TABLE_POS.x), 0, w2z(TABLE_POS.y)); R3.dyn.add(R3.tableGrp); R3.tableSig = null; }
     if(R3.tableSig !== sig){
       R3.tableSig = sig;
@@ -2768,20 +2807,20 @@ function r3Sync(ts){
         const px = (pp.x - TABLE_POS.x) / 10, pz = (pp.y - TABLE_POS.y) / 10;
         const plate = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 0.85, 0.14, 14), r3Mat(0xf5f0e6));
         plate.position.set(px, 2.72, pz); R3.tableGrp.add(plate);
-        const key = r.k + (r.rot ? "_rot" : "") + (r.char ? "_char" : "");
+        const key = r.k + (r.rotV ? "_rot" : "") + (r.char ? "_char" : "");
         let tex = R3.texCache["item_" + key];
         if(!tex){
           const c = r3Canvas(112, 96), gg = c.getContext("2d");
           gg.font = "62px sans-serif"; gg.textAlign = "center"; gg.textBaseline = "middle";
           gg.fillText(ITEM_DEF[r.k].icon, 48, 52);
-          if(r.char || r.rot){ // tint the emoji ITSELF: charred near-black / rotten greenish
+          if(r.char || r.rotV){ // tint the emoji ITSELF: charred near-black / rotten greenish
             gg.globalCompositeOperation = "source-atop";
             gg.fillStyle = r.char ? "rgba(0,0,0,0.82)" : "rgba(70,190,60,0.5)";
             gg.fillRect(0, 0, 112, 96);
             gg.globalCompositeOperation = "source-over";
           }
           if(r.char){ gg.font = "bold 24px sans-serif"; gg.fillStyle = "#ffb3a7"; gg.fillText("焦げ", 48, 86); }
-          if(r.rot){ gg.font = "30px sans-serif"; gg.fillText("🦠", 88, 22); }
+          if(r.rotV){ gg.font = "30px sans-serif"; gg.fillText("🦠", 88, 22); }
           tex = new THREE.CanvasTexture(c); R3.texCache["item_" + key] = tex;
         }
         const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
