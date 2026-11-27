@@ -239,7 +239,7 @@
         <h2>⛏️ あそびかた</h2>
         <b>移動</b>：左下のスライドパッド／WASD・矢印キー<br />
         <b>アクション</b>：右下の👊ボタン／スペースキー。<b>長押しすると、押し続けている間アクションが繰り返される</b>（掘る・たたく・食べる等）。離すと止まるよ。壁を掘る・敵をたたく・食べる、状況で自動で切り替わるよ。<br />
-        <b>施設メニュー</b>：🔥かまど・📦共有ボックス・🔥焚き火・🔨作業台は、👊の上にある<b>🖐️ボタン／Eキー</b>で開くよ（👊では開きません）。💎コアは👊で開くよ。<br />
+        <b>施設メニュー</b>：💎コア・🔥かまど・📦共有ボックス・🔥焚き火・🔨作業台は、👊の上にある<b>🖐️ボタン／Eキー</b>で開くよ（👊では開きません）。<br />
         <b>アイテム選択</b>：下のアイテム欄をタップ／数字キー。<br /><br />
         <b>拠点の施設</b><br />
         💎 コア…クリスタルやインゴットを納品してレベルアップ。Lv.5で覚醒＝クリア！<br />
@@ -492,8 +492,8 @@ function genMap() {
   carvePath(CX, CY, lx, ly, 1);
   carveCircle(lx, ly, 5, 6);
   carveCircle(lx + 2, ly - 2, 3, 6);
-  // クリスタル洞（北東・遠方）
-  var gx = CX + 44, gy = CY - 30;
+  // クリスタル洞（北東・最遠方）
+  var gx = CX + 56, gy = CY - 38;
   carvePath(CX, CY, gx, gy, 1);
   carveCircle(gx, gy, 6, 0);
   // 土壁をところどころに（柔らかい壁）
@@ -518,18 +518,19 @@ function genMap() {
     d = Math.abs(tx - CX) + Math.abs(ty - CY);
     if (d > 20 && tileAt(tx, ty) !== 6) vein(tx, ty, 4, irnd(3, 5));
   }
-  for (i = 0; i < 36; i++) { // クリスタル（最遠＋洞の周囲）
+  for (i = 0; i < 90; i++) { // クリスタル：全域に出るが中心に近いほど低確率（本命は遠方＋クリスタル洞）
     tx = CX + irnd(-66, 66); ty = CY + irnd(-50, 50);
     d = Math.abs(tx - CX) + Math.abs(ty - CY);
-    if (d > 51 && tileAt(tx, ty) !== 6) vein(tx, ty, 5, irnd(2, 4));
+    var cryP = d < 25 ? 0.05 : (d < 50 ? 0.15 : (d < 80 ? 0.45 : 1));
+    if (rnd(0, 1) < cryP && tileAt(tx, ty) !== 6) vein(tx, ty, 5, irnd(2, 4));
   }
   for (ty = gy - 8; ty <= gy + 8; ty++) for (tx = gx - 8; tx <= gx + 8; tx++) { // 洞の壁はクリスタル多め
     if (tx > 1 && ty > 1 && tx < MW - 2 && ty < MH - 2 && isWallTile(grid[tIdx(tx, ty)]) && rnd01() < 0.4) grid[tIdx(tx, ty)] = 5;
   }
   // タイルHP初期化
   for (i = 0; i < MW * MH; i++) { var t = grid[i]; tileHp[i] = TILE_HP[t] || 0; }
-  // 野生キノコ（壁際の床）
-  for (i = 0; i < 2000 && shrooms.length < 100; i++) {
+  // 野生キノコ（壁際の床）：マップ全体で25個まで配置（畑とは別）
+  for (i = 0; i < 2000 && shrooms.length < 25; i++) {
     tx = irnd(2, MW - 3); ty = irnd(2, MH - 3);
     if (grid[tIdx(tx, ty)] !== 0) continue;
     var nearWall = isWallTile(tileAt(tx + 1, ty)) || isWallTile(tileAt(tx - 1, ty)) || isWallTile(tileAt(tx, ty + 1)) || isWallTile(tileAt(tx, ty - 1));
@@ -630,8 +631,8 @@ function toast(msg, ms) {
 }
 /* ---------------- ホットバー ---------------- */
 function hotbarEntries() {
-  var list = [{ key: 'pick', icon: '⛏️', name: pickTier === 1 ? '石ツルハシ' : (pickTier === 2 ? '銅ツルハシ' : '鉄ツルハシ'), ct: '' }];
-  if (swordTier > 0) list.push({ key: 'sword', icon: '🗡️', name: swordTier === 1 ? '銅の剣' : '鉄の剣', ct: '' });
+  var list = [{ key: 'pick', icon: '⛏️', name: pickTier === 1 ? '石ツルハシ' : (pickTier === 2 ? '銅ツルハシ' : (pickTier === 3 ? '鉄ツルハシ' : 'クリスタルのツルハシ')), ct: '' }];
+  if (swordTier > 0) list.push({ key: 'sword', icon: '🗡️', name: swordTier === 1 ? '銅の剣' : (swordTier === 2 ? '鉄の剣' : 'クリスタルの剣'), ct: '' });
   if (hasRod) list.push({ key: 'rod', icon: '🎣', name: '釣り竿', ct: '' });
   if (hasLantern) list.push({ key: 'lantern', icon: '🏮', name: 'ランタン', ct: '' });
   ITEM_ORDER.forEach(function (k) {
@@ -755,8 +756,8 @@ function nearestWoodBlock(x, y, maxD) {
   woodBlocks.forEach(function (wb) { if (wb.taken) return; var d = dist2(x, y, wb.x, wb.y); if (d < bd) { bd = d; best = wb; } });
   return best;
 }
-/* 🖐️専用施設：かまど・共有ボックス・焚き火・作業台。メニューは🖐️ボタン／Eキーだけで開く（👊では開かない） */
-var HAND_FACILITIES = { furnace: 1, box: 1, fire: 1, bench: 1 };
+/* 🖐️専用施設：かまど・共有ボックス・焚き火・作業台・コア。メニューは🖐️ボタン／Eキーだけで開く（👊では開かない） */
+var HAND_FACILITIES = { furnace: 1, box: 1, fire: 1, bench: 1, core: 1 };
 function nearPunchFacility(maxD) {
   var best = null, bd = maxD * maxD;
   facilities.forEach(function (f) {
@@ -847,8 +848,7 @@ function doAction() {
     } else { player.fishing = null; toast('釣りをやめた'); }
     return;
   }
-  // コアが近ければ👊でパネルを開く。
-  // かまど・共有ボックス・焚き火・作業台は🖐️専用なので、👊では絶対に開かず通常アクションを行う。
+  // コア・かまど・共有ボックス・焚き火・作業台は🖐️専用なので、👊では絶対に開かず通常アクションを行う。
   // 仲間への食べ物の受け渡しも🖐️専用（👊では渡せない）
   var fac = nearPunchFacility(58);
   if (fac) { openPanel(fac.type); return; }
@@ -908,13 +908,13 @@ function doAction() {
   var atkRange = 54;
   var foe = nearestSlime(player.x + player.face.x * 20, player.y + player.face.y * 20, atkRange);
   if (foe) {
-    var dmg = selKey === 'sword' && swordTier > 0 ? (swordTier === 1 ? 6 : 10) : (swordTier > 0 ? 4 : 2);
+    var dmg = selKey === 'sword' && swordTier > 0 ? (swordTier === 1 ? 6 : (swordTier === 2 ? 10 : 16)) : (swordTier > 0 ? 4 : 2);
     damageSlime(foe, dmg, player.face);
     return;
   }
   if (isWallTile(tileAt(ft.tx, ft.ty))) { mineTile(ft.tx, ft.ty, pickTier, player); return; }
 }
-var PICK_POWER = { 1: 1, 2: 2, 3: 3 };
+var PICK_POWER = { 1: 1, 2: 2, 3: 3, 4: 5 }; // クリスタルのツルハシは鉄の約1.7倍（クリスタルHP9を2振り）
 function mineTile(tx, ty, tier, who) {
   var t = tileAt(tx, ty);
   if (!isWallTile(t) || t === 7) return false;
@@ -1151,8 +1151,10 @@ function openPanel(type) {
     var recipes = [
       { key: 'pick2', icon: '⛏️', name: '銅のツルハシ', desc: '鉄鉱石が掘れるようになる', cost: { copperIngot: 3, stone: 2 }, show: pickTier < 2, done: pickTier >= 2, doneText: '作成済み（所持中）', apply: function () { pickTier = 2; } },
       { key: 'pick3', icon: '⛏️', name: '鉄のツルハシ', desc: 'クリスタルが掘れるようになる', cost: { ironIngot: 3, stone: 2 }, show: pickTier < 3, done: pickTier >= 3, doneText: '作成済み（所持中）', apply: function () { pickTier = 3; } },
+      { key: 'pick4', icon: '⛏️', name: 'クリスタルのツルハシ', desc: 'いちばん速く掘れる最上位のツルハシ', cost: { crystal: 3, stone: 2 }, show: pickTier < 4, done: pickTier >= 4, doneText: '作成済み（所持中）', apply: function () { pickTier = 4; } },
       { key: 'sword1', icon: '🗡️', name: '銅の剣', desc: 'スライムへの攻撃力アップ', cost: { copperIngot: 3, jelly: 1 }, show: swordTier < 1, done: swordTier >= 1, doneText: '作成済み（所持中）', apply: function () { swordTier = 1; selKey = 'sword'; } },
       { key: 'sword2', icon: '🗡️', name: '鉄の剣', desc: 'さらに強い剣。大スライムにも', cost: { ironIngot: 3, jelly: 1 }, show: swordTier < 2, done: swordTier >= 2, doneText: '作成済み（所持中）', apply: function () { swordTier = 2; selKey = 'sword'; } },
+      { key: 'sword3', icon: '🗡️', name: 'クリスタルの剣', desc: '最上位の剣。大スライムにも大ダメージ', cost: { crystal: 3, jelly: 1 }, show: swordTier < 3, done: swordTier >= 3, doneText: '作成済み（所持中）', apply: function () { swordTier = 3; selKey = 'sword'; } },
       { key: 'rod', icon: '🎣', name: '釣り竿', desc: '地下湖で魚が釣れる', cost: { stone: 2, jelly: 2 }, show: !hasRod, done: hasRod, doneText: '作成済み（所持中）', apply: function () { hasRod = true; selKey = 'rod'; } },
       { key: 'lantern', icon: '🏮', name: 'ランタン', desc: '自分のまわりが明るくなる', cost: { copperIngot: 2, jelly: 1 }, show: !hasLantern, done: hasLantern, doneText: '作成済み（所持中）', apply: function () { hasLantern = true; } },
       { key: 'torch3', icon: '🔥', name: '松明 ×3', desc: '地面に置いて明かりにする', cost: { jelly: 1, stone: 1 }, show: true, done: false, apply: function () { addInv('torch', 3); } }
@@ -1314,6 +1316,7 @@ function showClear() {
 /* ---------------- 更新 ---------------- */
 var spawnT = 5, dayPrev = 1, panelTickT = 0;
 function update(dt) {
+  if (typeof WORLD_FROZEN !== 'undefined' && WORLD_FROZEN) return; // 全員気絶中は時間を全て止める
   gameTime += dt;
   tickHold(dt);
   var day = Math.floor(gameTime / dayLen) + 1;
@@ -2114,9 +2117,9 @@ function drawToolProp(g, opt, dir, tNow) {
     g.fillStyle = '#5a3a22'; g.fillRect(3.5, -1.7, 7.5, 3.4);
     g.fillStyle = '#3a3f52'; g.beginPath(); g.arc(4, 0, 2.2, 0, 7); g.fill();
     g.fillStyle = '#c9a227'; g.fillRect(11, -4.8, 2.8, 9.6);
-    g.fillStyle = sTier >= 2 ? '#d7dee6' : '#e59a52';
+    g.fillStyle = sTier >= 3 ? '#5fd7e8' : (sTier >= 2 ? '#d7dee6' : '#e59a52');
     g.beginPath(); g.moveTo(13.8, -2.7); g.lineTo(28.5, -1.2); g.lineTo(33.5, 0); g.lineTo(28.5, 1.2); g.lineTo(13.8, 2.7); g.closePath(); g.fill();
-    g.strokeStyle = sTier >= 2 ? '#f4f8fc' : '#ffc98a'; g.lineWidth = 1.1;
+    g.strokeStyle = sTier >= 3 ? '#d9fbff' : (sTier >= 2 ? '#f4f8fc' : '#ffc98a'); g.lineWidth = 1.1;
     g.beginPath(); g.moveTo(15, 0); g.lineTo(30.5, 0); g.stroke();
   } else if (tool === 'rod') {
     // 釣り竿：先端が向いている方向へ伸びる
@@ -2135,7 +2138,8 @@ function drawToolProp(g, opt, dir, tNow) {
     g.quadraticCurveTo(16.8, 6, 18.2, 0);
     g.quadraticCurveTo(16.8, -6, 9.5, -11.5);
     g.closePath();
-    g.fillStyle = '#98a2ac'; g.fill();
+    var pTier = opt.toolTier || 1;
+    g.fillStyle = pTier >= 4 ? '#4fd2e8' : (pTier === 3 ? '#d7dee6' : (pTier === 2 ? '#e59a52' : '#98a2ac')); g.fill();
     g.strokeStyle = 'rgba(38,42,50,0.65)'; g.lineWidth = 1.1; g.stroke();
     // 刃のハイライト（外周寄りの細い反り）
     g.beginPath();
@@ -2538,7 +2542,7 @@ function render() {
   });
   drawables.push({ y: player.y, fn: function () {
     var toolKind = selKey === 'sword' ? 'sword' : (selKey === 'rod' ? 'rod' : (selKey === 'lantern' ? 'lantern' : (selKey === 'pick' ? 'pick' : 'none')));
-    drawChar(player.x - ox, player.y - oy, { kind: myCharKind, face: player.face, bobT: player.bobT, moving: player.moving, toolKind: toolKind, toolTier: swordTier, swingT: player.swingT, phase: 0, down: player.down, downT: player.downT, reviveP: player.down ? player.reviveT / REVIVE_TIME : 0 });
+    drawChar(player.x - ox, player.y - oy, { kind: myCharKind, face: player.face, bobT: player.bobT, moving: player.moving, toolKind: toolKind, toolTier: toolKind === 'sword' ? swordTier : pickTier, swingT: player.swingT, phase: 0, down: player.down, downT: player.downT, reviveP: player.down ? player.reviveT / REVIVE_TIME : 0 });
     if (player.ifr > 0 && Math.floor(gameTime * 14) % 2 === 0) {
       ctx.fillStyle = 'rgba(255,80,60,0.25)';
       ctx.beginPath(); ctx.arc(player.x - ox, player.y - oy - 4, 20, 0, 7); ctx.fill();
@@ -2617,7 +2621,7 @@ function loop(ts) {
   var dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
   lastTs = ts;
   lastFrameAt = performance.now();
-  if (state === 'play' && player) { if (NET.mode === 'guest') guestUpdate(dt); else update(dt); render(); }
+  if (state === 'play' && player) { if (!WORLD_FROZEN) { if (NET.mode === 'guest') guestUpdate(dt); else update(dt); } render(); }
 }
 
 /* ---------------- 開始 ---------------- */
@@ -2625,6 +2629,7 @@ function loop(ts) {
    フレームが400ms以上来ていなければ、タイマー側で少しずつ進める（描画はしない） */
 setInterval(function () {
   if (state !== 'play' || !player) return;
+  if (WORLD_FROZEN) return;
   if (performance.now() - lastFrameAt < 400) return;
   if (NET.mode === 'guest') guestUpdate(0.05); else update(0.05);
 }, 200);
@@ -2709,7 +2714,7 @@ var NET = {
   mode: 'solo', uid: '', code: null, isHost: false, seed: 1,
   roomRef: null, myRef: null, players: {}, meta: {}, started: false,
   disp: {}, pendingPick: {}, pendingShroom: {}, tileDirty: {}, dropSeq: 0,
-  revivingTarget: null, hostGone: false, pubCount: 0, lastCpuRevive: 0
+  revivingTarget: null, hostGone: false, pubCount: 0, lastCpuRevive: 0, lastRst: 0
 };
 (function () {
   /* uidはタブごとに持つ（sessionStorage）。localStorageだと同じ端末の2タブ目が
@@ -2827,6 +2832,23 @@ function attachNetListeners() {
     var m = s.val() || {}; NET.meta = m;
     if (m.phase === 'play' && !NET.started) { NET.started = true; startOnlineGame(m.seed || NET.seed); }
     if (!NET.started) renderLobbyList();
+    /* 全員気絶の時間停止／やりなおしはホスト権威。ゲストは meta 経由で追随する */
+    if (NET.mode === 'guest' && NET.started) {
+      if (m.rst && m.rst !== NET.lastRst) {
+        NET.lastRst = m.rst;
+        WORLD_FROZEN = false; allDownShown = false; allDownLatch = false;
+        NET.pendingPick = {}; NET.pendingShroom = {};
+        hideAllDownDialog();
+        toast('🔄 最初からやりなおし！', 2600);
+        startOnlineGame(m.seed || NET.seed);
+      } else if (m.frozen && !WORLD_FROZEN) {
+        WORLD_FROZEN = true; allDownShown = true;
+        showAllDownDialog(false);
+      } else if (!m.frozen && WORLD_FROZEN) {
+        WORLD_FROZEN = false; allDownShown = false;
+        hideAllDownDialog();
+      }
+    }
   });
   rr.child('tiles').on('child_added', netTileApply);
   rr.child('tiles').on('child_changed', netTileApply);
@@ -3133,7 +3155,7 @@ setInterval(function () {
       x: Math.round(player.x), y: Math.round(player.y), fx: player.face.x, fy: player.face.y,
       hp: Math.ceil(player.hp), hu: Math.ceil(player.hu), down: player.down ? 1 : 0,
       downT: Math.round(player.downT * 10) / 10, reviveP: player.down ? Math.round(player.reviveT / REVIVE_TIME * 100) / 100 : 0,
-      tool: tk, tt: swordTier, swing: player.swingT > 0 ? 1 : 0, lastSeen: Date.now()
+      tool: tk, tt: tk === 'sword' ? swordTier : pickTier, swing: player.swingT > 0 ? 1 : 0, lastSeen: Date.now()
     });
   } else if (NET.pubCount % 20 === 0 && NET.myRef) {
     NET.myRef.update({ lastSeen: Date.now() });
@@ -3159,6 +3181,7 @@ setInterval(function () {
 
 /* ---------------- ゲスト用 update（自分と見た目だけを進める） ---------------- */
 function guestUpdate(dt) {
+  if (WORLD_FROZEN) return; // 全員気絶中は時間を全て止める（ホストの meta.frozen に追随）
   gameTime += dt;
   tickHold(dt);
   var p = player;
@@ -3243,6 +3266,116 @@ function guestUpdate(dt) {
   }
 }
 
+/* ---------------- 全員気絶：時間停止＋「最初からやりなおす？」 ----------------
+   パーティ全員（人間全員＋CPU仲間全員）が同時に気絶したら時間を全て止め、
+   ホスト（1人練習では本人）の選択で「最初から」か「そのまま再開」かを決める。
+   判定はホスト権威。ゲストへは meta.frozen / meta.rst で伝える。 */
+var WORLD_FROZEN = false;   // 時間停止中（メインループとウォッチドッグが update を止める）
+var allDownShown = false;   // ダイアログ表示中（再トリガー防止）
+var allDownLatch = false;   // 「いいえ」で再開した後の再トリガー防止（誰か起き上がるまで有効）
+var allDownEls = null;      // モーダルのDOM参照
+function buildAllDownModal() {
+  if (allDownEls || typeof document === 'undefined' || !document.body) return;
+  var wrap = document.createElement('div');
+  wrap.style.position = 'fixed'; wrap.style.inset = '0'; wrap.style.zIndex = '30';
+  wrap.style.display = 'none'; wrap.style.alignItems = 'center'; wrap.style.justifyContent = 'center';
+  wrap.style.background = 'rgba(5,3,13,0.82)'; wrap.style.padding = '18px';
+  var card = document.createElement('div');
+  card.style.background = '#241a38'; card.style.border = '2px solid #ffd94d88'; card.style.borderRadius = '16px';
+  card.style.padding = '22px 20px'; card.style.maxWidth = '420px'; card.style.width = '92%';
+  card.style.textAlign = 'center'; card.style.color = '#ffe9c9'; card.style.boxShadow = '0 10px 40px #000c';
+  var msg = document.createElement('div');
+  msg.style.fontSize = '19px'; msg.style.fontWeight = '900'; msg.style.lineHeight = '1.6';
+  msg.textContent = '😵 全員気絶してしまった…';
+  var sub = document.createElement('div');
+  sub.style.fontSize = '14px'; sub.style.margin = '10px 0 18px'; sub.style.lineHeight = '1.6'; sub.style.color = '#d8c9a8';
+  var row = document.createElement('div');
+  row.style.display = 'flex'; row.style.gap = '12px'; row.style.justifyContent = 'center';
+  var bYes = document.createElement('button');
+  bYes.textContent = 'はい';
+  bYes.style.fontSize = '17px'; bYes.style.fontWeight = '900'; bYes.style.padding = '12px 26px';
+  bYes.style.borderRadius = '12px'; bYes.style.border = 'none'; bYes.style.cursor = 'pointer';
+  bYes.style.background = '#ffd94d'; bYes.style.color = '#5a3a10';
+  var bNo = document.createElement('button');
+  bNo.textContent = 'いいえ';
+  bNo.style.fontSize = '17px'; bNo.style.fontWeight = '900'; bNo.style.padding = '12px 26px';
+  bNo.style.borderRadius = '12px'; bNo.style.border = '2px solid #8a7a5c'; bNo.style.cursor = 'pointer';
+  bNo.style.background = 'transparent'; bNo.style.color = '#ffe9c9';
+  bYes.addEventListener('click', function () { resolveAllDown(true); });
+  bNo.addEventListener('click', function () { resolveAllDown(false); });
+  row.appendChild(bYes); row.appendChild(bNo);
+  card.appendChild(msg); card.appendChild(sub); card.appendChild(row);
+  wrap.appendChild(card);
+  document.body.appendChild(wrap);
+  allDownEls = { wrap: wrap, sub: sub, bYes: bYes, bNo: bNo };
+}
+function showAllDownDialog(canDecide) {
+  buildAllDownModal();
+  if (!allDownEls) return;
+  allDownEls.sub.textContent = canDecide
+    ? '時間が止まっています。最初からやりなおす？'
+    : '時間が止まっています。最初からやりなおす？（ホストの決定を待っています）';
+  allDownEls.bYes.disabled = !canDecide;
+  allDownEls.bNo.disabled = !canDecide;
+  allDownEls.bYes.style.opacity = canDecide ? '1' : '0.45';
+  allDownEls.bNo.style.opacity = canDecide ? '1' : '0.45';
+  allDownEls.wrap.style.display = 'flex';
+}
+function hideAllDownDialog() {
+  if (allDownEls) allDownEls.wrap.style.display = 'none';
+}
+/* パーティ全員（自分＋CPU仲間＋他プレイヤー全員）が気絶しているか */
+function partyAllDown() {
+  if (!player || !player.down) return false;
+  for (var i = 0; i < companions.length; i++) if (!companions[i].down) return false;
+  if (NET.mode !== 'solo') {
+    var ids = Object.keys(NET.players);
+    for (var j = 0; j < ids.length; j++) {
+      if (ids[j] === NET.uid) continue;
+      var r = NET.players[ids[j]];
+      if (!r || !r.down) return false;
+    }
+  }
+  return true;
+}
+function triggerAllDown() {
+  WORLD_FROZEN = true; allDownShown = true;
+  showAllDownDialog(true);
+  if (NET.mode === 'host' && NET.roomRef) NET.roomRef.child('meta').update({ frozen: 1 });
+}
+/* choice=true: 最初からやりなおし / false: 時間停止を解除して再開 */
+function resolveAllDown(choice) {
+  if (NET.mode === 'guest') return; // 決定はホストのみ
+  hideAllDownDialog(); allDownShown = false;
+  if (choice) {
+    WORLD_FROZEN = false; allDownLatch = false;
+    if (NET.mode === 'host' && NET.roomRef) {
+      var ns = Math.floor(Math.random() * 2000000000) + 1;
+      NET.tileDirty = {};
+      NET.roomRef.child('tiles').remove();
+      NET.roomRef.child('world').remove();
+      NET.roomRef.child('req').remove();
+      NET.roomRef.child('ev').remove();
+      NET.roomRef.child('meta').update({ seed: ns, rst: Date.now(), frozen: 0, phase: 'play', hostBeat: Date.now() });
+      startOnlineGame(ns);
+    } else {
+      startGame(); // 1人練習：従来の開始処理で新しいマップから
+    }
+    toast('🔄 最初からやりなおし！', 2600);
+  } else {
+    WORLD_FROZEN = false; allDownLatch = true; // 全員気絶のまま再開するので、誰か起きるまで再表示しない
+    if (NET.mode === 'host' && NET.roomRef) NET.roomRef.child('meta').update({ frozen: 0 });
+  }
+}
+/* 全員気絶の監視（ホスト／1人練習のみが権威判定する） */
+setInterval(function () {
+  if (NET.mode === 'guest') return;
+  if (state !== 'play' || !player) return;
+  if (WORLD_FROZEN || allDownShown) return;
+  if (partyAllDown()) { if (!allDownLatch) triggerAllDown(); }
+  else allDownLatch = false;
+}, 250);
+
 /* ---------------- タイトル／ロビーのボタン ---------------- */
 document.getElementById('btnSolo').addEventListener('click', function () {
   readProfileFromForm();
@@ -3311,6 +3444,7 @@ document.addEventListener('touchmove', function (e) {
 }, { passive: false });
 loadProfile();
 buildCharGrid();
+buildAllDownModal();
 
 buildTileImgs();
 refreshHotbar();
