@@ -253,6 +253,7 @@
         ・🪵 木材ブロック（茶色い倒木）を👊で3回叩くと木材が1〜3個取れる（取った場所は2分で復活）。木材は焚き火の燃料とかまどの精錬に使うよ<br />
         ・暗い場所にはスライムがいる。松明やランタンで明るくしよう<br />
         ・スライムは速くて、見つけると遠くまで追ってくる。一番近い人や施設を狙うよ。<b>赤いスライム</b>は緑の2倍強い（速さ・体力・攻撃）。クリスタル洞の<b>青い大スライム</b>は速さ・体力10倍、攻撃32のボスだよ<br />
+        ・クリスタル洞の近くには<b>ゴブリン</b>がいて、弓矢で遠くから攻撃してくるよ。矢は<b>壁を越えてくる</b>ので物陰では防げない！撃たれたら動いて避けよう。体力は青い大スライム並みに高いけど足は遅い。倒しても60秒で復活する番人だよ<br />
         ・仲間のHPは左上のリストでいつも見える。HPが減った仲間に近づいて<b>🖐️</b>を押すと、手持ちの食べ物を1つ渡して回復できる（👊では渡せない。施設のそばでは施設メニューが優先）。<b>ゼリーやキノコでは体力は増えない</b>ので、焼き魚やシチューなどの料理を渡そう<br />
         ・スライムは拠点の施設（かまど・作業台・焚き火・共有ボックス）も攻撃して<b>壊す</b>よ（施設HP100）。壊れると使えなくなり、ボックスの中身や精錬・調理中だった素材は地面に散らばる（触れると拾える）。壊れた施設（瓦礫）の上は歩けるよ。壊れた施設は🖐️パネルから素材を払って作り直そう（約20秒・近くにいる間だけ進む）<br />
         ・焚き火やコアのそばでは体力がゆっくり回復する（空腹が減っていると回復しない）<br />
@@ -354,6 +355,7 @@ var SE = {
   craft: function () { beep(523, 0.09, 'square', 0.05); setTimeout(function () { beep(784, 0.13, 'square', 0.05); }, 85); },
   hurt: function () { beep(140, 0.16, 'sawtooth', 0.08, 70); noiseBurst(0.1, 0.08, 800); },
   slime: function () { beep(220, 0.1, 'sine', 0.06, 440); },
+  bow: function () { noiseBurst(0.05, 0.035, 2400); beep(840, 0.07, 'sine', 0.028, 300); },
   splash: function () { noiseBurst(0.25, 0.1, 1200); },
   levelup: function () { var n = [523, 659, 784, 1047]; for (var i = 0; i < n.length; i++) (function (f, k) { setTimeout(function () { beep(f, 0.16, 'square', 0.06); }, k * 110); })(n[i], i); },
   coin: function () { beep(880, 0.07, 'square', 0.05); setTimeout(function () { beep(1320, 0.12, 'square', 0.05); }, 60); }
@@ -413,7 +415,7 @@ function tryMove(e, dx, dy) {
 
 /* ---------------- ゲーム状態 ---------------- */
 var state = 'title'; // title | play
-var player, companions = [], slimes = [], drops = [], particles = [], floaters = [], torches = [], shrooms = [], plots = [], facilities = [], woodBlocks = [];
+var player, companions = [], slimes = [], arrows = [], drops = [], particles = [], floaters = [], torches = [], shrooms = [], plots = [], facilities = [], woodBlocks = [];
 var inv = {}, box = {};
 var pickTier = 1, swordTier = 0, hasRod = false, hasLantern = false;
 var selKey = 'pick'; // 選択中ホットバーキー
@@ -588,27 +590,49 @@ function makeCompanions() {
   });
 }
 /* スライム3種：緑（通常）／赤（速さ・HP・攻撃すべて緑の2倍）／青大（速さ・HPは緑の10倍、攻撃32・ボス）
-   緑は従来より速く（52→80）、索敵600px・一度見つけたら追い続ける */
+   緑は従来より速く（52→80）、索敵600px・一度見つけたら追い続ける
+   ゴブリン：クリスタル洞の番人。HPは青大と同じ10倍だが足は遅く（110）、弓矢の遠距離攻撃（詳細は GOBLIN_* 定数） */
 function makeSlime(x, y, kind) {
   var baseHp = 12 + Math.floor(gameTime / dayLen) * 2;
   var defs = {
-    green: { r: 13, hp: baseHp,     speed: 80,  atk: 8,  big: false },
-    red:   { r: 15, hp: baseHp * 2, speed: 160, atk: 16, big: false },
-    blue:  { r: 34, hp: baseHp * 10, speed: 800, atk: 32, big: true }
+    green:  { r: 13, hp: baseHp,      speed: 80,  atk: 8,  big: false },
+    red:    { r: 15, hp: baseHp * 2,  speed: 160, atk: 16, big: false },
+    blue:   { r: 34, hp: baseHp * 10, speed: 800, atk: 32, big: true },
+    goblin: { r: 15, hp: baseHp * 10, speed: 110, atk: 16, big: false }
   };
   var d = defs[kind] || defs.green;
   return {
     x: x, y: y, r: d.r, big: d.big, kind: kind || 'green',
     hp: d.hp, maxhp: d.hp,
     speed: d.speed, atk: d.atk, aggroT: 0,
-    hopT: rnd(0, 1), vx: 0, vy: 0, hurtT: 0, atkCd: 0, dead: false
+    hopT: rnd(0, 1), vx: 0, vy: 0, hurtT: 0, atkCd: 0, dead: false,
+    homeX: x, homeY: y, respawnT: 0, shootCd: rnd(0.6, 1.4), faceX: 1, aimT: 0
   };
 }
 var SLIME_COLORS = {
   green: { body: '#69d97e', burst: '#7ee787', bar: '#7ee787' },
   red:   { body: '#ef5350', burst: '#ff8a7a', bar: '#ff8a7a' },
-  blue:  { body: '#3d7be2', burst: '#7ab8ff', bar: '#7ab8ff' }
+  blue:  { body: '#3d7be2', burst: '#7ab8ff', bar: '#7ab8ff' },
+  goblin: { body: '#58a34c', burst: '#8fd07a', bar: '#8fd07a' }
 };
+/* ゴブリン（クリスタル洞の番人）の配置：洞の周囲3ヶ所。指定マスが床でなければ近くの床を探す */
+function goblinSpots(spots) {
+  var offs = [[-4, -3], [4, -2], [0, 5]], out = [];
+  offs.forEach(function (o) {
+    var bx = spots.gx + o[0], by = spots.gy + o[1];
+    for (var rad = 0; rad <= 4; rad++) {
+      var done = false;
+      for (var dy = -rad; dy <= rad && !done; dy++) for (var dx = -rad; dx <= rad && !done; dx++) {
+        var tx = bx + dx, ty = by + dy;
+        if (tx > 1 && ty > 1 && tx < MW - 2 && ty < MH - 2 && grid[tIdx(tx, ty)] === 0) {
+          out.push({ x: tx * T + T / 2, y: ty * T + T / 2 }); done = true;
+        }
+      }
+      if (done) break;
+    }
+  });
+  return out;
+}
 function spawnDrop(x, y, key, n) {
   if (NET.mode === 'guest') return; /* ドロップはホスト管理 */
   for (var i = 0; i < (n || 1); i++) drops.push({ id: ++NET.dropSeq, x: x + rnd(-9, 9), y: y + rnd(-9, 9), key: key, t: 0, vx: rnd(-30, 30), vy: rnd(-30, 30) });
@@ -960,10 +984,106 @@ function damageSlime(s, dmg, dir) {
   if (s.hp <= 0 && !s.dead) {
     s.dead = true; killCount++;
     burst(s.x, s.y, scol.burst, 16, 130);
-    spawnDrop(s.x, s.y, 'jelly', s.kind === 'blue' ? 3 : (s.kind === 'red' ? 2 : irnd(1, 2)));
-    if (s.kind === 'blue') { spawnDrop(s.x, s.y, 'crystal', 2); toast('👑 青い大スライムを倒した！クリスタルGET！'); }
-    else if (s.kind === 'red') toast('🔴 赤いスライムを倒した！');
-    if (Math.random() < 0.3) spawnDrop(s.x, s.y, 'mushroom', 1);
+    if (s.kind === 'goblin') {
+      // ゴブリンは消滅せず、60秒後に番人の位置で復活する（ドロップはゼリー×2固定）
+      s.respawnT = GOBLIN_RESPAWN;
+      spawnDrop(s.x, s.y, 'jelly', 2);
+      toast('🏹 ゴブリンを倒した！（60秒で復活する）');
+    } else {
+      spawnDrop(s.x, s.y, 'jelly', s.kind === 'blue' ? 3 : (s.kind === 'red' ? 2 : irnd(1, 2)));
+      if (s.kind === 'blue') { spawnDrop(s.x, s.y, 'crystal', 2); toast('👑 青い大スライムを倒した！クリスタルGET！'); }
+      else if (s.kind === 'red') toast('🔴 赤いスライムを倒した！');
+      if (Math.random() < 0.3) spawnDrop(s.x, s.y, 'mushroom', 1);
+    }
+  }
+}
+
+/* ---------------- ゴブリン（クリスタル洞の番人・弓の遠距離攻撃） ----------------
+   射程内では立ち止まって矢を撃ち、近づかれると後退して距離を取る（キッティング）。
+   矢は壁を越えて直進する（物陰では防げない）。発射時点のターゲット位置への直射で追尾しない。
+   施設は狙わない。気絶中のキャラは狙わない。倒されても60秒で復活する。 */
+var GOBLIN_RANGE = 240;      // 射程(px)
+var GOBLIN_KEEP = 120;       // これより近づかれたら後退する距離(px)
+var GOBLIN_SIGHT = 520;      // 索敵範囲(px)。これより遠い相手は追わない
+var GOBLIN_LEASH = 480;      // 番人の位置からこれ以上離れたら帰還する(px)
+var GOBLIN_RESPAWN = 60;     // 復活までの秒数
+var GOBLIN_SHOOT_CD = 1.6;   // 発射間隔(秒)
+var GOBLIN_ARROW_DMG = 16;   // 矢のダメージ
+var GOBLIN_ARROW_SPD = 430;  // 矢の速度(px/秒)
+var GOBLIN_ARROW_LIFE = 0.8; // 矢の寿命(秒)。壁は無視して直進する
+function goblinTarget(s) {
+  // 一番近いプレイヤー/仲間/リモートプレイヤー（施設は対象外・気絶中は対象外）
+  var best = null, bd = 1e18;
+  if (player && !player.down) { best = player; bd = dist2(s.x, s.y, player.x, player.y); }
+  companions.forEach(function (c) { if (c.down) return; var d = dist2(s.x, s.y, c.x, c.y); if (d < bd) { bd = d; best = c; } });
+  if (typeof netRemoteEnts === 'function') netRemoteEnts().forEach(function (e) { if (e.down) return; var d = dist2(s.x, s.y, e.x, e.y); if (d < bd) { bd = d; best = e; } });
+  return { t: best, d2: bd };
+}
+function shootArrow(s, t) {
+  var dx = t.x - s.x, dy = (t.y - 4) - s.y;
+  var d = Math.sqrt(dx * dx + dy * dy) || 1;
+  arrows.push({ x: s.x + s.faceX * 14, y: s.y - 6, vx: dx / d * GOBLIN_ARROW_SPD, vy: dy / d * GOBLIN_ARROW_SPD, life: GOBLIN_ARROW_LIFE });
+  if (player && dist2(s.x, s.y, player.x, player.y) < 520 * 520) SE.bow();
+}
+function updateGoblin(s, dt) {
+  if (s.shootCd > 0) s.shootCd -= dt;
+  // 他のゴブリンと重ならないよう軽く離れる
+  slimes.forEach(function (o) {
+    if (o === s || o.kind !== 'goblin' || o.dead) return;
+    var sd = dist2(s.x, s.y, o.x, o.y);
+    if (sd < 30 * 30 && sd > 0.01) { var sa = Math.atan2(s.y - o.y, s.x - o.x); tryMove(s, Math.cos(sa) * 42 * dt, Math.sin(sa) * 42 * dt); }
+  });
+  var gt = goblinTarget(s);
+  var homeD2 = dist2(s.x, s.y, s.homeX, s.homeY);
+  if (!gt.t || gt.d2 > GOBLIN_SIGHT * GOBLIN_SIGHT || homeD2 > GOBLIN_LEASH * GOBLIN_LEASH) {
+    // 相手がいない／遠すぎる／番人の位置から離れすぎ：持ち場に戻る
+    if (homeD2 > 20 * 20) {
+      var ha = Math.atan2(s.homeY - s.y, s.homeX - s.x);
+      tryMove(s, Math.cos(ha) * s.speed * dt, Math.sin(ha) * s.speed * dt);
+      s.faceX = Math.cos(ha) < 0 ? -1 : 1;
+    }
+    return;
+  }
+  var dx = gt.t.x - s.x, dy = gt.t.y - s.y;
+  var d = Math.sqrt(dx * dx + dy * dy) || 1;
+  s.faceX = dx < 0 ? -1 : 1;
+  if (d > GOBLIN_RANGE) {
+    tryMove(s, dx / d * s.speed * dt, dy / d * s.speed * dt); // 射程に入るまで接近
+  } else if (d < GOBLIN_KEEP) {
+    tryMove(s, -dx / d * s.speed * dt, -dy / d * s.speed * dt); // 近すぎる：後退して距離を取る
+  } else {
+    s.aimT = 0.12; // 射程内：立ち止まって弓を構える
+    if (s.shootCd <= 0) { s.shootCd = GOBLIN_SHOOT_CD; shootArrow(s, gt.t); }
+  }
+}
+/* 矢の当たり判定（プレイヤー/仲間/リモートのみ。壁は越えるので地形判定なし） */
+function arrowHitCheck(a) {
+  function tryHit(e, apply) {
+    if (!e || e.down) return false;
+    if (dist2(a.x, a.y, e.x, e.y) < 17 * 17) { apply(); return true; }
+    return false;
+  }
+  if (tryHit(player, function () { hurtPlayer(GOBLIN_ARROW_DMG); })) return true;
+  for (var i = 0; i < companions.length; i++) {
+    var c = companions[i];
+    if (tryHit(c, (function (cc) { return function () { hurtCompanion(cc, GOBLIN_ARROW_DMG); }; })(c))) return true;
+  }
+  if (typeof NET !== 'undefined' && NET.mode === 'host' && typeof netRemoteEnts === 'function') {
+    var es = netRemoteEnts();
+    for (var j = 0; j < es.length; j++) {
+      var e = es[j];
+      if (tryHit(e, (function (uid) { return function () { netSendEvent(uid, { type: 'hurt', dmg: GOBLIN_ARROW_DMG }); }; })(e.uid))) return true;
+    }
+  }
+  return false;
+}
+function updateArrows(dt) {
+  for (var ai = arrows.length - 1; ai >= 0; ai--) {
+    var a = arrows[ai];
+    a.life -= dt;
+    a.x += a.vx * dt; a.y += a.vy * dt;
+    if (arrowHitCheck(a)) { burst(a.x, a.y, '#ffd9a0', 4, 60); arrows.splice(ai, 1); }
+    else if (a.life <= 0) arrows.splice(ai, 1);
   }
 }
 /* 施設（かまど・作業台・焚き火・共有ボックス）はスライムに壊される。施設HPは100、攻撃力は人への攻撃と同じ */
@@ -1485,7 +1605,7 @@ function update(dt) {
 
   /* --- スライム出現 --- */
   spawnT -= dt;
-  var aliveN = slimes.filter(function (s) { return !s.dead; }).length;
+  var aliveN = slimes.filter(function (s) { return !s.dead && s.kind !== 'goblin'; }).length; // ゴブリン（番人）は通常スポーンの上限に数えない
   if (spawnT <= 0) {
     spawnT = 6.5;
     if (aliveN < 5 + day) {
@@ -1500,10 +1620,23 @@ function update(dt) {
   /* --- スライム --- */
   for (var si = slimes.length - 1; si >= 0; si--) {
     var s = slimes[si];
-    if (s.dead) { slimes.splice(si, 1); continue; }
+    if (s.dead) {
+      if (s.kind === 'goblin') {
+        // ゴブリンは消滅しない：60秒で番人の位置（home）に復活する
+        s.respawnT -= dt;
+        if (s.respawnT <= 0) {
+          s.dead = false; s.hp = s.maxhp; s.x = s.homeX; s.y = s.homeY;
+          s.shootCd = 1; s.aimT = 0; s.hurtT = 0;
+          burst(s.x, s.y, '#8fd07a', 12, 90);
+        }
+      } else slimes.splice(si, 1);
+      continue;
+    }
     if (s.hurtT > 0) s.hurtT -= dt;
     if (s.atkCd > 0) s.atkCd -= dt;
+    if (s.aimT > 0) s.aimT -= dt;
     s.hopT += dt;
+    if (s.kind === 'goblin') { updateGoblin(s, dt); continue; }
     // 狙いは「自分から一番近い対象」：プレイヤー・仲間・壊れていない4施設（かまど・作業台・焚き火・共有ボックス）。
     // 気絶中のキャラは狙われない（対象から外す）
     var target = null, td = 1e18, targetFac = null;
@@ -1535,6 +1668,9 @@ function update(dt) {
     }
     if (s.x < 0 || s.y < 0 || s.x > MW * T || s.y > MH * T) slimes.splice(si, 1);
   }
+
+  /* --- ゴブリンの矢 --- */
+  updateArrows(dt);
 
   updateCompanions(dt);
 
@@ -2236,6 +2372,8 @@ function drawTitlePreviews() {
   });
 }
 function drawSlime(s, ox, oy) {
+  if (s.dead) return; // 死体は描かない（ゴブリンの復活待ちも非表示）
+  if (s.kind === 'goblin') { drawGoblin(s, ox, oy); return; }
   var x = s.x - ox, y = s.y - oy;
   var sq = 1 + Math.sin(s.hopT * 5.2) * 0.1;
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -2252,6 +2390,85 @@ function drawSlime(s, ox, oy) {
   if (s.hp < s.maxhp) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - s.r, y - s.r - 10, s.r * 2, 5);
     ctx.fillStyle = scol2.bar; ctx.fillRect(x - s.r, y - s.r - 10, s.r * 2 * clamp(s.hp / s.maxhp, 0, 1), 5);
+  }
+}
+/* ゴブリン描画：緑の肌・長い耳・茶系フードの人型ちびキャラ。弓持ち。
+   faceX で左右反転し、aimT>0 の間は弓を構える。歩行で上下に揺れる */
+function drawGoblin(s, ox, oy) {
+  var x = s.x - ox, y = s.y - oy;
+  var fx = s.faceX < 0 ? -1 : 1;
+  var bob = Math.sin(s.hopT * 6) * 1.4;
+  var yy = y + bob * 0.4;
+  var hurt = s.hurtT > 0;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(x, y + 14, 13, 4.2, 0, 0, 7); ctx.fill();
+  ctx.save();
+  ctx.translate(x, yy);
+  ctx.scale(fx, 1);
+  // 脚（ブーツ）：歩行で交互に動く
+  ctx.fillStyle = '#4a3220';
+  var lp = Math.sin(s.hopT * 6) * 2.4;
+  rrPath(ctx, -8.5 + lp, 9, 6.5, 6.5, 2.4); ctx.fill();
+  rrPath(ctx, 2 - lp, 9, 6.5, 6.5, 2.4); ctx.fill();
+  // 体（茶系のフード付きチュニック）
+  ctx.fillStyle = hurt ? '#c9b8a6' : '#7a5230';
+  rrPath(ctx, -11, -4, 22, 15.5, 6); ctx.fill();
+  ctx.fillStyle = hurt ? '#e2d5c2' : '#96683c';
+  rrPath(ctx, -11, -4, 22, 6, 6); ctx.fill();
+  // ベルト
+  ctx.fillStyle = '#3d2812'; ctx.fillRect(-11, 5.5, 22, 3);
+  ctx.fillStyle = '#ffd94d'; ctx.fillRect(-2, 5.5, 4.4, 3);
+  // 長い耳（頭の両側にピンと張る）
+  ctx.fillStyle = hurt ? '#d8e8c8' : '#58a34c';
+  ctx.beginPath(); ctx.moveTo(-8, -14); ctx.lineTo(-19, -18.5); ctx.lineTo(-9.5, -9.5); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(8, -14); ctx.lineTo(19, -18.5); ctx.lineTo(9.5, -9.5); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = hurt ? '#f0c8c0' : '#c9748a';
+  ctx.beginPath(); ctx.moveTo(-9.6, -13.8); ctx.lineTo(-16.4, -16.6); ctx.lineTo(-10.2, -11); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(9.6, -13.8); ctx.lineTo(16.4, -16.6); ctx.lineTo(10.2, -11); ctx.closePath(); ctx.fill();
+  // 頭（緑の肌）
+  ctx.fillStyle = hurt ? '#d8e8c8' : '#63b455';
+  ctx.beginPath(); ctx.arc(0, -13, 10.6, 0, 7); ctx.fill();
+  // フード（頭頂の茶系）
+  ctx.fillStyle = hurt ? '#c9b8a6' : '#7a5230';
+  ctx.beginPath(); ctx.arc(0, -15.5, 10.8, Math.PI * 1.08, Math.PI * 1.92); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-10.6, -15.5); ctx.lineTo(0, -22.5); ctx.lineTo(10.6, -15.5); ctx.lineTo(6, -12.6); ctx.lineTo(-6, -12.6); ctx.closePath(); ctx.fill();
+  // 顔：怒り目＋鼻＋口（正面寄り。横向きでも顔は見える簡易表現）
+  ctx.fillStyle = '#20301a';
+  ctx.beginPath(); ctx.arc(3.6, -12.6, 1.7, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(-3.4, -12.6, 1.4, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#20301a'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(1.4, -16.4); ctx.lineTo(5.8, -15.2); ctx.stroke(); // つり上がった眉
+  ctx.fillStyle = hurt ? '#d8e8c8' : '#4c8a3e';
+  ctx.beginPath(); ctx.ellipse(1.2, -9.6, 2.1, 1.5, 0.4, 0, 7); ctx.fill(); // 鼻
+  ctx.strokeStyle = '#2c4423'; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(-1.5, -6.4); ctx.lineTo(3.5, -6.8); ctx.stroke(); // 口
+  // 弓（前方の手に持つ）：aimT>0 の間は水平に構えて矢を番える
+  var aiming = s.aimT > 0;
+  ctx.strokeStyle = '#8a5a28'; ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  if (aiming) ctx.arc(15.5, -4, 10.5, -1.25, 1.25);
+  else ctx.arc(13.5, 0, 9.5, -1.15, 1.15);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(240,240,230,0.85)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (aiming) { ctx.moveTo(15.5, -14.2); ctx.lineTo(15.5, 6.2); }
+  else { ctx.moveTo(13.5, -9.2); ctx.lineTo(13.5, 9.2); }
+  ctx.stroke();
+  if (aiming) {
+    // 番えた矢
+    ctx.strokeStyle = '#d9b380'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.moveTo(2, -4); ctx.lineTo(21, -4); ctx.stroke();
+    ctx.fillStyle = '#e8e8f0';
+    ctx.beginPath(); ctx.moveTo(24.5, -4); ctx.lineTo(19.5, -6.2); ctx.lineTo(19.5, -1.8); ctx.closePath(); ctx.fill();
+  }
+  // 腕（弓を持つ前腕）
+  ctx.strokeStyle = hurt ? '#d8e8c8' : '#63b455'; ctx.lineWidth = 4.4;
+  ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(13.5, aiming ? -4 : 1.5); ctx.stroke();
+  ctx.restore();
+  // 頭上HPバー（減っている時だけ・スライムと同じ様式）
+  if (s.hp < s.maxhp) {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - s.r, y - s.r - 16, s.r * 2, 5);
+    ctx.fillStyle = '#8fd07a'; ctx.fillRect(x - s.r, y - s.r - 16, s.r * 2 * clamp(s.hp / s.maxhp, 0, 1), 5);
   }
 }
 var lightCv = document.createElement('canvas'), lightCtx = lightCv.getContext('2d');
@@ -2551,6 +2768,18 @@ function render() {
   } });
   drawables.sort(function (a, b) { return a.y - b.y; });
   drawables.forEach(function (d) { d.fn(); });
+  // ゴブリンの矢（小さな矢。壁を越えて飛ぶ）
+  arrows.forEach(function (a) {
+    var ax = a.x - ox, ay = a.y - oy;
+    ctx.save(); ctx.translate(ax, ay); ctx.rotate(Math.atan2(a.vy, a.vx));
+    ctx.strokeStyle = '#d9b380'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(6, 0); ctx.stroke();
+    ctx.fillStyle = '#e8e8f0';
+    ctx.beginPath(); ctx.moveTo(10.5, 0); ctx.lineTo(4.5, -3); ctx.lineTo(4.5, 3); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#ff8a7a'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-12.5, -3.6); ctx.moveTo(-8, 0); ctx.lineTo(-12.5, 3.6); ctx.stroke();
+    ctx.restore();
+  });
   // パーティクル
   particles.forEach(function (q) {
     ctx.globalAlpha = clamp(1 - q.t / q.life, 0, 1);
@@ -2646,7 +2875,7 @@ function startGameCore(seed, humans) {
   fireFuel = 6;
   furnaceJob = null; cookQueue = [];
   gameTime = 0; dayPrev = 1; minedCount = 0; killCount = 0; spawnT = 6;
-  drops = []; particles = []; floaters = []; slimes = [];
+  drops = []; particles = []; floaters = []; slimes = []; arrows = [];
   selKey = 'pick'; closePanel();
   document.getElementById('fadeBlack').style.opacity = 0;
   if (seed) { mapSeed = seed; rngState = (seed >>> 0) || 1; }
@@ -2656,7 +2885,10 @@ function startGameCore(seed, humans) {
   var mateN = NET.mode === 'solo' ? 3 : Math.max(0, Math.min(3, 4 - (humans || 1)));
   companions = makeCompanions().slice(0, mateN);
   buildPartyHud();
-  if (NET.mode !== 'guest') slimes.push(makeSlime(spots.gx * T + T / 2, spots.gy * T + T / 2, 'blue'));
+  if (NET.mode !== 'guest') {
+    slimes.push(makeSlime(spots.gx * T + T / 2, spots.gy * T + T / 2, 'blue'));
+    goblinSpots(spots).forEach(function (gp) { slimes.push(makeSlime(gp.x, gp.y, 'goblin')); });
+  }
   addInv('mushroom', 2);
   state = 'play';
   document.getElementById('titleScr').style.display = 'none';
@@ -3000,7 +3232,8 @@ function netBuildWorld() {
     fire: Math.round(fireFuel * 100) / 100,
     ce: coreEnergy, cl: coreLv, cleared: cleared ? 1 : 0,
     box: box,
-    sl: slimes.map(function (s) { return [Math.round(s.x), Math.round(s.y), s.kind, Math.round(s.hp), s.maxhp, Math.round(s.hopT * 10) / 10]; }),
+    sl: slimes.map(function (s) { return [Math.round(s.x), Math.round(s.y), s.kind, Math.round(s.hp), s.maxhp, Math.round(s.hopT * 10) / 10, s.faceX < 0 ? -1 : 1, s.aimT > 0 ? 1 : 0]; }),
+    ar: arrows.map(function (a) { return [Math.round(a.x), Math.round(a.y), Math.round(a.vx), Math.round(a.vy)]; }),
     dr: drops.map(function (d) { return [d.id || 0, Math.round(d.x), Math.round(d.y), d.key]; }),
     fc: facilities.map(function (f) { return [f.type, Math.round(f.hp), f.broken ? 1 : 0, f.rebuilding ? Math.round(f.rebuilding.t * 10) / 10 : -1]; }),
     wb: woodBlocks.map(function (w) { return [w.taken ? 1 : 0, w.hp]; }),
@@ -3029,9 +3262,23 @@ function applyWorld(w) {
       if (!s) { s = makeSlime(a[0], a[1], a[2]); slimes.push(s); s.x = a[0]; s.y = a[1]; }
       s._snap = true; used.push(s);
       s.tx = a[0]; s.ty = a[1]; s.hp = a[3]; s.maxhp = a[4]; s.hopT = a[5];
+      s.dead = a[3] <= 0; // HP0以下は死亡扱い（ゴブリンの復活待ちをゲストでも非表示にする）
+      if (a[2] === 'goblin') { if (a[6]) s.faceX = a[6]; s.aimT = a[7] ? 0.1 : 0; }
     });
     slimes = slimes.filter(function (s) { return used.indexOf(s) >= 0; });
     slimes.forEach(function (s) { s._snap = false; });
+  }
+  if (w.ar) {
+    // ゴブリンの矢：スライムと同じ近接マッチ＋目標座標方式で補間する（当たり判定はホスト権威）
+    var aused = [];
+    w.ar.forEach(function (a) {
+      var ar = arrows.find(function (x) { return !x._snap && Math.abs(x.x - a[0]) < 130 && Math.abs(x.y - a[1]) < 130; });
+      if (!ar) { ar = { x: a[0], y: a[1], vx: a[2], vy: a[3], tx: a[0], ty: a[1], life: 9 }; arrows.push(ar); }
+      ar._snap = true; aused.push(ar);
+      ar.tx = a[0]; ar.ty = a[1]; ar.vx = a[2]; ar.vy = a[3];
+    });
+    arrows = arrows.filter(function (x) { return aused.indexOf(x) >= 0; });
+    arrows.forEach(function (x) { x._snap = false; });
   }
   if (w.dr) {
     drops = w.dr.map(function (a) { return { id: a[0], x: a[1], y: a[2], key: a[3], vx: 0, vy: 0, t: 0, seed: a[0] * 37 % 100 }; });
@@ -3190,6 +3437,8 @@ function guestUpdate(dt) {
   if (p.ifr > 0) p.ifr -= dt;
   if (p.hurtT > 0) p.hurtT -= dt;
   slimes.forEach(function (s) { if (s.hurtT > 0) s.hurtT -= dt; s.hopT += dt; });
+  // 矢は見た目だけ進める（速度で飛ばしつつスナップショットの目標座標へ寄せる。当たり判定はホスト）
+  arrows.forEach(function (a) { a.x += a.vx * dt; a.y += a.vy * dt; if (a.tx !== undefined) { a.x += (a.tx - a.x) * 0.35; a.y += (a.ty - a.y) * 0.35; } });
   companions.forEach(function (c) { if (c.bubbleT > 0) c.bubbleT -= dt; if (c.hurtT > 0) c.hurtT -= dt; });
   if (p.down) {
     p.downT -= dt;
