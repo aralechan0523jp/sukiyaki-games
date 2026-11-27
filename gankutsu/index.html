@@ -1,0 +1,3200 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>岩窟サバイバーズ</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap" rel="stylesheet" />
+    <style>
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { height: 100%; }
+      body {
+        margin: 0; background: #0a0817; color: #f2eefc;
+        font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", sans-serif;
+        overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+        -webkit-touch-callout: none; overscroll-behavior: none;
+      }
+      #cv { position: fixed; inset: 0; display: block; }
+      /* ---------- HUD ---------- */
+      #hud { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 10px; z-index: 5; pointer-events: none; }
+      .barRow { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+      .barIcon { font-size: 17px; width: 22px; text-align: center; filter: drop-shadow(0 1px 2px #000); }
+      .barOuter { width: min(168px, 38vw); height: 15px; background: #17122bcc; border: 2px solid #00000088; border-radius: 8px; overflow: hidden; }
+      .barFill { height: 100%; border-radius: 6px; transition: width .18s; }
+      #hpFill { background: linear-gradient(#ff8a7a, #e2483d); }
+      #huFill { background: linear-gradient(#ffc46b, #ef8f2c); }
+      #coreFill { background: linear-gradient(#a5f6ff, #37c8e8); }
+      .barNum { font-size: 12px; font-weight: 800; text-shadow: 0 1px 3px #000; min-width: 30px; }
+      #coreLabel { font-size: 12px; font-weight: 800; color: #a5f0ff; text-shadow: 0 1px 3px #000; margin: 2px 0 3px 2px; }
+      /* ---------- 仲間HPリスト ---------- */
+      #partyList { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
+      .partyRow { display: flex; align-items: center; gap: 5px; background: #17122bb8; border: 1.5px solid #00000055; border-radius: 8px; padding: 2.5px 7px 2.5px 5px; width: fit-content; }
+      .partyDot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #00000066; flex: 0 0 auto; }
+      .partyName { font-size: 11px; font-weight: 800; text-shadow: 0 1px 2px #000; min-width: 26px; }
+      .partyBarOuter { width: 62px; height: 8px; background: #0d0a1c; border-radius: 5px; overflow: hidden; flex: 0 0 auto; }
+      .partyBarFill { height: 100%; border-radius: 5px; background: linear-gradient(#ff8a7a, #e2483d); transition: width .18s; }
+      .partyRow.low .partyBarFill { background: linear-gradient(#ff5f4d, #c22e1f); }
+      .partyNum { font-size: 10.5px; font-weight: 800; text-shadow: 0 1px 2px #000; min-width: 20px; }
+      #topRight { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: 10px; z-index: 5; display: flex; gap: 8px; align-items: flex-start; }
+      #dayBox { background: #17122bcc; border: 2px solid #00000066; border-radius: 10px; padding: 5px 10px; font-weight: 800; font-size: 14px; text-align: center; line-height: 1.25; }
+      #dayBox small { display: block; font-size: 11px; color: #bdb2dd; font-weight: 700; }
+      .roundBtn { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #00000066; background: #241d40e6; color: #fff; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+      .roundBtn:active { transform: scale(.93); }
+      /* ---------- Hotbar ---------- */
+      #hotbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 5; display: flex; gap: 5px; max-width: 96vw; flex-wrap: nowrap; overflow-x: auto; padding: 4px; scrollbar-width: none; }
+      #hotbar::-webkit-scrollbar { display: none; }
+      .slot { flex: 0 0 auto; width: 52px; height: 58px; background: #1d1833d9; border: 2px solid #453a6e; border-radius: 10px; position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+      .slot.sel { border-color: #ffd94d; box-shadow: 0 0 10px #ffd94d88; background: #2c2450e6; }
+      .slot .ic { font-size: 25px; line-height: 1; }
+      .slot .ct { position: absolute; right: 3px; bottom: 12px; font-size: 12px; font-weight: 800; text-shadow: 0 1px 2px #000; }
+      .slot .nm { position: absolute; left: 0; right: 0; bottom: 1px; font-size: 8.5px; text-align: center; color: #cfc6ee; white-space: nowrap; overflow: hidden; }
+      /* ---------- Controls ---------- */
+      #padBase { position: fixed; left: 16px; bottom: calc(86px + env(safe-area-inset-bottom)); width: 124px; height: 124px; border-radius: 50%; background: #ffffff14; border: 2px solid #ffffff2e; z-index: 6; touch-action: none; }
+      #padKnob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: #ffffff30; border: 2px solid #ffffff55; transform: translate(-50%, -50%); pointer-events: none; }
+      #btnAction { position: fixed; right: 18px; bottom: calc(92px + env(safe-area-inset-bottom)); width: 82px; height: 82px; border-radius: 50%; border: 3px solid #00000055; background: radial-gradient(circle at 35% 30%, #ffd94d, #ef8f2c); font-size: 38px; z-index: 6; cursor: pointer; box-shadow: 0 4px 14px #000a; display: flex; align-items: center; justify-content: center; }
+      #btnAction:active { transform: scale(.92); }
+      #btnAction.holding { transform: scale(.9); box-shadow: 0 0 0 5px #ffd94d66, 0 4px 14px #000a; filter: brightness(1.12); }
+      #btnAction.hit { background: radial-gradient(circle at 35% 30%, #ff5f4d, #c22e1f); animation: pulse .3s infinite alternate; }
+      #btnHand { position: fixed; right: 28px; bottom: calc(186px + env(safe-area-inset-bottom)); width: 62px; height: 62px; border-radius: 50%; border: 3px solid #00000055; background: radial-gradient(circle at 35% 30%, #9be8d8, #2fa38a); font-size: 29px; z-index: 6; cursor: pointer; box-shadow: 0 4px 12px #000a; display: flex; align-items: center; justify-content: center; }
+      #btnHand:active { transform: scale(.92); }
+      @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+      /* ---------- Toast / float msg ---------- */
+      #toast { position: fixed; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 8; background: #17122bee; border: 2px solid #ffd94d88; color: #fff; font-weight: 800; font-size: 15px; padding: 8px 18px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; max-width: 94vw; text-overflow: ellipsis; overflow: hidden; }
+      #toast.show { opacity: 1; }
+      /* ---------- Panel ---------- */
+      #panelWrap { position: fixed; inset: 0; z-index: 9; display: none; align-items: flex-end; justify-content: center; background: #05030da0; }
+      #panelWrap.open { display: flex; }
+      #panelCard { width: min(560px, 100vw); max-height: 74vh; overflow-y: auto; background: #1d1833; border-top: 3px solid #57489a; border-radius: 18px 18px 0 0; padding: 14px 16px calc(18px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 30px #000c; }
+      #panelHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+      #panelTitle { font-size: 19px; font-weight: 800; }
+      #panelClose { width: 40px; height: 40px; border-radius: 50%; border: none; background: #372d5e; color: #fff; font-size: 18px; cursor: pointer; }
+      .prow { display: flex; align-items: center; gap: 8px; background: #282046; border-radius: 12px; padding: 8px 10px; margin-bottom: 7px; }
+      .prow .ic { font-size: 24px; width: 32px; text-align: center; }
+      .prow .tx { flex: 1; min-width: 0; }
+      .prow .tx b { font-size: 14.5px; display: block; }
+      .prow .tx span { font-size: 11.5px; color: #bdb2dd; display: block; line-height: 1.35; }
+      .prow .tx span .lack { color: #ff8a7a; font-weight: 800; }
+      .pbtn { min-height: 40px; padding: 6px 13px; border: none; border-radius: 10px; background: linear-gradient(#ffd94d, #f0a62c); color: #40260a; font-family: inherit; font-weight: 800; font-size: 14px; cursor: pointer; white-space: nowrap; }
+      .pbtn:disabled { background: #453d68; color: #8d83b5; cursor: default; }
+      .pbtn.sub { background: #372d5e; color: #e8e2ff; }
+      .pbtn:active:not(:disabled) { transform: scale(.95); }
+      .psec { font-size: 12.5px; font-weight: 800; color: #a5f0ff; margin: 12px 0 6px; }
+      #coreProgOuter { height: 16px; background: #120e24; border-radius: 8px; overflow: hidden; border: 2px solid #00000066; margin: 6px 0 4px; }
+      #coreProgFill { height: 100%; background: linear-gradient(90deg, #37c8e8, #a5f6ff); width: 0%; transition: width .3s; }
+      /* ---------- Title / overlays ---------- */
+      .overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 18px; }
+      #titleScr { background:
+        radial-gradient(ellipse 340px 240px at 50% 40%, #37c8e855, transparent 70%),
+        radial-gradient(ellipse 200px 140px at 50% 44%, #ffd94d33, transparent 70%),
+        radial-gradient(ellipse at 20% 90%, #241a45 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 85%, #1c1440 0%, transparent 50%),
+        linear-gradient(#0d0a20, #070512); }
+      .titleCard { text-align: center; max-width: 520px; width: 100%; }
+      .titleGem { font-size: 64px; filter: drop-shadow(0 0 22px #37c8e8); animation: gemFloat 2.6s ease-in-out infinite; }
+      @keyframes gemFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+      h1.gameTitle { font-size: clamp(34px, 9vw, 54px); margin: 6px 0 2px; font-weight: 800; letter-spacing: .04em; color: #fff; text-shadow: 0 0 18px #37c8e899, 0 3px 0 #241a45; }
+      .titleSub { color: #bdb2dd; font-size: 14px; font-weight: 700; margin-bottom: 18px; line-height: 1.6; }
+      .charRow { display: flex; gap: 8px; justify-content: center; margin-bottom: 18px; flex-wrap: wrap; }
+      .teamMember { width: 76px; text-align: center; }
+      .teamMember canvas { width: 72px; height: 72px; border-radius: 16px; border: 3px solid #453a6e; background: radial-gradient(circle at 50% 34%, #332a55, #1d1833 72%); display: block; margin: 0 auto; }
+      .teamMember .tmName { font-size: 11.5px; font-weight: 800; color: #e8e2ff; margin-top: 4px; line-height: 1.3; }
+      .teamMember .tmRole { font-size: 10px; font-weight: 700; color: #a99fd0; }
+      .bigBtn { min-height: 56px; padding: 12px 42px; border: none; border-radius: 999px; background: linear-gradient(#ffd94d, #f0a62c); color: #40260a; font-family: inherit; font-size: 20px; font-weight: 800; cursor: pointer; box-shadow: 0 6px 20px #f0a62c55; }
+      .bigBtn:active { transform: scale(.96); }
+      .howto { margin: 20px auto 0; text-align: left; background: #17122bb8; border: 2px solid #372d5e; border-radius: 14px; padding: 12px 16px; font-size: 13px; line-height: 1.75; color: #ddd5f7; max-width: 460px; }
+      .howto b { color: #ffd94d; }
+      #helpScr, #clearScr { background: #05030dd8; display: none; z-index: 21; }
+      #helpScr.open, #clearScr.open { display: flex; }
+      .helpCard { background: #1d1833; border: 2px solid #57489a; border-radius: 18px; padding: 20px 22px; max-width: 480px; width: 100%; max-height: 84vh; overflow-y: auto; font-size: 14px; line-height: 1.8; }
+      .helpCard h2 { margin: 0 0 8px; font-size: 20px; }
+      .helpCard b { color: #ffd94d; }
+      #hurtFlash { position: fixed; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, #ff2d1e66 100%); opacity: 0; pointer-events: none; z-index: 7; transition: opacity .1s; }
+      #fadeBlack { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 15; transition: opacity .5s; }
+      
+#titleScr .nameRow{display:flex;gap:8px;align-items:center;justify-content:center;margin:8px 0 2px}
+#inName{font-size:17px;padding:9px 12px;border-radius:10px;border:2px solid #6b4a2a;background:#fff8ea;color:#3a2410;width:200px;text-align:center;font-weight:700}
+#charGrid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 4px;max-width:440px}
+.charCell{width:64px;padding:3px 2px 2px;border-radius:10px;border:2px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);cursor:pointer;text-align:center}
+.charCell canvas{width:56px;height:56px;display:block;margin:0 auto}
+.charCell .cn{font-size:11px;color:#ffe9c9;font-weight:700}
+.charCell.sel{border-color:#ffd94d;background:rgba(255,217,77,.18)}
+.joinRow{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:2px}
+#inCode{font-size:20px;padding:8px 10px;border-radius:10px;border:2px solid #6b4a2a;background:#fff8ea;color:#3a2410;width:118px;text-align:center;font-weight:800;letter-spacing:3px}
+#titleErr{color:#ffb3a0;font-size:13px;min-height:18px;margin-top:6px;font-weight:700}
+#lobbyScr{display:none}
+#lobbyCode{font-size:44px;font-weight:900;letter-spacing:8px;color:#ffd94d;text-shadow:0 3px 0 #7a4d16}
+#lobbyList{list-style:none;margin:10px 0;padding:0;min-width:250px}
+#lobbyList li{display:flex;justify-content:space-between;gap:14px;padding:6px 12px;margin:4px 0;background:rgba(0,0,0,.3);border-radius:8px;color:#ffe9c9;font-weight:700}
+.tag{background:#ffd94d;color:#5a3a10;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:800}
+#lobbyInfo{color:#d8c9a8;font-size:13px;margin:6px 0 10px}
+#lobbyWait{color:#d8c9a8;font-size:14px;margin-top:8px}
+@media (max-width: 560px) {
+        #padBase { width: 108px; height: 108px; bottom: calc(84px + env(safe-area-inset-bottom)); }
+        #btnAction { width: 74px; height: 74px; font-size: 33px; bottom: calc(88px + env(safe-area-inset-bottom)); }
+        #btnHand { width: 56px; height: 56px; font-size: 26px; bottom: calc(172px + env(safe-area-inset-bottom)); right: 27px; }
+        .slot { width: 47px; height: 54px; }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="cv"></canvas>
+
+    <div id="hud">
+      <div class="barRow"><span class="barIcon">❤️</span><div class="barOuter"><div class="barFill" id="hpFill" style="width:100%"></div></div><span class="barNum" id="hpNum">100</span></div>
+      <div class="barRow"><span class="barIcon">🍖</span><div class="barOuter"><div class="barFill" id="huFill" style="width:100%"></div></div><span class="barNum" id="huNum">100</span></div>
+      <div id="coreLabel">💎 コア Lv.1</div>
+      <div class="barRow"><span class="barIcon">⚡</span><div class="barOuter"><div class="barFill" id="coreFill" style="width:0%"></div></div><span class="barNum" id="coreNum">0</span></div>
+      <div id="partyList"></div>
+    </div>
+
+    <div id="topRight">
+      <div id="dayBox">1日目<small id="clock">00:00</small></div>
+      <button class="roundBtn" id="btnMute" aria-label="音のオン・オフ">🔊</button>
+      <button class="roundBtn" id="btnHelp" aria-label="あそびかた">？</button>
+    </div>
+
+    <div id="hotbar"></div>
+    <div id="padBase"><div id="padKnob"></div></div>
+    <button id="btnHand" aria-label="施設メニューを開く">🖐️</button>
+    <button id="btnAction" aria-label="アクション">👊</button>
+    <div id="toast"></div>
+    <div id="hurtFlash"></div>
+    <div id="fadeBlack"></div>
+
+    <div id="panelWrap">
+      <div id="panelCard">
+        <div id="panelHead"><div id="panelTitle">パネル</div><button id="panelClose" aria-label="閉じる">✕</button></div>
+        <div id="panelBody"></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="titleScr">
+  <div class="ttl">🪨 岩窟サバイバーズ</div>
+  <div class="sub">オンライン協力版 ― 仲間と掘って、コアを Lv.5 まで育てよう</div>
+  <canvas id="titleCv" width="460" height="118"></canvas>
+  <div class="nameRow"><span style="color:#ffe9c9;font-weight:700">名前</span><input id="inName" maxlength="10" placeholder="名前を入力" autocomplete="off"></div>
+  <div style="color:#d8c9a8;font-size:12px">キャラを選んでね（ゲーム中もこの見た目で表示されます）</div>
+  <div id="charGrid"></div>
+  <button class="bigBtn" id="btnCreate">🏠 ルームを作る</button>
+  <div class="joinRow"><input id="inCode" maxlength="4" inputmode="numeric" placeholder="1234" autocomplete="off"><button class="bigBtn sub2" id="btnJoin">🚪 コードで参加</button></div>
+  <div id="titleErr"></div>
+  <button class="bigBtn sub2" id="btnSolo">🎮 オフラインで1人練習</button>
+  <button class="bigBtn sub2" id="btnHelp">❓ 遊び方</button>
+  <div class="note">オンラインは2〜8人協力。ホストが「ルームを作る」→ 4桁コードを仲間に伝えてね。<br>名前とキャラは自動で記憶されます。ホストが抜けると試合は止まります。</div>
+</div>
+<div class="overlay" id="lobbyScr">
+  <div class="ttl" style="font-size:26px">🚪 ルーム</div>
+  <div style="color:#d8c9a8;font-size:13px">このコードを仲間に伝えてね</div>
+  <div id="lobbyCode">----</div>
+  <ul id="lobbyList"></ul>
+  <div id="lobbyInfo"></div>
+  <button class="bigBtn" id="btnStartOnline">ゲーム開始</button>
+  <div id="lobbyWait">ホストが開始するのを待っています…</div>
+  <button class="bigBtn sub2" id="btnLeave">退出する</button>
+</div>
+<div class="overlay" id="helpScr">
+      <div class="helpCard">
+        <h2>⛏️ あそびかた</h2>
+        <b>移動</b>：左下のスライドパッド／WASD・矢印キー<br />
+        <b>アクション</b>：右下の👊ボタン／スペースキー。<b>長押しすると、押し続けている間アクションが繰り返される</b>（掘る・たたく・食べる等）。離すと止まるよ。壁を掘る・敵をたたく・食べる、状況で自動で切り替わるよ。<br />
+        <b>施設メニュー</b>：🔥かまど・📦共有ボックス・🔥焚き火・🔨作業台は、👊の上にある<b>🖐️ボタン／Eキー</b>で開くよ（👊では開きません）。💎コアは👊で開くよ。<br />
+        <b>アイテム選択</b>：下のアイテム欄をタップ／数字キー。<br /><br />
+        <b>拠点の施設</b><br />
+        💎 コア…クリスタルやインゴットを納品してレベルアップ。Lv.5で覚醒＝クリア！<br />
+        🔨 作業台…ツルハシ・剣・釣り竿・ランタン・松明を作る<br />
+        🔥 かまど…鉱石をインゴットに精錬する（精錬1回につき木材1個が必要・<b>1個10秒</b>かかる。終わると自動でアイテム欄に入る）<br />
+        🔥 焚き火…🖐️メニューで木材を入れて火を保つ（燃料ゲージ最大6・木材1個で+1ゲージ＝25秒）。火がついている間は料理（焼ききのこ・焼き魚・シチュー、<b>1品8秒</b>かかる）も作れて、そばでは体力が回復する。火が消えると光も回復も止まるよ<br />
+        📦 共有ボックス…仲間とアイテムを出し入れ<br />
+        🍄 キノコ畑…育ったキノコは👊で収穫（仲間のココも収穫してくれる）<br /><br />
+        <b>ヒント</b><br />
+        ・鉄鉱石は銅のツルハシ、クリスタルは鉄のツルハシでないと掘れない<br />
+        ・🪵 木材ブロック（茶色い倒木）を👊で3回叩くと木材が1〜3個取れる（取った場所は2分で復活）。木材は焚き火の燃料とかまどの精錬に使うよ<br />
+        ・暗い場所にはスライムがいる。松明やランタンで明るくしよう<br />
+        ・スライムは速くて、見つけると遠くまで追ってくる。一番近い人や施設を狙うよ。<b>赤いスライム</b>は緑の2倍強い（速さ・体力・攻撃）。クリスタル洞の<b>青い大スライム</b>は速さ・体力10倍、攻撃32のボスだよ<br />
+        ・仲間のHPは左上のリストでいつも見える。HPが減った仲間に近づいて<b>🖐️</b>を押すと、手持ちの食べ物を1つ渡して回復できる（👊では渡せない。施設のそばでは施設メニューが優先）。<b>ゼリーやキノコでは体力は増えない</b>ので、焼き魚やシチューなどの料理を渡そう<br />
+        ・スライムは拠点の施設（かまど・作業台・焚き火・共有ボックス）も攻撃して<b>壊す</b>よ（施設HP100）。壊れると使えなくなり、ボックスの中身や精錬・調理中だった素材は地面に散らばる（触れると拾える）。壊れた施設（瓦礫）の上は歩けるよ。壊れた施設は🖐️パネルから素材を払って作り直そう（約20秒・近くにいる間だけ進む）<br />
+        ・焚き火やコアのそばでは体力がゆっくり回復する（空腹が減っていると回復しない）<br />
+        ・南西の地下湖では釣り竿で釣りができる。「HIT!」が出たらすかさず👊！<br />
+        ・HPが0になると<b>30秒間気絶</b>して動けなくなる。仲間がそばで15秒かけて復活させてくれる（HP50で復活）。仲間が気絶したら、近づいて<b>🖐️</b>で復活作業をはじめよう。30秒以内に助けられないと、持ち物が全部消えて拠点からHP満タンでやり直しになるよ（仲間は拠点で目覚めるだけ）
+        <div style="text-align:center;margin-top:14px;"><button class="bigBtn" id="btnHelpClose" style="font-size:16px;min-height:48px;padding:8px 30px;">とじる</button></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="clearScr">
+      <div class="helpCard" style="text-align:center;">
+        <div style="font-size:52px;">💎✨</div>
+        <h2>コアが覚醒した！</h2>
+        <p id="clearStats" style="line-height:1.9;"></p>
+        <p style="color:#bdb2dd;font-size:13px;">岩窟に光が満ちて、みんなで生き延びることができた。<br />このまま自由に探索をつづけることもできるよ。</p>
+        <button class="bigBtn" id="btnContinue" style="font-size:16px;min-height:48px;padding:8px 30px;">つづけて遊ぶ</button>
+      </div>
+    </div>
+
+<script>
+"use strict";
+/* ============================================================
+   岩窟サバイバーズ（試作） 見下ろし2D・協力サバイバル
+   ============================================================ */
+var T = 40;                 // タイルサイズ(px)
+var MW = 96, MH = 72;       // マップ広さ(タイル)
+var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+var W = 0, H = 0, DPR = 1;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize); resize();
+
+function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+/* シード付き乱数（オンライン：全員が同じマップを生成するため） */
+var mapSeed = null, rngState = 1;
+function rnd01() {
+  if (mapSeed === null) return Math.random();
+  rngState = (rngState * 1664525 + 1013904223) >>> 0;
+  return rngState / 4294967296;
+}
+function rnd(a, b) { return a + rnd01() * (b - a); }
+function irnd(a, b) { return Math.floor(rnd(a, b + 1)); }
+function dist2(x1, y1, x2, y2) { var dx = x2 - x1, dy = y2 - y1; return dx * dx + dy * dy; }
+function hash2(x, y) { var n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); }
+
+/* ---------------- 音（WebAudio簡易シンセ） ---------------- */
+var AC = null, muted = false, ambientNodes = null;
+function initAudio() {
+  if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    // 地下の風のような環境音：ノイズ→ローパス→ゆっくりうねるゲイン
+    var len = AC.sampleRate * 2, buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    var src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+    var flt = AC.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 320;
+    var g = AC.createGain(); g.gain.value = 0.016;
+    var lfo = AC.createOscillator(); lfo.frequency.value = 0.13;
+    var lfoG = AC.createGain(); lfoG.gain.value = 0.008;
+    lfo.connect(lfoG); lfoG.connect(g.gain);
+    src.connect(flt); flt.connect(g); g.connect(AC.destination);
+    src.start(); lfo.start();
+    ambientNodes = { g: g };
+  } catch (e) { AC = null; }
+}
+function beep(freq, dur, type, vol, slideTo) {
+  if (!AC || muted) return;
+  try {
+    var o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+    o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(vol || 0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + dur + 0.02);
+  } catch (e) {}
+}
+function noiseBurst(dur, vol, freq) {
+  if (!AC || muted) return;
+  try {
+    var len = Math.floor(AC.sampleRate * dur), buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var s = AC.createBufferSource(); s.buffer = buf;
+    var f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq || 900;
+    var g = AC.createGain(); g.gain.value = vol || 0.12;
+    s.connect(f); f.connect(g); g.connect(AC.destination); s.start();
+  } catch (e) {}
+}
+var SE = {
+  swing: function () { noiseBurst(0.06, 0.05, 1600); },
+  hitRock: function () { noiseBurst(0.09, 0.14, 500); beep(90, 0.07, 'triangle', 0.06); },
+  brk: function () { noiseBurst(0.22, 0.16, 700); beep(160, 0.15, 'triangle', 0.05, 60); },
+  pickup: function () { beep(660, 0.07, 'sine', 0.06); setTimeout(function () { beep(990, 0.09, 'sine', 0.06); }, 55); },
+  eat: function () { beep(300, 0.08, 'sine', 0.07, 180); setTimeout(function () { beep(340, 0.09, 'sine', 0.07, 200); }, 90); },
+  craft: function () { beep(523, 0.09, 'square', 0.05); setTimeout(function () { beep(784, 0.13, 'square', 0.05); }, 85); },
+  hurt: function () { beep(140, 0.16, 'sawtooth', 0.08, 70); noiseBurst(0.1, 0.08, 800); },
+  slime: function () { beep(220, 0.1, 'sine', 0.06, 440); },
+  splash: function () { noiseBurst(0.25, 0.1, 1200); },
+  levelup: function () { var n = [523, 659, 784, 1047]; for (var i = 0; i < n.length; i++) (function (f, k) { setTimeout(function () { beep(f, 0.16, 'square', 0.06); }, k * 110); })(n[i], i); },
+  coin: function () { beep(880, 0.07, 'square', 0.05); setTimeout(function () { beep(1320, 0.12, 'square', 0.05); }, 60); }
+};
+
+/* ---------------- アイテム定義 ---------------- */
+var ITEMS = {
+  wood:         { name: '木材',         icon: '🪵' },
+  stone:        { name: '石',           icon: '🪨' },
+  copperOre:    { name: '銅鉱石',       icon: '🟠' },
+  ironOre:      { name: '鉄鉱石',       icon: '⚪' },
+  crystal:      { name: 'クリスタル',   icon: '💎' },
+  copperIngot:  { name: '銅インゴット', icon: '🟧' },
+  ironIngot:    { name: '鉄インゴット', icon: '⬜' },
+  mushroom:     { name: 'きのこ',       icon: '🍄', food: { hu: 15 } },
+  fish:         { name: '魚',           icon: '🐟', food: { hu: 18 } },
+  jelly:        { name: 'ゼリー',       icon: '🟢', food: { hu: 8 } },
+  grilledMush:  { name: '焼ききのこ',   icon: '🍢', food: { hu: 32 } },
+  grilledFish:  { name: '焼き魚',       icon: '🍗', food: { hu: 45 } },
+  stew:         { name: 'シチュー',     icon: '🍲', food: { hu: 55, hp: 25 } },
+  torch:        { name: '松明',         icon: '🔥' }
+};
+var ITEM_ORDER = ['wood','stone','copperOre','ironOre','crystal','copperIngot','ironIngot','mushroom','fish','jelly','grilledMush','grilledFish','stew','torch'];
+var CORE_FEED = { crystal: 10, ironIngot: 5, copperIngot: 3, ironOre: 2, copperOre: 1, jelly: 1 };
+var CORE_LV_NEED = [0, 20, 50, 90, 140]; // Lv1開始、index=Lv-1 の累計必要量
+
+/* ---------------- タイル ---------------- */
+// 0床 1岩壁 2土壁 3銅 4鉄 5クリスタル 6水 7岩盤(掘れない)
+var TILE_HP = { 1: 3, 2: 2, 3: 5, 4: 7, 5: 9, 7: 1e9 };
+var TILE_NEED_PICK = { 3: 1, 4: 2, 5: 3 };
+var grid = [], tileHp = [];
+function tIdx(tx, ty) { return ty * MW + tx; }
+function tileAt(tx, ty) { if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return 7; return grid[tIdx(tx, ty)]; }
+function isWallTile(t) { return t === 1 || t === 2 || t === 3 || t === 4 || t === 5 || t === 7; }
+var facilityTiles = {}; // "tx,ty" -> facility
+function isSolidTile(tx, ty) {
+  var t = tileAt(tx, ty);
+  if (isWallTile(t) || t === 6) return true;
+  var f = facilityTiles[tx + ',' + ty];
+  if (f && !f.broken) return true; // 壊れた施設（瓦礫）は当たり判定なし：プレイヤー・仲間・スライム全員が上を通れる
+  return false;
+}
+function collideCircle(x, y, r) {
+  var minTx = Math.floor((x - r) / T), maxTx = Math.floor((x + r) / T);
+  var minTy = Math.floor((y - r) / T), maxTy = Math.floor((y + r) / T);
+  for (var ty = minTy; ty <= maxTy; ty++) for (var tx = minTx; tx <= maxTx; tx++) {
+    if (!isSolidTile(tx, ty)) continue;
+    var cx = clamp(x, tx * T, tx * T + T), cy = clamp(y, ty * T, ty * T + T);
+    if (dist2(x, y, cx, cy) < r * r) return true;
+  }
+  return false;
+}
+function tryMove(e, dx, dy) {
+  if (dx !== 0 && !collideCircle(e.x + dx, e.y, e.r)) e.x += dx;
+  if (dy !== 0 && !collideCircle(e.x, e.y + dy, e.r)) e.y += dy;
+}
+
+/* ---------------- ゲーム状態 ---------------- */
+var state = 'title'; // title | play
+var player, companions = [], slimes = [], drops = [], particles = [], floaters = [], torches = [], shrooms = [], plots = [], facilities = [], woodBlocks = [];
+var inv = {}, box = {};
+var pickTier = 1, swordTier = 0, hasRod = false, hasLantern = false;
+var selKey = 'pick'; // 選択中ホットバーキー
+var coreEnergy = 0, coreLv = 1, cleared = false;
+var fireFuel = 6; // 焚き火の燃料ゲージ（最大6・1ゲージ25秒・木材1個で+1、0で消火）
+/* 施設の破壊・作り直し・時間のかかる精錬/調理 */
+var REBUILD_COST = {
+  furnace: { stone: 12, wood: 10, copperOre: 8 },
+  bench:   { stone: 10, wood: 12, copperOre: 4 },
+  fire:    { stone: 8,  wood: 10, copperOre: 6 },
+  box:     { stone: 4,  wood: 12, copperOre: 7 }
+};
+var SMELT_TIME = 10, COOK_TIME = 8, REBUILD_TIME = 20;
+var DOWN_TIME = 30, REVIVE_TIME = 15; // 気絶（30秒以内に、近くで15秒の復活作業が必要）
+var furnaceJob = null; // 精錬ジョブ {from,to,total,done,t}（開始時に鉱石と木材を消費、1個10秒で完成）
+var cookQueue = [];    // 調理キュー [{give,name,cost,t}]（先頭が調理中、1品8秒）
+function facByType(type) { for (var i = 0; i < facilities.length; i++) if (facilities[i].type === type) return facilities[i]; return null; }
+var gameTime = 0, dayLen = 240, minedCount = 0, killCount = 0;
+var camX = 0, camY = 0, shake = 0;
+/* A案デザイン（大きめ2頭身）：4キャラの見た目定義 */
+var CHAR_DESIGNS = {
+  hero:  { body: '#2f6fd6', bodyDark: '#1f4c96', trim: '#ffd94d', skin: '#ffd9b3', hair: '#5a3a22', hat: '#2f6fd6', hatDark: '#1f4c96' },
+  miner: { body: '#e07b26', bodyDark: '#a85414', trim: '#7a4a21', skin: '#f7c795', hair: '#33302e', hat: '#f28c28', hatDark: '#c96a12' },
+  lamp:  { body: '#e8b71f', bodyDark: '#b8890f', trim: '#7a4a21', skin: '#ffd9b3', hair: '#6b4a2a', hat: '#f2c230', hatDark: '#d9a416' },
+  cook:  { body: '#e86a92', bodyDark: '#bd446e', trim: '#ffffff', skin: '#ffd9b3', hair: '#8a3324', hat: '#e2483d', hatDark: '#b82f24' }
+};
+var CX = 48, CY = 36; // 拠点中心タイル
+
+function resetInv() { inv = {}; box = {}; ITEM_ORDER.forEach(function (k) { inv[k] = 0; box[k] = 0; }); }
+function addInv(k, n) { inv[k] = (inv[k] || 0) + n; if (inv[k] < 0) inv[k] = 0; refreshHotbar(); }
+function addBox(k, n) { box[k] = (box[k] || 0) + n; if (box[k] < 0) box[k] = 0; }
+
+/* ---------------- マップ生成 ---------------- */
+function carveCircle(cx, cy, r, tile) {
+  for (var ty = cy - r - 1; ty <= cy + r + 1; ty++) for (var tx = cx - r - 1; tx <= cx + r + 1; tx++) {
+    if (tx < 1 || ty < 1 || tx >= MW - 1 || ty >= MH - 1) continue;
+    var d = Math.sqrt((tx - cx) * (tx - cx) + (ty - cy) * (ty - cy));
+    if (d <= r + rnd(-0.7, 0.7)) grid[tIdx(tx, ty)] = tile;
+  }
+}
+function carvePath(x1, y1, x2, y2, w) {
+  var x = x1, y = y1, guard = 0;
+  while ((x !== x2 || y !== y2) && guard++ < 500) {
+    for (var dy = -w; dy <= w; dy++) for (var dx = -w; dx <= w; dx++) {
+      var tx = x + dx, ty = y + dy;
+      if (tx > 0 && ty > 0 && tx < MW - 1 && ty < MH - 1 && Math.abs(dx) + Math.abs(dy) <= w + 1) {
+        if (grid[tIdx(tx, ty)] !== 6) grid[tIdx(tx, ty)] = 0;
+      }
+    }
+    if (x !== x2 && rnd01() < 0.6) x += Math.sign(x2 - x); else if (y !== y2) y += Math.sign(y2 - y);
+  }
+}
+function genMap() {
+  grid = new Array(MW * MH).fill(1);
+  tileHp = new Float32Array(MW * MH);
+  facilityTiles = {}; facilities = []; torches = []; shrooms = []; plots = []; woodBlocks = [];
+  var i, tx, ty;
+  // 外周は岩盤
+  for (tx = 0; tx < MW; tx++) { grid[tIdx(tx, 0)] = 7; grid[tIdx(tx, MH - 1)] = 7; }
+  for (ty = 0; ty < MH; ty++) { grid[tIdx(0, ty)] = 7; grid[tIdx(MW - 1, ty)] = 7; }
+  // 拠点の広場
+  carveCircle(CX, CY, 8, 0);
+  // ランダムウォークで洞窟を掘る
+  for (i = 0; i < 30; i++) {
+    var x = CX, y = CY, steps = irnd(160, 420);
+    for (var s = 0; s < steps; s++) {
+      var r = rnd01() < 0.22 ? 1 : 0;
+      carveCircle(x, y, r, 0);
+      var dir = irnd(0, 3);
+      if (dir === 0) x++; else if (dir === 1) x--; else if (dir === 2) y++; else y--;
+      x = clamp(x, 3, MW - 4); y = clamp(y, 3, MH - 4);
+    }
+  }
+  // 地下湖（南西）
+  var lx = CX - 27, ly = CY + 17;
+  carvePath(CX, CY, lx, ly, 1);
+  carveCircle(lx, ly, 5, 6);
+  carveCircle(lx + 2, ly - 2, 3, 6);
+  // クリスタル洞（北東・遠方）
+  var gx = CX + 29, gy = CY - 20;
+  carvePath(CX, CY, gx, gy, 1);
+  carveCircle(gx, gy, 6, 0);
+  // 土壁をところどころに（柔らかい壁）
+  for (i = 0; i < 2600; i++) {
+    tx = irnd(2, MW - 3); ty = irnd(2, MH - 3);
+    if (grid[tIdx(tx, ty)] === 1 && Math.abs(tx - CX) + Math.abs(ty - CY) > 6 && rnd01() < 0.4) grid[tIdx(tx, ty)] = 2;
+  }
+  // 鉱石の鉱脈：中心から遠いほど良い鉱石
+  function vein(cx, cy, type, n) {
+    for (var k = 0; k < n; k++) {
+      var vx = cx + irnd(-1, 1), vy = cy + irnd(-1, 1);
+      if (vx > 1 && vy > 1 && vx < MW - 2 && vy < MH - 2 && isWallTile(grid[tIdx(vx, vy)]) && grid[tIdx(vx, vy)] !== 7) grid[tIdx(vx, vy)] = type;
+    }
+  }
+  for (i = 0; i < 46; i++) { // 銅（中距離）
+    tx = CX + irnd(-34, 34); ty = CY + irnd(-26, 26);
+    var d = Math.abs(tx - CX) + Math.abs(ty - CY);
+    if (d > 9 && d < 52 && tileAt(tx, ty) !== 6) vein(tx, ty, 3, irnd(3, 6));
+  }
+  for (i = 0; i < 34; i++) { // 鉄（遠め）
+    tx = CX + irnd(-42, 42); ty = CY + irnd(-32, 32);
+    d = Math.abs(tx - CX) + Math.abs(ty - CY);
+    if (d > 20 && tileAt(tx, ty) !== 6) vein(tx, ty, 4, irnd(3, 5));
+  }
+  for (i = 0; i < 16; i++) { // クリスタル（最遠＋洞の周囲）
+    tx = CX + irnd(-44, 44); ty = CY + irnd(-33, 33);
+    d = Math.abs(tx - CX) + Math.abs(ty - CY);
+    if (d > 34 && tileAt(tx, ty) !== 6) vein(tx, ty, 5, irnd(2, 4));
+  }
+  for (ty = gy - 8; ty <= gy + 8; ty++) for (tx = gx - 8; tx <= gx + 8; tx++) { // 洞の壁はクリスタル多め
+    if (tx > 1 && ty > 1 && tx < MW - 2 && ty < MH - 2 && isWallTile(grid[tIdx(tx, ty)]) && rnd01() < 0.4) grid[tIdx(tx, ty)] = 5;
+  }
+  // タイルHP初期化
+  for (i = 0; i < MW * MH; i++) { var t = grid[i]; tileHp[i] = TILE_HP[t] || 0; }
+  // 野生キノコ（壁際の床）
+  for (i = 0; i < 900 && shrooms.length < 46; i++) {
+    tx = irnd(2, MW - 3); ty = irnd(2, MH - 3);
+    if (grid[tIdx(tx, ty)] !== 0) continue;
+    var nearWall = isWallTile(tileAt(tx + 1, ty)) || isWallTile(tileAt(tx - 1, ty)) || isWallTile(tileAt(tx, ty + 1)) || isWallTile(tileAt(tx, ty - 1));
+    if (nearWall && Math.abs(tx - CX) + Math.abs(ty - CY) > 9) shrooms.push({ x: tx * T + T / 2, y: ty * T + T / 2, taken: false });
+  }
+  // 施設配置（拠点）
+  function addFac(type, tx, ty, icon, label) {
+    var f = { type: type, tx: tx, ty: ty, x: tx * T + T / 2, y: ty * T + T / 2, icon: icon, label: label, hp: 100, maxhp: 100, broken: false, rebuilding: null, hurtT: 0, warned50: false };
+    facilities.push(f); facilityTiles[tx + ',' + ty] = f; return f;
+  }
+  addFac('core', CX, CY - 1, '💎', 'コア');
+  addFac('fire', CX - 2, CY + 1, '🔥', '焚き火');
+  addFac('bench', CX + 2, CY + 1, '🔨', '作業台');
+  addFac('furnace', CX + 4, CY + 1, '🔥', 'かまど');
+  addFac('box', CX, CY + 3, '📦', '共有ボックス');
+  // 木材ブロック（倒木）：拠点から離れた床に点在。👊3回で壊れて木材1〜3個、2分で復活
+  for (i = 0; i < 1600 && woodBlocks.length < 24; i++) {
+    tx = irnd(2, MW - 3); ty = irnd(2, MH - 3);
+    if (grid[tIdx(tx, ty)] !== 0) continue;
+    if (Math.abs(tx - CX) + Math.abs(ty - CY) <= 10) continue;
+    var dupBlock = woodBlocks.some(function (wb) { return wb.tx === tx && wb.ty === ty; });
+    if (dupBlock) continue;
+    woodBlocks.push({ tx: tx, ty: ty, x: tx * T + T / 2, y: ty * T + T / 2, hp: 3, taken: false, respawnT: 0 });
+  }
+  // キノコ畑（拠点南）
+  var plotPos = [[CX - 3, CY + 5], [CX - 1, CY + 5], [CX + 1, CY + 5], [CX + 3, CY + 5]];
+  plotPos.forEach(function (p, k) {
+    plots.push({ tx: p[0], ty: p[1], x: p[0] * T + T / 2, y: p[1] * T + T / 2, stage: k % 3, timer: rnd(0, 10) });
+  });
+  return { gx: gx, gy: gy };
+}
+
+/* ---------------- エンティティ生成 ---------------- */
+function makePlayer() {
+  return {
+    x: CX * T + T / 2, y: (CY + 2) * T + T / 2, r: 13, speed: 172,
+    hp: 100, hu: 100, face: { x: 0, y: 1 }, swingT: 0, swingCd: 0, ifr: 0,
+    bobT: 0, moving: false, fishing: null, down: false, downT: 0, reviveT: 0, hurtT: 0
+  };
+}
+function makeCompanions() {
+  var defs = [
+    { role: 'miner', kind: 'miner', name: 'ミネ', icon: '⛏️', color: '#e07b26', hair: '#33302e', x: CX - 2, y: CY + 3 },
+    { role: 'lamp', kind: 'lamp', name: 'ラン', icon: '🏮', color: '#e8b71f', hair: '#6b4a2a', x: CX + 2, y: CY + 3 },
+    { role: 'cook', kind: 'cook', name: 'ココ', icon: '🍳', color: '#e86a92', hair: '#8a3324', x: CX - 4, y: CY + 3 }
+  ];
+  return defs.map(function (d) {
+    return {
+      role: d.role, kind: d.kind, name: d.name, icon: d.icon, color: d.color, hair: d.hair,
+      x: d.x * T + T / 2, y: d.y * T + T / 2, r: 12, speed: 148,
+      hp: 100, maxhp: 100, hurtT: 0, down: false, downT: 0, revive: null,
+      face: { x: 0, y: 1 }, swingT: 0, bobT: rnd(0, 6), bubble: '', bubbleT: 0,
+      target: null, bag: {}, bagN: 0, state: 'idle', stateT: 0, stuckT: 0, lastX: 0, lastY: 0, atkCd: 0, cookT: 3
+    };
+  });
+}
+/* スライム3種：緑（通常）／赤（速さ・HP・攻撃すべて緑の2倍）／青大（速さ・HPは緑の10倍、攻撃32・ボス）
+   緑は従来より速く（52→80）、索敵600px・一度見つけたら追い続ける */
+function makeSlime(x, y, kind) {
+  var baseHp = 12 + Math.floor(gameTime / dayLen) * 2;
+  var defs = {
+    green: { r: 13, hp: baseHp,     speed: 80,  atk: 8,  big: false },
+    red:   { r: 15, hp: baseHp * 2, speed: 160, atk: 16, big: false },
+    blue:  { r: 34, hp: baseHp * 10, speed: 800, atk: 32, big: true }
+  };
+  var d = defs[kind] || defs.green;
+  return {
+    x: x, y: y, r: d.r, big: d.big, kind: kind || 'green',
+    hp: d.hp, maxhp: d.hp,
+    speed: d.speed, atk: d.atk, aggroT: 0,
+    hopT: rnd(0, 1), vx: 0, vy: 0, hurtT: 0, atkCd: 0, dead: false
+  };
+}
+var SLIME_COLORS = {
+  green: { body: '#69d97e', burst: '#7ee787', bar: '#7ee787' },
+  red:   { body: '#ef5350', burst: '#ff8a7a', bar: '#ff8a7a' },
+  blue:  { body: '#3d7be2', burst: '#7ab8ff', bar: '#7ab8ff' }
+};
+function spawnDrop(x, y, key, n) {
+  if (NET.mode === 'guest') return; /* ドロップはホスト管理 */
+  for (var i = 0; i < (n || 1); i++) drops.push({ id: ++NET.dropSeq, x: x + rnd(-9, 9), y: y + rnd(-9, 9), key: key, t: 0, vx: rnd(-30, 30), vy: rnd(-30, 30) });
+}
+function addFloater(x, y, text, color) { floaters.push({ x: x, y: y, text: text, color: color || '#fff', t: 0 }); }
+function burst(x, y, color, n, spd) {
+  for (var i = 0; i < (n || 8); i++) {
+    var a = rnd(0, Math.PI * 2), s = rnd(20, spd || 90);
+    particles.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0, life: rnd(0.25, 0.55), color: color, size: rnd(2, 4.5) });
+  }
+}
+
+/* ---------------- トースト ---------------- */
+var toastTimer = null;
+function toast(msg, ms) {
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { el.classList.remove('show'); }, ms || 2200);
+}
+/* ---------------- ホットバー ---------------- */
+function hotbarEntries() {
+  var list = [{ key: 'pick', icon: '⛏️', name: pickTier === 1 ? '石ツルハシ' : (pickTier === 2 ? '銅ツルハシ' : '鉄ツルハシ'), ct: '' }];
+  if (swordTier > 0) list.push({ key: 'sword', icon: '🗡️', name: swordTier === 1 ? '銅の剣' : '鉄の剣', ct: '' });
+  if (hasRod) list.push({ key: 'rod', icon: '🎣', name: '釣り竿', ct: '' });
+  if (hasLantern) list.push({ key: 'lantern', icon: '🏮', name: 'ランタン', ct: '' });
+  ITEM_ORDER.forEach(function (k) {
+    if (inv[k] > 0) list.push({ key: k, icon: ITEMS[k].icon, name: ITEMS[k].name, ct: inv[k] });
+  });
+  return list;
+}
+function refreshHotbar() {
+  var hb = document.getElementById('hotbar');
+  var list = hotbarEntries();
+  if (!list.some(function (e) { return e.key === selKey; })) selKey = 'pick';
+  hb.innerHTML = '';
+  list.forEach(function (e, i) {
+    var d = document.createElement('div');
+    d.className = 'slot' + (e.key === selKey ? ' sel' : '');
+    d.innerHTML = '<span class="ic">' + e.icon + '</span>' + (e.ct !== '' ? '<span class="ct">' + e.ct + '</span>' : '') + '<span class="nm">' + e.name + '</span>';
+    d.addEventListener('pointerdown', function (ev) { ev.preventDefault(); selKey = e.key; refreshHotbar(); });
+    hb.appendChild(d);
+  });
+}
+
+/* ---------------- 入力 ---------------- */
+var keys = {}, padVec = { x: 0, y: 0 }, padPointer = null;
+/* 👊長押し：押し続けている間、一定間隔で doAction() を繰り返す。離すと止まる */
+var HOLD_INTERVAL = 0.37; // 秒（振りのクールダウン0.36秒に合わせる）
+var holdSources = {}, holdTimer = 0, holdSuppress = false;
+function anyHold() { return Object.keys(holdSources).length > 0; }
+function beginHold(id) {
+  if (holdSources[id]) return;
+  holdSources[id] = true;
+  document.getElementById('btnAction').classList.add('holding');
+  if (state !== 'play') return;
+  var hadPanel = !!panelType;
+  doAction();
+  // パネルを開いた／閉じた押しっぱなしでは繰り返さない（開閉が暴れないように）
+  // 釣りを始めた押しっぱなしでも繰り返さない（次のタップでHIT判定するため）
+  holdSuppress = hadPanel || !!panelType || !!(player && player.fishing);
+  holdTimer = HOLD_INTERVAL;
+}
+function endHold(id) {
+  if (!holdSources[id]) return;
+  delete holdSources[id];
+  if (!anyHold()) {
+    holdSuppress = false; holdTimer = 0;
+    document.getElementById('btnAction').classList.remove('holding');
+  }
+}
+function endAllHolds() { holdSources = {}; holdSuppress = false; holdTimer = 0; var b = document.getElementById('btnAction'); if (b) b.classList.remove('holding'); }
+function tickHold(dt) {
+  if (!anyHold() || state !== 'play' || holdSuppress) return;
+  if (!player || player.down || panelType) return;
+  if (player.fishing) return; // 釣り中は長押しでキャンセルしない
+  holdTimer -= dt;
+  if (holdTimer <= 0) {
+    holdTimer = HOLD_INTERVAL;
+    doAction();
+    if (panelType || (player && player.fishing)) holdSuppress = true;
+  }
+}
+window.addEventListener('blur', endAllHolds);
+window.addEventListener('keydown', function (e) {
+  keys[e.key.toLowerCase()] = true;
+  if (state === 'play') {
+    if (e.key === ' ' || e.key.toLowerCase() === 'j') { e.preventDefault(); if (!e.repeat) { initAudio(); beginHold('key'); } }
+    if (e.key.toLowerCase() === 'e' && !e.repeat) doHandAction();
+    var num = parseInt(e.key, 10);
+    if (num >= 1 && num <= 9) { var list = hotbarEntries(); if (list[num - 1]) { selKey = list[num - 1].key; refreshHotbar(); } }
+    if (e.key === 'Escape') closePanel();
+  }
+});
+window.addEventListener('keyup', function (e) {
+  keys[e.key.toLowerCase()] = false;
+  if (e.key === ' ' || e.key.toLowerCase() === 'j') endHold('key');
+});
+document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+(function () {
+  var base = document.getElementById('padBase'), knob = document.getElementById('padKnob');
+  function setKnob(dx, dy) { knob.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px))'; }
+  base.addEventListener('pointerdown', function (e) { padPointer = e.pointerId; base.setPointerCapture(e.pointerId); movePad(e); });
+  base.addEventListener('pointermove', function (e) { if (padPointer === e.pointerId) movePad(e); });
+  function endPad(e) { if (padPointer === e.pointerId) { padPointer = null; padVec.x = 0; padVec.y = 0; setKnob(0, 0); } }
+  base.addEventListener('pointerup', endPad); base.addEventListener('pointercancel', endPad);
+  function movePad(e) {
+    var r = base.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    var dx = e.clientX - cx, dy = e.clientY - cy, d = Math.sqrt(dx * dx + dy * dy), max = r.width / 2 - 8;
+    if (d > max) { dx *= max / d; dy *= max / d; }
+    setKnob(dx, dy);
+    var dead = 7;
+    padVec.x = Math.abs(dx) < dead ? 0 : dx / max;
+    padVec.y = Math.abs(dy) < dead ? 0 : dy / max;
+  }
+  var btnH = document.getElementById('btnHand');
+  btnH.addEventListener('pointerdown', function (e) {
+    e.preventDefault(); initAudio();
+    if (state === 'play') doHandAction();
+  });
+  var btn = document.getElementById('btnAction');
+  btn.addEventListener('pointerdown', function (e) {
+    e.preventDefault(); initAudio();
+    try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+    if (state === 'play') beginHold('btn');
+  });
+  function btnUp(e) { endHold('btn'); }
+  btn.addEventListener('pointerup', btnUp);
+  btn.addEventListener('pointercancel', btnUp);
+  btn.addEventListener('lostpointercapture', btnUp);
+})();
+
+/* ---------------- アクション ---------------- */
+var panelType = null;
+function nearFacility(maxD) {
+  var best = null, bd = maxD * maxD;
+  facilities.forEach(function (f) {
+    var d = dist2(player.x, player.y, f.x, f.y);
+    if (d < bd) { bd = d; best = f; }
+  });
+  return best;
+}
+function nearestWoodBlock(x, y, maxD) {
+  var best = null, bd = maxD * maxD;
+  woodBlocks.forEach(function (wb) { if (wb.taken) return; var d = dist2(x, y, wb.x, wb.y); if (d < bd) { bd = d; best = wb; } });
+  return best;
+}
+/* 🖐️専用施設：かまど・共有ボックス・焚き火・作業台。メニューは🖐️ボタン／Eキーだけで開く（👊では開かない） */
+var HAND_FACILITIES = { furnace: 1, box: 1, fire: 1, bench: 1 };
+function nearPunchFacility(maxD) {
+  var best = null, bd = maxD * maxD;
+  facilities.forEach(function (f) {
+    if (HAND_FACILITIES[f.type]) return;
+    var d = dist2(player.x, player.y, f.x, f.y);
+    if (d < bd) { bd = d; best = f; }
+  });
+  return best;
+}
+function nearHandFacility(maxD) {
+  var best = null, bd = maxD * maxD;
+  facilities.forEach(function (f) {
+    if (!HAND_FACILITIES[f.type]) return;
+    var d = dist2(player.x, player.y, f.x, f.y);
+    if (d < bd) { bd = d; best = f; }
+  });
+  return best;
+}
+function frontTile() {
+  var fx = player.x + player.face.x * 30, fy = player.y + player.face.y * 30;
+  return { tx: Math.floor(fx / T), ty: Math.floor(fy / T), x: fx, y: fy };
+}
+function nearestSlime(x, y, maxD) {
+  var best = null, bd = maxD * maxD;
+  slimes.forEach(function (s) { if (s.dead) return; var d = dist2(x, y, s.x, s.y); if (d < bd) { bd = d; best = s; } });
+  return best;
+}
+/* 🖐️ボタン／Eキー：気絶した仲間の復活作業／施設メニュー開閉／仲間へ食べ物を渡す（長押し不要・1タップ） */
+function doHandAction() {
+  if (!player || player.down || state !== 'play') return;
+  initAudio();
+  if (panelType) { closePanel(); return; }
+  if (player.fishing) return;
+  var downRemote = netNearestDownRemote(58);
+  if (downRemote) { NET.revivingTarget = downRemote.uid; toast('🖐️ ' + downRemote.name + ' の復活作業をはじめた！近くにいてね（15秒）', 2800); return; }
+  // 気絶した仲間が近くにいれば復活作業を開始（施設メニューより優先。開始済みの場合は下の処理へ進む）
+  var downMate = null, dmD = 58 * 58;
+  companions.forEach(function (c) { if (!c.down) return; var d = dist2(player.x, player.y, c.x, c.y); if (d < dmD) { dmD = d; downMate = c; } });
+  if (downMate && !downMate.revive) {
+    downMate.revive = { t: 0, by: NET.mode === 'guest' ? NET.uid : 'host' };
+    if (NET.mode === 'guest') netReq({ t: 'reviveMate', i: companions.indexOf(downMate) });
+    SE.craft();
+    toast('🖐️ ' + downMate.name + ' の復活作業をはじめた！近くにいてね（15秒）', 2800);
+    return;
+  }
+  // 🖐️専用施設のメニュー（近くでは施設が優先）
+  var fac = nearHandFacility(58);
+  if (fac) { openPanel(fac.type); return; }
+  // 近くの仲間に食べ物を渡して回復（ゼリー・キノコでは体力は増えない）
+  var mate = null, mateD = 60 * 60;
+  companions.forEach(function (c) { if (c.down) return; var d = dist2(player.x, player.y, c.x, c.y); if (d < mateD) { mateD = d; mate = c; } });
+  if (mate && (mate.hp < mate.maxhp || (ITEMS[selKey] && ITEMS[selKey].food && (inv[selKey] || 0) > 0))) {
+    if (mate.hp >= mate.maxhp) { toast(mate.name + ' は元気いっぱい！（HP満タン）'); return; }
+    if (ITEMS[selKey] && ITEMS[selKey].food && (inv[selKey] || 0) > 0 && !healFoodKey(selKey)) {
+      toast('🍄 ゼリーやキノコでは体力は増えないよ。焼き魚やシチューなどの料理を渡そう', 3000);
+      return;
+    }
+    var foodKey = pickFoodForCompanion();
+    if (!foodKey) {
+      var hasAnyFood = ITEM_ORDER.some(function (k) { return ITEMS[k].food && (inv[k] || 0) > 0; });
+      if (hasAnyFood) toast('ゼリーやキノコしか持っていない…体力が増える食べ物（料理など）がないよ', 3000);
+      else toast('渡せる食べ物を持っていないよ（焼き魚・シチューなどの料理を持ってきて）', 2800);
+      return;
+    }
+    var heal = foodHealAmount(foodKey);
+    addInv(foodKey, -1);
+    if (NET.mode === 'guest') { netReq({ t: 'feedMate', i: companions.indexOf(mate), key: foodKey }); refreshHotbar(); updateHUD(); return; }
+    mate.hp = clamp(mate.hp + heal, 0, mate.maxhp);
+    SE.eat();
+    addFloater(mate.x, mate.y - 32, '+' + heal + ' ❤️', '#7ee787');
+    sayBubble(mate, 'ありがとう！');
+    toast(ITEMS[foodKey].icon + ' ' + mate.name + ' に ' + ITEMS[foodKey].name + ' を渡した（HP +' + heal + '）');
+    refreshHotbar(); updateHUD();
+    return;
+  }
+}
+function doAction() {
+  if (!player || player.down) return;
+  if (panelType) { closePanel(); return; }
+  initAudio();
+  // 釣り中：HITタイミング判定
+  if (player.fishing) {
+    if (player.fishing.phase === 'bite') {
+      player.fishing = null;
+      if (Math.random() < 0.88) { if (NET.mode === 'guest') { addInv('fish', 1); refreshHotbar(); } else spawnDrop(player.x, player.y - 6, 'fish', 1); toast('🐟 釣れた！'); }
+      else { if (NET.mode === 'guest') { addInv('jelly', 1); refreshHotbar(); } else spawnDrop(player.x, player.y - 6, 'jelly', 1); toast('🟢 ゼリーが釣れた…？'); }
+      SE.splash();
+    } else { player.fishing = null; toast('釣りをやめた'); }
+    return;
+  }
+  // コアが近ければ👊でパネルを開く。
+  // かまど・共有ボックス・焚き火・作業台は🖐️専用なので、👊では絶対に開かず通常アクションを行う。
+  // 仲間への食べ物の受け渡しも🖐️専用（👊では渡せない）
+  var fac = nearPunchFacility(58);
+  if (fac) { openPanel(fac.type); return; }
+  // キノコ畑の収穫
+  for (var i = 0; i < plots.length; i++) {
+    var p = plots[i];
+    if (p.stage >= 3 && dist2(player.x, player.y, p.x, p.y) < 52 * 52) {
+      p.stage = 0; p.timer = 0; if (NET.mode === 'guest') netReq({ t: 'plot', i: plots.indexOf(p) }); else { addInv('mushroom', irnd(1, 2)); SE.pickup(); }
+      addFloater(p.x, p.y - 18, '🍄 収穫！', '#ffd94d'); refreshHotbar(); return;
+    }
+  }
+  // 食べる（選択中が食べ物）
+  if (ITEMS[selKey] && ITEMS[selKey].food && inv[selKey] > 0) {
+    var f = ITEMS[selKey].food;
+    if (player.hu >= 100 && !f.hp) { toast('おなかいっぱい！'); return; }
+    addInv(selKey, -1);
+    player.hu = clamp(player.hu + f.hu, 0, 100);
+    if (f.hp) player.hp = clamp(player.hp + f.hp, 0, 100);
+    SE.eat(); addFloater(player.x, player.y - 26, '+' + f.hu + ' 🍖', '#ffc46b');
+    refreshHotbar(); return;
+  }
+  // 松明を置く
+  if (selKey === 'torch' && inv.torch > 0) {
+    var ft0 = frontTile();
+    var torchThere = torches.some(function (tc) { return tc.tx === ft0.tx && tc.ty === ft0.ty; });
+    if (tileAt(ft0.tx, ft0.ty) === 0 && !facilityTiles[ft0.tx + ',' + ft0.ty] && !torchThere) {
+      addInv('torch', -1);
+      torches.push({ x: ft0.tx * T + T / 2, y: ft0.ty * T + T / 2, tx: ft0.tx, ty: ft0.ty }); if (NET.mode === 'guest') netReq({ t: 'torch', tx: ft0.tx, ty: ft0.ty });
+      SE.craft(); toast('🔥 松明を置いた'); refreshHotbar();
+    } else toast('ここには置けない');
+    return;
+  }
+  // 目の前が水＋釣り竿 → 釣り開始
+  var ft = frontTile();
+  if (tileAt(ft.tx, ft.ty) === 6) {
+    if (hasRod) {
+      player.fishing = { phase: 'wait', t: rnd(2.2, 5.2), wx: ft.tx * T + T / 2, wy: ft.ty * T + T / 2 };
+      SE.splash(); toast('🎣 釣り糸をたらした…');
+    } else toast('釣り竿があれば釣れそうだ（作業台で作れる）');
+    return;
+  }
+  // 振る（攻撃 or 採掘）
+  if (player.swingCd > 0) return;
+  player.swingCd = 0.36; player.swingT = 0.22; SE.swing();
+  // 目の前の木材ブロック（倒木）を叩く：3回で壊れて木材1〜3個
+  var wblk = nearestWoodBlock(player.x + player.face.x * 26, player.y + player.face.y * 26, 42);
+  if (wblk) {
+    wblk.hp -= 1; if (NET.mode === 'guest') netReq({ t: 'wood', i: woodBlocks.indexOf(wblk) }); SE.hitRock();
+    burst(wblk.x, wblk.y, '#b08954', 5, 80);
+    if (wblk.hp <= 0) {
+      wblk.taken = true; wblk.respawnT = 120; wblk.hp = 3;
+      spawnDrop(wblk.x, wblk.y, 'wood', irnd(1, 3));
+      SE.brk(); toast('🪵 木材ブロックを壊した！');
+    }
+    return;
+  }
+  var atkRange = 54;
+  var foe = nearestSlime(player.x + player.face.x * 20, player.y + player.face.y * 20, atkRange);
+  if (foe) {
+    var dmg = selKey === 'sword' && swordTier > 0 ? (swordTier === 1 ? 6 : 10) : (swordTier > 0 ? 4 : 2);
+    damageSlime(foe, dmg, player.face);
+    return;
+  }
+  if (isWallTile(tileAt(ft.tx, ft.ty))) { mineTile(ft.tx, ft.ty, pickTier, player); return; }
+}
+var PICK_POWER = { 1: 1, 2: 2, 3: 3 };
+function mineTile(tx, ty, tier, who) {
+  var t = tileAt(tx, ty);
+  if (!isWallTile(t) || t === 7) return false;
+  if (NET.mode === 'guest') {
+    var needG = TILE_NEED_PICK[t] || 1;
+    if (tier < needG) return false;
+    var idxG = tIdx(tx, ty);
+    tileHp[idxG] -= PICK_POWER[tier];
+    burst(tx * T + T / 2, ty * T + T / 2, '#9a8fb8', 4, 70);
+    if (tileHp[idxG] <= 0) { grid[idxG] = 0; tileHp[idxG] = 0; burst(tx * T + T / 2, ty * T + T / 2, '#cbbffa', 10, 110); }
+    netReq({ t: 'mine', tx: tx, ty: ty, tier: tier });
+    return true;
+  }
+  var need = TILE_NEED_PICK[t] || 1;
+  if (tier < need) {
+    if (who === player) { toast(t === 4 ? '硬い！銅のツルハシが必要' : '硬い！鉄のツルハシが必要'); SE.hitRock(); }
+    return false;
+  }
+  var idx = tIdx(tx, ty);
+  tileHp[idx] -= PICK_POWER[tier];
+  burst(tx * T + T / 2, ty * T + T / 2, '#9a8fb8', 4, 70);
+  if (who === player) SE.hitRock();
+  if (tileHp[idx] <= 0) {
+    grid[idx] = 0; tileHp[idx] = 0; if (NET.mode === 'host') NET.tileDirty[idx] = 0;
+    if (who === player) { minedCount++; SE.brk(); }
+    burst(tx * T + T / 2, ty * T + T / 2, '#cbbffa', 10, 110);
+    var cxp = tx * T + T / 2, cyp = ty * T + T / 2;
+    if (t === 1) spawnDrop(cxp, cyp, 'stone', Math.random() < 0.85 ? 1 : 2);
+    else if (t === 2) { if (Math.random() < 0.65) spawnDrop(cxp, cyp, 'stone', 1); if (Math.random() < 0.16) spawnDrop(cxp, cyp, 'mushroom', 1); }
+    else if (t === 3) spawnDrop(cxp, cyp, 'copperOre', irnd(1, 2));
+    else if (t === 4) spawnDrop(cxp, cyp, 'ironOre', irnd(1, 2));
+    else if (t === 5) spawnDrop(cxp, cyp, 'crystal', irnd(1, 2));
+  }
+  return true;
+}
+function damageSlime(s, dmg, dir) {
+  if (NET.mode === 'guest') { netHitSlime(s, dmg, dir); return; }
+  s.hp -= dmg; s.hurtT = 0.18;
+  s.x += dir.x * 16; s.y += dir.y * 16;
+  addFloater(s.x, s.y - s.r - 8, '-' + dmg, '#ff9a8a');
+  var scol = SLIME_COLORS[s.kind || 'green'] || SLIME_COLORS.green;
+  burst(s.x, s.y, scol.burst, 6, 90); SE.slime();
+  if (s.hp <= 0 && !s.dead) {
+    s.dead = true; killCount++;
+    burst(s.x, s.y, scol.burst, 16, 130);
+    spawnDrop(s.x, s.y, 'jelly', s.kind === 'blue' ? 3 : (s.kind === 'red' ? 2 : irnd(1, 2)));
+    if (s.kind === 'blue') { spawnDrop(s.x, s.y, 'crystal', 2); toast('👑 青い大スライムを倒した！クリスタルGET！'); }
+    else if (s.kind === 'red') toast('🔴 赤いスライムを倒した！');
+    if (Math.random() < 0.3) spawnDrop(s.x, s.y, 'mushroom', 1);
+  }
+}
+/* 施設（かまど・作業台・焚き火・共有ボックス）はスライムに壊される。施設HPは100、攻撃力は人への攻撃と同じ */
+function damageFacility(f, dmg) {
+  if (!f || f.broken || !REBUILD_COST[f.type]) return;
+  f.hp -= dmg; f.hurtT = 0.2;
+  burst(f.x, f.y, '#cbb9a0', 6, 90); SE.hitRock();
+  addFloater(f.x, f.y - 36, '-' + dmg, '#ffb0a0');
+  if (f.hp <= 0) breakFacility(f);
+  else if (f.hp <= 50 && !f.warned50) { f.warned50 = true; toast('⚠️ ' + f.label + ' が壊れそう！スライムを追い払って！', 2600); }
+}
+function breakFacility(f) {
+  f.hp = 0; f.broken = true; f.rebuilding = null;
+  burst(f.x, f.y, '#9a8f80', 22, 150); burst(f.x, f.y, '#ffd94d', 10, 110);
+  SE.brk(); shake = Math.max(shake, 7);
+  if (f.type === 'box') {
+    // 中身は全部、周りの地面にドロップとして散らばる（触れると拾える）
+    ITEM_ORDER.forEach(function (k) { if ((box[k] || 0) > 0) { spawnDrop(f.x, f.y, k, box[k]); box[k] = 0; } });
+    toast('💥 共有ボックスが壊された！中身が散らばった！', 3400);
+  } else if (f.type === 'furnace') {
+    // 精錬中／待ちの鉱石が散らばる（消費済みの木材は戻らない）
+    if (furnaceJob) { var left = furnaceJob.total - furnaceJob.done; if (left > 0) spawnDrop(f.x, f.y, furnaceJob.from, left); furnaceJob = null; }
+    toast('💥 かまどが壊された！', 3000);
+  } else if (f.type === 'fire') {
+    // 調理中／待ちの材料が散らばる。火も消える
+    if (cookQueue.length) {
+      cookQueue.forEach(function (q) { Object.keys(q.cost).forEach(function (k) { spawnDrop(f.x, f.y, k, q.cost[k]); }); });
+      cookQueue = [];
+    }
+    fireFuel = 0;
+    toast('💥 焚き火が壊された！真っ暗だ…', 3400);
+  } else {
+    toast('💥 ' + f.label + ' が壊された！', 3000);
+  }
+  if (panelType === f.type) openPanel(f.type);
+  refreshHotbar();
+}
+/* かまどの精錬開始：鉱石と木材を開始時に消費し、1個10秒で順番に完成する */
+function startSmelt(from, to, n) {
+  if (NET.mode === 'guest') {
+    if (furnaceJob) return;
+    var n2 = Math.min(n, inv[from] || 0, inv.wood || 0);
+    if (n2 < 1) { if ((inv[from] || 0) >= 1 && (inv.wood || 0) < 1) toast('🪵 木材がない！木材ブロックを叩いて木材を集めよう', 2600); return; }
+    addInv('wood', -n2); addInv(from, -n2);
+    netReq({ t: 'smelt', from: from, to: to, n: n2 });
+    SE.coin(); toast('🔥 精錬をお願いした（ホストが処理するよ）'); refreshHotbar();
+    if (panelType === 'furnace') openPanel('furnace');
+    return;
+  }
+  if (furnaceJob) return;
+  n = Math.min(n, inv[from] || 0, inv.wood || 0);
+  if (n < 1) {
+    if ((inv[from] || 0) >= 1 && (inv.wood || 0) < 1) toast('🪵 木材がない！木材ブロックを叩いて木材を集めよう', 2600);
+    return;
+  }
+  addInv('wood', -n); addInv(from, -n);
+  furnaceJob = { from: from, to: to, total: n, done: 0, t: SMELT_TIME };
+  SE.coin();
+  toast('🔥 精錬をはじめた（1個 ' + SMELT_TIME + ' 秒かかるよ）');
+  refreshHotbar();
+  if (panelType === 'furnace') openPanel('furnace');
+}
+function hurtPlayer(dmg) {
+  if (player.ifr > 0 || player.down) return;
+  player.hp -= dmg; player.ifr = 0.7; player.hurtT = 0.25; shake = Math.max(shake, 5);
+  SE.hurt();
+  var hf = document.getElementById('hurtFlash'); hf.style.opacity = 1;
+  setTimeout(function () { hf.style.opacity = 0; }, 130);
+  addFloater(player.x, player.y - 28, '-' + dmg, '#ff8a7a');
+  if (player.hp <= 0) startDownPlayer('😵 気絶した！仲間が助けに来てくれるはず…（30秒以内）');
+}
+/* プレイヤーが気絶：30秒間、移動も行動もできない。仲間が近くで15秒かけて復活させてくれる */
+function startDownPlayer(msg) {
+  if (player.down) return;
+  player.hp = 0; player.down = true; player.downT = DOWN_TIME; player.reviveT = 0;
+  player.fishing = null; player.moving = false;
+  closePanel();
+  document.getElementById('fadeBlack').style.opacity = 0.45;
+  toast(msg, 3200);
+}
+/* 仲間による復活が完了（HP50で起き上がる） */
+function revivePlayer() {
+  player.down = false; player.hp = 50; player.reviveT = 0;
+  document.getElementById('fadeBlack').style.opacity = 0;
+  burst(player.x, player.y, '#7ee787', 16, 120); SE.levelup();
+  toast('🖐️ 仲間が復活させてくれた！（HP50）', 2800);
+}
+/* 30秒以内に助けてもらえなかった：持ち物は全て消滅し、スタート地点（拠点中心）からHP満タンでやり直し */
+function downTimeoutPlayer() {
+  ITEM_ORDER.forEach(function (k) { inv[k] = 0; });
+  pickTier = 1; swordTier = 0; hasRod = false; hasLantern = false; selKey = 'pick';
+  player.down = false; player.reviveT = 0;
+  player.hp = 100; player.hu = Math.max(player.hu, 60);
+  player.x = CX * T + T / 2; player.y = (CY + 2) * T + T / 2;
+  document.getElementById('fadeBlack').style.opacity = 0;
+  refreshHotbar();
+  toast('⏰ 助けが間に合わなかった…持ち物は全て消えてしまった。拠点からやり直し！', 3600);
+}
+/* 仲間がスライムから受けるダメージ。0になったら気絶（30秒）し、プレイヤーの🖐️復活を待つ */
+function hurtCompanion(c, dmg) {
+  if (!c || c.down) return;
+  c.hp -= dmg; c.hurtT = 0.3;
+  addFloater(c.x, c.y - 30, '-' + dmg, '#ff8a7a');
+  burst(c.x, c.y, '#ff8a7a', 5, 80);
+  sayBubble(c, 'いたっ！');
+  if (c.hp <= 0) {
+    c.hp = 0; c.down = true; c.downT = DOWN_TIME; c.revive = null;
+    c.state = 'down'; c.target = null;
+    burst(c.x, c.y, '#9a8fb8', 12, 100);
+    sayBubble(c, 'たすけて…');
+    toast('😵 ' + c.name + ' が気絶した！近づいて🖐️で復活させよう（作業15秒・制限30秒）', 3400);
+  }
+}
+/* 食べ物の回復量（仲間のHP回復に使う値）＝ 空腹回復＋体力回復の合計 */
+function foodHealAmount(k) { var f = ITEMS[k].food; return (f.hu || 0) + (f.hp || 0); }
+/* 仲間のHP回復に使える食べ物か（ゼリーとキノコでは体力は増えないので対象外。自分が食べる時の効果は別） */
+function healFoodKey(k) { return !!(ITEMS[k] && ITEMS[k].food) && k !== 'jelly' && k !== 'mushroom'; }
+/* 仲間に渡す食べ物を選ぶ：選択中が回復できる食べ物ならそれ、なければ回復量が小さい順に使う（ゼリー・キノコは選ばれない） */
+function pickFoodForCompanion() {
+  if (healFoodKey(selKey) && (inv[selKey] || 0) > 0) return selKey;
+  var best = null, bestHeal = 1e9;
+  ITEM_ORDER.forEach(function (k) {
+    if (!healFoodKey(k) || (inv[k] || 0) < 1) return;
+    var heal = foodHealAmount(k);
+    if (heal < bestHeal) { bestHeal = heal; best = k; }
+  });
+  return best;
+}
+
+/* ---------------- パネル ---------------- */
+function el(html) { var d = document.createElement('div'); d.innerHTML = html; return d.firstChild; }
+function costText(cost) {
+  return Object.keys(cost).map(function (k) {
+    var have = inv[k] || 0, need = cost[k];
+    var cls = have < need ? ' class="lack"' : '';
+    return '<span' + cls + '>' + ITEMS[k].icon + ITEMS[k].name + ' ' + have + '/' + need + '</span>';
+  }).join('　');
+}
+function canAfford(cost) { return Object.keys(cost).every(function (k) { return (inv[k] || 0) >= cost[k]; }); }
+function payCost(cost) { Object.keys(cost).forEach(function (k) { addInv(k, -cost[k]); }); }
+
+function openPanel(type) {
+  panelType = type;
+  var wrap = document.getElementById('panelWrap');
+  var title = document.getElementById('panelTitle');
+  var body = document.getElementById('panelBody');
+  body.innerHTML = '';
+  var names = { bench: '🔨 作業台', furnace: '🔥 かまど', fire: '🔥 焚き火', box: '📦 共有ボックス', core: '💎 コア' };
+  title.textContent = names[type] || type;
+
+  function row(icon, name, desc, btnLabel, onClick, disabled, sub) {
+    var r = el('<div class="prow"><span class="ic">' + icon + '</span><div class="tx"><b>' + name + '</b><span>' + desc + '</span></div></div>');
+    var b = document.createElement('button');
+    b.className = 'pbtn' + (sub ? ' sub' : ''); b.textContent = btnLabel; b.disabled = !!disabled;
+    b.addEventListener('click', function () { initAudio(); onClick(); });
+    r.appendChild(b); body.appendChild(r); return r;
+  }
+
+  // 壊れている施設（かまど・作業台・焚き火・共有ボックス）は「作り直し」パネルになる
+  var facObj = facByType(type);
+  if (facObj && REBUILD_COST[type] && facObj.broken) {
+    if (facObj.rebuilding) {
+      var rpct = Math.floor(facObj.rebuilding.t / REBUILD_TIME * 100);
+      body.appendChild(el('<div style="font-size:14px;line-height:1.7;">🔨 <b>' + facObj.label + ' を作り直し中…</b><br>近くにいる間だけ進むよ（離れると止まる）。</div>'));
+      body.appendChild(el('<div id="coreProgOuter"><div id="coreProgFill" style="width:' + rpct + '%;background:linear-gradient(90deg,#f0a62c,#ffd94d);"></div></div>'));
+      body.appendChild(el('<div style="font-size:13px;color:#bdb2dd;">進みぐあい ' + rpct + '%（あと約 ' + Math.ceil(REBUILD_TIME - facObj.rebuilding.t) + ' 秒）</div>'));
+    } else {
+      body.appendChild(el('<div style="font-size:14px;line-height:1.7;">💥 スライムに壊されてしまった！<br>作り直すには素材が必要で、約' + REBUILD_TIME + '秒かかるよ（近くにいる間だけ進む）。</div>'));
+      row('🔨', facObj.label + ' を作り直す', costText(REBUILD_COST[type]), '作り直す', function () {
+        if (!canAfford(REBUILD_COST[type])) return;
+        payCost(REBUILD_COST[type]);
+        if (NET.mode === 'guest') { netReq({ t: 'rebuild', ftype: type }); toast('🔨 ' + facObj.label + ' の作り直しをお願いした（ホストが進行するよ）'); refreshHotbar(); openPanel(type); return; }
+        facObj.rebuilding = { t: 0 };
+        SE.craft();
+        toast('🔨 ' + facObj.label + ' の作り直しをはじめた！近くで見守って');
+        refreshHotbar(); openPanel(type);
+      }, !canAfford(REBUILD_COST[type]));
+      body.appendChild(el('<div style="font-size:12.5px;color:#bdb2dd;">素材は手持ちから支払うよ（ボックスからは出せない）。</div>'));
+    }
+    wrap.classList.add('open');
+    return;
+  }
+
+  if (type === 'bench') {
+    var recipes = [
+      { key: 'pick2', icon: '⛏️', name: '銅のツルハシ', desc: '鉄鉱石が掘れるようになる', cost: { copperIngot: 3, stone: 2 }, show: pickTier < 2, done: pickTier >= 2, doneText: '作成済み（所持中）', apply: function () { pickTier = 2; } },
+      { key: 'pick3', icon: '⛏️', name: '鉄のツルハシ', desc: 'クリスタルが掘れるようになる', cost: { ironIngot: 3, stone: 2 }, show: pickTier < 3, done: pickTier >= 3, doneText: '作成済み（所持中）', apply: function () { pickTier = 3; } },
+      { key: 'sword1', icon: '🗡️', name: '銅の剣', desc: 'スライムへの攻撃力アップ', cost: { copperIngot: 3, jelly: 1 }, show: swordTier < 1, done: swordTier >= 1, doneText: '作成済み（所持中）', apply: function () { swordTier = 1; selKey = 'sword'; } },
+      { key: 'sword2', icon: '🗡️', name: '鉄の剣', desc: 'さらに強い剣。大スライムにも', cost: { ironIngot: 3, jelly: 1 }, show: swordTier < 2, done: swordTier >= 2, doneText: '作成済み（所持中）', apply: function () { swordTier = 2; selKey = 'sword'; } },
+      { key: 'rod', icon: '🎣', name: '釣り竿', desc: '地下湖で魚が釣れる', cost: { stone: 2, jelly: 2 }, show: !hasRod, done: hasRod, doneText: '作成済み（所持中）', apply: function () { hasRod = true; selKey = 'rod'; } },
+      { key: 'lantern', icon: '🏮', name: 'ランタン', desc: '自分のまわりが明るくなる', cost: { copperIngot: 2, jelly: 1 }, show: !hasLantern, done: hasLantern, doneText: '作成済み（所持中）', apply: function () { hasLantern = true; } },
+      { key: 'torch3', icon: '🔥', name: '松明 ×3', desc: '地面に置いて明かりにする', cost: { jelly: 1, stone: 1 }, show: true, done: false, apply: function () { addInv('torch', 3); } }
+    ];
+    recipes.forEach(function (rc) {
+      if (!rc.show && !rc.done) return;
+      if (rc.done) { row(rc.icon, rc.name, rc.doneText, '✓', function () {}, true); return; }
+      row(rc.icon, rc.name, costText(rc.cost) + '<br>' + rc.desc, '作る', function () {
+        if (!canAfford(rc.cost)) return;
+        payCost(rc.cost); rc.apply(); SE.craft(); toast('🔨 ' + rc.name + ' を作った！');
+        refreshHotbar(); openPanel('bench');
+      }, !canAfford(rc.cost));
+    });
+  }
+
+  if (type === 'furnace') {
+    body.appendChild(el('<div style="font-size:13px;color:#bdb2dd;margin-bottom:8px;">鉱石を熱してインゴットにするよ。精錬は <b style="color:#ffd94d;">1個につき' + SMELT_TIME + '秒</b> かかる（開始時に鉱石と 🪵木材 1個/個 を消費）。手持ちの木材 ' + (inv.wood || 0) + '個。</div>'));
+    if (furnaceJob) {
+      var jcur = Math.min(furnaceJob.done + 1, furnaceJob.total);
+      var jpct = Math.floor((1 - furnaceJob.t / SMELT_TIME) * 100);
+      body.appendChild(el('<div style="font-size:14px;margin-bottom:4px;">🔥 精錬中：' + ITEMS[furnaceJob.to].icon + ITEMS[furnaceJob.to].name + '　' + furnaceJob.done + '/' + furnaceJob.total + ' 個できあがり（いま ' + jcur + ' 個目・あと約 ' + Math.ceil(furnaceJob.t) + ' 秒）</div>'));
+      body.appendChild(el('<div id="coreProgOuter"><div id="coreProgFill" style="width:' + jpct + '%;background:linear-gradient(90deg,#f0642c,#ffb52e);"></div></div>'));
+      body.appendChild(el('<div style="font-size:12.5px;color:#bdb2dd;margin-bottom:6px;">できあがったインゴットは自動でアイテム欄に入るよ。精錬が終わるまで次は始められない。</div>'));
+    }
+    [['copperOre', 'copperIngot'], ['ironOre', 'ironIngot']].forEach(function (pair) {
+      var from = pair[0], to = pair[1];
+      (function (from, to) {
+        var r = row(ITEMS[to].icon, ITEMS[to].name + ' を精錬', ITEMS[from].icon + ITEMS[from].name + ' ' + (inv[from] || 0) + '個 → ' + ITEMS[to].icon + ' 1個（' + SMELT_TIME + '秒）<br>🪵 木材 1個を消費', '精錬', function () {
+          startSmelt(from, to, 1);
+        }, !!furnaceJob || (inv[from] || 0) < 1);
+        var bAll = document.createElement('button');
+        bAll.className = 'pbtn sub'; bAll.textContent = '全部'; bAll.disabled = !!furnaceJob || (inv[from] || 0) < 1;
+        bAll.addEventListener('click', function () {
+          startSmelt(from, to, Math.min(inv[from] || 0, inv.wood || 0));
+        });
+        r.appendChild(bAll);
+      })(from, to);
+    });
+  }
+
+  if (type === 'fire') {
+    var lit = fireFuel > 0;
+    var seg = Math.ceil(fireFuel);
+    var gaugeHtml = '';
+    for (var gi = 0; gi < 6; gi++) gaugeHtml += gi < seg ? '🟧' : '⬛';
+    body.appendChild(el('<div style="font-size:14px;line-height:1.75;">燃料ゲージ（1ゲージ＝25秒／木材1個で +1）<br><span style="font-size:19px;letter-spacing:2px;">' + gaugeHtml + '</span> <b>' + seg + ' / 6</b>' + (lit ? '<br>🔥 あたたかい…そばにいると体力がゆっくり回復するよ。' : '<br><span style="color:#ff8a7a;font-weight:800;">火が消えている…</span>木材を入れると再び火がつくよ。消えている間は料理ができず、そばの回復も止まる。') + '</div>'));
+    var fr = row('🪵', '木材を入れる', '手持ちの木材 ' + (inv.wood || 0) + '個 → 燃料 +1ゲージ', '入れる', function () {
+      if ((inv.wood || 0) < 1) { toast('🪵 木材を持っていない！木材ブロックを叩いて集めよう', 2600); return; }
+      if (fireFuel >= 6) { toast('燃料は満タンだよ'); return; }
+      var wasOut = fireFuel <= 0;
+      addInv('wood', -1);
+      if (NET.mode === 'guest') { netReq({ t: 'fuel', n: 1 }); toast(wasOut ? '🔥 焚き火に火がついた！' : '🪵 木材を入れた'); }
+      else { fireFuel = Math.min(6, fireFuel + 1); SE.craft(); toast(wasOut ? '🔥 焚き火に火がついた！' : '🪵 木材を入れた（燃料 ' + Math.ceil(fireFuel) + '/6）'); }
+      refreshHotbar(); openPanel('fire');
+    }, false);
+    var bAllF = document.createElement('button');
+    bAllF.className = 'pbtn sub'; bAllF.textContent = '全部';
+    bAllF.addEventListener('click', function () {
+      var n = Math.min(inv.wood || 0, Math.ceil(6 - fireFuel));
+      if (n < 1) { toast((inv.wood || 0) < 1 ? '🪵 木材を持っていない！木材ブロックを叩いて集めよう' : '燃料は満タンだよ', 2400); return; }
+      var wasOut = fireFuel <= 0;
+      addInv('wood', -n);
+      if (NET.mode === 'guest') { netReq({ t: 'fuel', n: n }); toast(wasOut ? '🔥 焚き火に火がついた！' : '🪵 木材を ' + n + '個 入れた'); }
+      else { fireFuel = Math.min(6, fireFuel + n); SE.craft(); toast(wasOut ? '🔥 焚き火に火がついた！' : '🪵 木材を ' + n + '個 入れた（燃料 ' + Math.ceil(fireFuel) + '/6）'); }
+      refreshHotbar(); openPanel('fire');
+    });
+    fr.appendChild(bAllF);
+    body.appendChild(el('<div class="psec">▼ 料理（焚き火）</div>'));
+    if (!lit) body.appendChild(el('<div style="font-size:13px;color:#ff8a7a;font-weight:700;margin-bottom:6px;">火が消えているので料理できない。木材を入れて火をつけよう。</div>'));
+    if (cookQueue.length) {
+      var cq0 = cookQueue[0];
+      body.appendChild(el('<div style="font-size:13.5px;margin-bottom:6px;">🍳 調理中：' + cq0.name + '（あと約 ' + Math.ceil(cq0.t) + ' 秒）' + (cookQueue.length > 1 ? '　＋待ち ' + (cookQueue.length - 1) + ' 品（1品ずつ順番に作るよ）' : '') + '</div>'));
+    }
+    var dishes = [
+      { icon: '🍢', name: '焼ききのこ', desc: '空腹+32', cost: { mushroom: 1 }, give: 'grilledMush' },
+      { icon: '🍗', name: '焼き魚', desc: '空腹+45', cost: { fish: 1 }, give: 'grilledFish' },
+      { icon: '🍲', name: 'きのこシチュー', desc: '空腹+55／体力+25（回復ごはん）', cost: { mushroom: 2, jelly: 1 }, give: 'stew' }
+    ];
+    dishes.forEach(function (d) {
+      row(d.icon, d.name, costText(d.cost) + '<br>' + d.desc + '（調理に約' + COOK_TIME + '秒）', '作る', function () {
+        if (fireFuel <= 0) { toast('火が消えているので料理できない。木材を入れて火をつけよう', 2600); return; }
+        if (!canAfford(d.cost)) return;
+        payCost(d.cost);
+        if (NET.mode === 'guest') { netReq({ t: 'cook', give: d.give, name: d.name, cost: d.cost }); toast('🍲 ' + d.name + ' の調理をお願いした（ホストが作るよ）'); refreshHotbar(); openPanel('fire'); return; }
+        cookQueue.push({ give: d.give, name: d.name, cost: d.cost, t: COOK_TIME });
+        SE.eat();
+        toast(cookQueue.length > 1 ? '🍲 ' + d.name + ' を予約した（待ち ' + (cookQueue.length - 1) + ' 品のあと）' : '🍲 ' + d.name + ' の調理をはじめた（約' + COOK_TIME + '秒）');
+        refreshHotbar(); openPanel('fire');
+      }, !lit || !canAfford(d.cost));
+    });
+    body.appendChild(el('<div style="font-size:12.5px;color:#bdb2dd;margin-top:4px;">料理は1品ずつ順番に作るよ（1品約' + COOK_TIME + '秒）。できた料理は自動でアイテム欄に入り、選んで 👊 で食べられるよ。料理に追加の木材は要らないよ（燃料が時間で減っていく）。</div>'));
+  }
+
+  if (type === 'box') {
+    body.appendChild(el('<div style="font-size:13px;color:#bdb2dd;margin-bottom:8px;">仲間たちと共有の箱。仲間が集めた素材もここに入るよ。</div>'));
+    ITEM_ORDER.forEach(function (k) {
+      var r = el('<div class="prow"><span class="ic">' + ITEMS[k].icon + '</span><div class="tx"><b>' + ITEMS[k].name + '</b><span>手持ち ' + (inv[k] || 0) + '　／　ボックス ' + (box[k] || 0) + '</span></div></div>');
+      var bIn = document.createElement('button'); bIn.className = 'pbtn sub'; bIn.textContent = '入れる'; bIn.disabled = (inv[k] || 0) < 1;
+      bIn.addEventListener('click', function () { var n = inv[k] || 0; addInv(k, -n); if (NET.mode === 'guest') netReq({ t: 'boxIn', key: k, n: n }); else addBox(k, n); SE.pickup(); refreshHotbar(); openPanel('box'); });
+      var bOut = document.createElement('button'); bOut.className = 'pbtn'; bOut.textContent = '出す'; bOut.disabled = (box[k] || 0) < 1;
+      bOut.addEventListener('click', function () { var n = box[k] || 0; if (NET.mode === 'guest') { netReq({ t: 'boxOut', key: k, n: n }); toast('📦 取り出しをお願いした'); } else { addBox(k, -n); addInv(k, n); SE.pickup(); } refreshHotbar(); openPanel('box'); });
+      r.appendChild(bIn); r.appendChild(bOut); body.appendChild(r);
+    });
+  }
+
+  if (type === 'core') {
+    var lv = coreLv;
+    var curNeed = CORE_LV_NEED[lv - 1], nextNeed = lv < 5 ? CORE_LV_NEED[lv] : CORE_LV_NEED[4];
+    var pct = lv >= 5 ? 100 : Math.floor((coreEnergy - curNeed) / (nextNeed - curNeed) * 100);
+    body.appendChild(el('<div style="font-size:14px;line-height:1.7;">コアは岩窟の心臓。素材を納品するとエネルギーがたまって育っていく。<br>現在 <b style="color:#a5f0ff;">Lv.' + lv + '</b>　エネルギー <b>' + coreEnergy + '</b>' + (lv < 5 ? '（次のLvまで あと ' + (nextNeed - coreEnergy) + '）' : '（覚醒済み！）') + '</div>'));
+    var po = el('<div id="coreProgOuter"><div id="coreProgFill" style="width:' + pct + '%"></div></div>');
+    body.appendChild(po);
+    body.appendChild(el('<div class="psec">▼ 納品する（持っている分を全部納品）</div>'));
+    Object.keys(CORE_FEED).forEach(function (k) {
+      if ((inv[k] || 0) < 1) return;
+      row(ITEMS[k].icon, ITEMS[k].name + ' ×' + inv[k], 'エネルギー +' + (CORE_FEED[k] * inv[k]) + '（1個 +' + CORE_FEED[k] + '）', '納品', function () {
+        var n = inv[k] || 0; addInv(k, -n); if (NET.mode === 'guest') netReq({ t: 'feed', amt: CORE_FEED[k] * n }); else feedCore(CORE_FEED[k] * n); refreshHotbar();
+        if (panelType === 'core') openPanel('core');
+      }, false);
+    });
+    if (!Object.keys(CORE_FEED).some(function (k) { return (inv[k] || 0) > 0; })) {
+      body.appendChild(el('<div style="font-size:13px;color:#bdb2dd;">納品できる素材を持っていないよ。クリスタル（遠くの壁）や鉱石を掘ってこよう。</div>'));
+    }
+  }
+  wrap.classList.add('open');
+}
+function closePanel() { panelType = null; document.getElementById('panelWrap').classList.remove('open'); }
+document.getElementById('panelClose').addEventListener('click', closePanel);
+document.getElementById('panelWrap').addEventListener('pointerdown', function (e) { if (e.target === this) closePanel(); });
+
+function feedCore(amount) {
+  var before = coreLv;
+  coreEnergy += amount;
+  while (coreLv < 5 && coreEnergy >= CORE_LV_NEED[coreLv]) coreLv++;
+  SE.coin();
+  if (coreLv > before) {
+    SE.levelup();
+    var cf = facilities.filter(function (f) { return f.type === 'core'; })[0];
+    if (cf) burst(cf.x, cf.y, '#6ff3ff', 30, 170);
+    player.hp = clamp(player.hp + 30, 0, 100);
+    toast('💎 コアが Lv.' + coreLv + ' に育った！体力も回復！', 2800);
+    if (coreLv >= 5 && !cleared) {
+      cleared = true;
+      setTimeout(showClear, 900);
+    }
+  } else {
+    toast('💎 エネルギー +' + amount + '（合計 ' + coreEnergy + '）');
+  }
+  updateHUD();
+}
+function showClear() {
+  var day = Math.floor(gameTime / dayLen) + 1;
+  var mm = Math.floor(gameTime / 60), ss = Math.floor(gameTime % 60);
+  document.getElementById('clearStats').innerHTML =
+    'かかった日数：<b>' + day + '日目</b>に覚醒<br>プレイ時間：' + mm + '分' + ss + '秒<br>掘った壁：' + minedCount + ' マス<br>倒したスライム：' + killCount + ' 匹';
+  document.getElementById('clearScr').classList.add('open');
+}
+
+/* ---------------- 更新 ---------------- */
+var spawnT = 5, dayPrev = 1, panelTickT = 0;
+function update(dt) {
+  gameTime += dt;
+  tickHold(dt);
+  var day = Math.floor(gameTime / dayLen) + 1;
+  if (day !== dayPrev) { dayPrev = day; toast('🌅 ' + day + '日目がはじまった（スライムが少し強くなった）', 2600); }
+
+  /* --- プレイヤー --- */
+  var p = player;
+  if (p.swingCd > 0) p.swingCd -= dt;
+  if (p.swingT > 0) p.swingT -= dt;
+  if (p.ifr > 0) p.ifr -= dt;
+  if (p.hurtT > 0) p.hurtT -= dt;
+  if (p.down) {
+    // 気絶中：動けない・何もできない。近くに仲間がいれば復活作業が進む（15秒）
+    p.downT -= dt;
+    var rescuerNear = companions.some(function (c) { return !c.down && dist2(c.x, c.y, p.x, p.y) < 42 * 42; }) || netReviveByFresh();
+    if (rescuerNear && p.downT > 0) {
+      p.reviveT += dt;
+      if (p.reviveT >= REVIVE_TIME) revivePlayer();
+    }
+    if (p.down && p.downT <= 0) downTimeoutPlayer();
+  } else {
+    var mx = padVec.x, my = padVec.y;
+    if (keys['a'] || keys['arrowleft']) mx -= 1;
+    if (keys['d'] || keys['arrowright']) mx += 1;
+    if (keys['w'] || keys['arrowup']) my -= 1;
+    if (keys['s'] || keys['arrowdown']) my += 1;
+    var ml = Math.sqrt(mx * mx + my * my);
+    if (ml > 1) { mx /= ml; my /= ml; ml = 1; }
+    p.moving = ml > 0.12 && !panelType;
+    if (p.fishing && (mx !== 0 || my !== 0)) { p.fishing = null; toast('釣りをやめた'); }
+    if (p.moving && !p.fishing) {
+      p.face.x = Math.abs(mx) > Math.abs(my) ? Math.sign(mx) : 0;
+      p.face.y = Math.abs(my) >= Math.abs(mx) ? Math.sign(my) : 0;
+      if (p.face.x !== 0 && p.face.y !== 0) p.face.y = 0;
+      var sp = p.speed * (panelType ? 0 : 1);
+      tryMove(p, mx * sp * dt, my * sp * dt);
+      p.bobT += dt * 11;
+    }
+    // 空腹・体力
+    p.hu = clamp(p.hu - dt * (100 / 330), 0, 100);
+    if (p.hu <= 0) { p.hp -= dt * 1.6; if (p.hp <= 0) startDownPlayer('🍖 おなかがすいて気絶した！仲間が助けに来てくれるはず…（30秒以内）'); }
+    else {
+      var cf = facilities.filter(function (f) { return f.type === 'core'; })[0];
+      var ff = facilities.filter(function (f) { return f.type === 'fire'; })[0];
+      var warm = (cf && dist2(p.x, p.y, cf.x, cf.y) < 170 * 170) || (ff && fireFuel > 0 && dist2(p.x, p.y, ff.x, ff.y) < 120 * 120);
+      if (warm && p.hu > 25 && p.hp < 100) p.hp = clamp(p.hp + dt * 2.4, 0, 100);
+    }
+    // 釣り進行
+    if (p.fishing) {
+      var fz = p.fishing;
+      if (fz.phase === 'wait') {
+        fz.t -= dt;
+        if (fz.t <= 0) { fz.phase = 'bite'; fz.t = 0.85; SE.slime(); toast('❗ HIT！ 👊を押して！', 800); }
+      } else {
+        fz.t -= dt;
+        if (fz.t <= 0) { p.fishing = null; toast('逃げられた…'); }
+      }
+      document.getElementById('btnAction').classList.toggle('hit', fz.phase === 'bite');
+    } else document.getElementById('btnAction').classList.remove('hit');
+  }
+
+  /* --- ドロップ --- */
+  for (var i = drops.length - 1; i >= 0; i--) {
+    var d = drops[i]; d.t += dt;
+    d.x += d.vx * dt; d.y += d.vy * dt; d.vx *= 0.86; d.vy *= 0.86;
+    if (!p.down && d.t > 0.35) {
+      var dd = dist2(p.x, p.y, d.x, d.y);
+      if (dd < 52 * 52) { var a = Math.atan2(p.y - d.y, p.x - d.x); d.x += Math.cos(a) * 190 * dt; d.y += Math.sin(a) * 190 * dt; }
+      if (dd < 22 * 22) {
+        addInv(d.key, 1); SE.pickup();
+        addFloater(p.x, p.y - 24, ITEMS[d.key].icon + ' ' + ITEMS[d.key].name + ' +1', '#ffe9a8');
+        drops.splice(i, 1); refreshHotbar(); continue;
+      }
+    }
+    if (d.t > 240) drops.splice(i, 1);
+  }
+  /* --- 野生キノコ（触れると収穫） --- */
+  shrooms.forEach(function (s) {
+    if (s.taken) return;
+    if (!p.down && dist2(p.x, p.y, s.x, s.y) < 24 * 24) {
+      s.taken = true; addInv('mushroom', 1); SE.pickup();
+      addFloater(s.x, s.y - 16, '🍄 +1', '#ffd94d'); refreshHotbar();
+    }
+  });
+  /* --- キノコ畑 --- */
+  plots.forEach(function (pl) {
+    if (pl.stage < 3) { pl.timer += dt; if (pl.timer > 16) { pl.timer = 0; pl.stage++; } }
+  });
+  /* --- 焚き火の燃料（1ゲージ25秒で減少、0で消火） --- */
+  if (fireFuel > 0) {
+    fireFuel = Math.max(0, fireFuel - dt / 25);
+    if (fireFuel <= 0) {
+      toast('🔥 焚き火の火が消えた…コアの光も消えて真っ暗だ。🖐️メニューから木材を入れよう', 3400);
+      if (panelType === 'fire') openPanel('fire');
+    }
+  }
+  /* --- 木材ブロックの復活（2分） --- */
+  woodBlocks.forEach(function (wb) {
+    if (wb.taken) { wb.respawnT -= dt; if (wb.respawnT <= 0) { wb.taken = false; wb.hp = 3; } }
+  });
+
+  /* --- 施設の作り直し進捗（近くにいる間だけ進む・約20秒） --- */
+  facilities.forEach(function (f) {
+    if (f.hurtT > 0) f.hurtT -= dt;
+    if (f.rebuilding) {
+      if ((!p.down && dist2(p.x, p.y, f.x, f.y) < 80 * 80) || netRemoteNear(f.x, f.y, 80)) {
+        f.rebuilding.t += dt;
+        if (f.rebuilding.t >= REBUILD_TIME) {
+          f.rebuilding = null; f.broken = false; f.hp = f.maxhp; f.warned50 = false;
+          burst(f.x, f.y, '#ffd94d', 18, 120); SE.levelup();
+          toast('🔨 ' + f.label + ' を作り直した！');
+          // 作り直した施設の上にいたキャラは、当たり判定で埋まらないよう外へずらす
+          [p].concat(companions, slimes).forEach(function (e) {
+            if (!e || dist2(e.x, e.y, f.x, f.y) >= 30 * 30) return;
+            var dirs4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+            for (var di4 = 0; di4 < 4; di4++) {
+              var nx = f.x + dirs4[di4][0] * 46, ny = f.y + dirs4[di4][1] * 46;
+              if (!collideCircle(nx, ny, e.r)) { e.x = nx; e.y = ny; break; }
+            }
+          });
+          if (panelType === f.type) openPanel(f.type);
+        }
+      }
+    }
+  });
+  /* --- かまどの精錬（1個10秒・完成品は自動で所持品へ） --- */
+  if (furnaceJob) {
+    var furnF = facByType('furnace');
+    if (furnF && !furnF.broken) {
+      furnaceJob.t -= dt;
+      if (furnaceJob.t <= 0) {
+        furnaceJob.done++;
+        if (furnaceJob.owner && NET.mode === 'host') netGive(furnaceJob.owner, furnaceJob.to, 1); else { addInv(furnaceJob.to, 1); SE.coin(); }
+        addFloater(furnF.x, furnF.y - 36, ITEMS[furnaceJob.to].icon + ' ' + ITEMS[furnaceJob.to].name + ' +1', '#ffe9a8');
+        if (furnaceJob.done >= furnaceJob.total) { toast('🔥 精錬が終わった！（' + furnaceJob.total + '個）'); furnaceJob = null; }
+        else furnaceJob.t = SMELT_TIME;
+        refreshHotbar();
+        if (panelType === 'furnace') openPanel('furnace');
+      }
+    }
+  }
+  /* --- 焚き火の調理（1品8秒・火がついている間だけ進む・完成品は自動で所持品へ） --- */
+  if (cookQueue.length) {
+    var fireF3 = facByType('fire');
+    if (fireF3 && !fireF3.broken && fireFuel > 0) {
+      cookQueue[0].t -= dt;
+      if (cookQueue[0].t <= 0) {
+        var dishDone = cookQueue.shift();
+        if (dishDone.owner && NET.mode === 'host') netGive(dishDone.owner, dishDone.give, 1); else { addInv(dishDone.give, 1); SE.eat(); }
+        addFloater(fireF3.x, fireF3.y - 36, ITEMS[dishDone.give].icon + ' ' + dishDone.name + ' できた！', '#ffe9a8');
+        toast('🍲 ' + dishDone.name + ' ができた！');
+        if (cookQueue.length) cookQueue[0].t = COOK_TIME;
+        refreshHotbar();
+        if (panelType === 'fire') openPanel('fire');
+      }
+    }
+  }
+  /* --- パネルの進捗表示を1秒ごとに更新 --- */
+  panelTickT -= dt;
+  if (panelTickT <= 0) {
+    panelTickT = 1;
+    if (panelType === 'furnace' && furnaceJob) openPanel('furnace');
+    else if (panelType === 'fire' && cookQueue.length) openPanel('fire');
+    else if (panelType) { var pf = facByType(panelType); if (pf && pf.rebuilding) openPanel(panelType); }
+  }
+
+  /* --- スライム出現 --- */
+  spawnT -= dt;
+  var aliveN = slimes.filter(function (s) { return !s.dead; }).length;
+  if (spawnT <= 0) {
+    spawnT = 6.5;
+    if (aliveN < 5 + day) {
+      for (var tr = 0; tr < 14; tr++) {
+        var ang = rnd(0, Math.PI * 2), rd = rnd(11, 20) * T;
+        var sx = p.x + Math.cos(ang) * rd, sy = p.y + Math.sin(ang) * rd;
+        var stx = Math.floor(sx / T), sty = Math.floor(sy / T);
+        if (tileAt(stx, sty) === 0 && dist2(sx, sy, CX * T, CY * T) > 11 * T * 11 * T) { slimes.push(makeSlime(sx, sy, Math.random() < 0.25 ? 'red' : 'green')); break; }
+      }
+    }
+  }
+  /* --- スライム --- */
+  for (var si = slimes.length - 1; si >= 0; si--) {
+    var s = slimes[si];
+    if (s.dead) { slimes.splice(si, 1); continue; }
+    if (s.hurtT > 0) s.hurtT -= dt;
+    if (s.atkCd > 0) s.atkCd -= dt;
+    s.hopT += dt;
+    // 狙いは「自分から一番近い対象」：プレイヤー・仲間・壊れていない4施設（かまど・作業台・焚き火・共有ボックス）。
+    // 気絶中のキャラは狙われない（対象から外す）
+    var target = null, td = 1e18, targetFac = null;
+    if (!p.down) { target = p; td = dist2(s.x, s.y, p.x, p.y); }
+    companions.forEach(function (c) { if (c.down) return; var cd = dist2(s.x, s.y, c.x, c.y); if (cd < td) { td = cd; target = c; targetFac = null; } });
+    facilities.forEach(function (f) { if (!REBUILD_COST[f.type] || f.broken) return; var fd = dist2(s.x, s.y, f.x, f.y); if (fd < td) { td = fd; target = f; targetFac = f; } });
+    netRemoteEnts().forEach(function (e) { if (e.down) return; var rd2 = dist2(s.x, s.y, e.x, e.y); if (rd2 < td) { td = rd2; target = e; targetFac = null; } });
+    // 索敵600px。一度見つけたら6秒は諦めず追い続ける（aggroT）
+    if (target && td < 600 * 600) s.aggroT = 6;
+    else if (s.aggroT > 0) s.aggroT -= dt;
+    if (target && s.aggroT > 0) {
+      var stopR = targetFac ? 24 : 14;
+      var hop = Math.sin(s.hopT * 5.2) > 0.25;
+      if (hop && td > (s.r + stopR) * (s.r + stopR)) {
+        var sa = Math.atan2(target.y - s.y, target.x - s.x);
+        tryMove(s, Math.cos(sa) * s.speed * dt, Math.sin(sa) * s.speed * dt);
+      }
+      if (s.atkCd <= 0) {
+        if (targetFac) {
+          // 施設に接したら、人と同じ攻撃力で施設を攻撃する
+          if (td < (s.r + 27) * (s.r + 27)) { s.atkCd = 1.0; damageFacility(targetFac, s.atk || 8); }
+        } else if (td < (s.r + 16) * (s.r + 16)) {
+          s.atkCd = 1.0;
+          if (target === p) hurtPlayer(s.atk || 8);
+          else if (target.isRemote) netSendEvent(target.uid, { type: 'hurt', dmg: s.atk || 8 });
+          else hurtCompanion(target, s.atk || 8);
+        }
+      }
+    }
+    if (s.x < 0 || s.y < 0 || s.x > MW * T || s.y > MH * T) slimes.splice(si, 1);
+  }
+
+  updateCompanions(dt);
+
+  /* --- パーティクル・フローター --- */
+  for (var pi = particles.length - 1; pi >= 0; pi--) { var q = particles[pi]; q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.9; q.vy *= 0.9; if (q.t > q.life) particles.splice(pi, 1); }
+  for (var fi = floaters.length - 1; fi >= 0; fi--) { var fl = floaters[fi]; fl.t += dt; fl.y -= 26 * dt; if (fl.t > 1.15) floaters.splice(fi, 1); }
+
+  if (shake > 0) shake = Math.max(0, shake - dt * 22);
+  camX = clamp(p.x - W / 2, 0, Math.max(0, MW * T - W));
+  camY = clamp(p.y - H / 2, 0, Math.max(0, MH * T - H));
+  updateHUD();
+}
+
+function sayBubble(c, text) { c.bubble = text; c.bubbleT = 2.6; }
+function moveToward(c, tx, ty, dt, stopD) {
+  var dx = tx - c.x, dy = ty - c.y, d = Math.sqrt(dx * dx + dy * dy);
+  if (d <= (stopD || 6)) return true;
+  var vx = dx / d, vy = dy / d;
+  c.face.x = Math.abs(vx) > Math.abs(vy) ? Math.sign(vx) : 0;
+  c.face.y = Math.abs(vy) >= Math.abs(vx) ? Math.sign(vy) : 0;
+  if (c.face.x !== 0) c.face.y = 0;
+  var ox = c.x, oy = c.y;
+  tryMove(c, vx * c.speed * dt, vy * c.speed * dt);
+  c.bobT += dt * 10;
+  // スタック検知：動けていない
+  if (Math.abs(c.x - ox) + Math.abs(c.y - oy) < c.speed * dt * 0.25) {
+    c.stuckT += dt;
+    // 横にずれて回避
+    tryMove(c, -vy * c.speed * dt, vx * c.speed * dt);
+  } else c.stuckT = 0;
+  return false;
+}
+function updateCompanions(dt) {
+  companions.forEach(function (c) {
+    if (c.bubbleT > 0) c.bubbleT -= dt;
+    if (c.hurtT > 0) c.hurtT -= dt;
+    if (c.swingT > 0) c.swingT -= dt;
+    if (c.atkCd > 0) c.atkCd -= dt;
+
+    if (c.down) {
+      // 気絶中：動けない。プレイヤーが🖐️で始めた復活作業は、プレイヤーが近くにいる間だけ進む（15秒）
+      c.downT -= dt;
+      if (c.revive && netReviverNear(c)) {
+        c.revive.t += dt;
+        if (c.revive.t >= REVIVE_TIME) {
+          c.down = false; c.hp = 50; c.revive = null; c.state = 'idle'; c.target = null;
+          burst(c.x, c.y, '#7ee787', 14, 110); SE.levelup();
+          sayBubble(c, 'ありがとう！助かった…');
+          toast('🖐️ ' + c.name + ' を復活させた！（HP50）', 2600);
+          updateHUD();
+          return;
+        }
+      }
+      if (c.down && c.downT <= 0) {
+        // 30秒以内に助けられなかった：仲間は持ち物がないので、拠点中心にHP満タンで戻るだけ
+        c.down = false; c.revive = null; c.hp = c.maxhp;
+        c.x = CX * T + T / 2 + rnd(-20, 20); c.y = (CY + 3) * T + T / 2;
+        c.state = 'idle'; c.target = null;
+        toast('⏰ ' + c.name + ' は助けられなかった…拠点で目覚めた（HP満タン）', 3000);
+      }
+      return;
+    }
+
+    var rescueT = netRescueTarget();
+    if (rescueT) {
+      moveToward(c, rescueT.x, rescueT.y, dt, 24);
+      if (rescueT.uid && dist2(c.x, c.y, rescueT.x, rescueT.y) < 42 * 42) netWriteReviveBy(rescueT.uid);
+      return;
+    }
+
+    var coreF = facilities.filter(function (f) { return f.type === 'core'; })[0];
+    var boxF = facilities.filter(function (f) { return f.type === 'box'; })[0];
+
+    if (c.role === 'lamp') {
+      // プレイヤーの後ろについてくる＋近くのスライムをたたく
+      var foe = nearestSlime(c.x, c.y, 95);
+      if (foe) {
+        if (moveToward(c, foe.x, foe.y, dt, foe.r + 12) && c.atkCd <= 0) {
+          c.atkCd = 0.8; c.swingT = 0.2; damageSlime(foe, 3, { x: Math.sign(foe.x - c.x) || 1, y: 0 });
+        }
+      } else {
+        var txp = player.x - player.face.x * 44, typ = player.y - player.face.y * 44;
+        if (dist2(c.x, c.y, txp, typ) > 30 * 30) moveToward(c, txp, typ, dt, 16);
+        else if (Math.random() < dt * 0.2) sayBubble(c, 'まわりは明るくしとくね');
+      }
+      return;
+    }
+
+    if (c.role === 'cook') {
+      // 1) 畑が育っていたら収穫してボックスへ 2) 焚き火で焼ききのこ作り（火が消えている間は作らない） 3) 焚き火の近くで待機
+      var ripe = null;
+      plots.forEach(function (pl) { if (pl.stage >= 3 && !ripe) ripe = pl; });
+      var fireF = facilities.filter(function (f) { return f.type === 'fire'; })[0];
+      if (c.state === 'idle') {
+        if (ripe) c.state = 'harvest';
+        else if ((box.mushroom || 0) >= 1 && (box.grilledMush || 0) < 4 && fireFuel > 0) c.state = 'cook';
+        else if (fireF) moveToward(c, fireF.x + 26, fireF.y + 30, dt, 8);
+      } else if (c.state === 'harvest') {
+        if (!ripe) { c.state = 'idle'; }
+        else if (moveToward(c, ripe.x, ripe.y, dt, 14)) {
+          ripe.stage = 0; ripe.timer = 0; addBox('mushroom', irnd(1, 2));
+          c.swingT = 0.2; sayBubble(c, 'キノコ収穫したよ🍄');
+          c.state = 'idle';
+        }
+        if (c.stuckT > 2.2) { c.stuckT = 0; c.state = 'idle'; }
+      } else if (c.state === 'cook') {
+        if (fireFuel <= 0) { c.state = 'idle'; }
+        else if (moveToward(c, fireF.x + 10, fireF.y + 30, dt, 10)) {
+          c.cookT -= dt;
+          if (c.cookT <= 0) {
+            c.cookT = 8; // 焚き火の料理は1品8秒（プレイヤーと同じ）
+            if ((box.mushroom || 0) >= 1 && (box.grilledMush || 0) < 4) {
+              addBox('mushroom', -1); addBox('grilledMush', 1);
+              sayBubble(c, '焼ききのこできたよ🍢');
+              if (panelType === 'box') openPanel('box');
+            } else c.state = 'idle';
+          }
+        }
+        if (c.stuckT > 2.2) { c.stuckT = 0; c.state = 'idle'; }
+      }
+      return;
+    }
+
+    if (c.role === 'miner') {
+      if (c.state === 'idle') {
+        if (c.bagN >= 4) { c.state = 'deposit'; return; }
+        // 拠点から半径15タイル以内の掘れる壁を探す
+        var found = null;
+        for (var rad = 9; rad <= 15 && !found; rad++) {
+          for (var a = 0; a < 10 && !found; a++) {
+            var wx = CX + irnd(-rad, rad), wy = CY + irnd(-rad, rad);
+            var wt = tileAt(wx, wy);
+            if ((wt === 1 || wt === 2 || wt === 3) && (
+              tileAt(wx + 1, wy) === 0 || tileAt(wx - 1, wy) === 0 || tileAt(wx, wy + 1) === 0 || tileAt(wx, wy - 1) === 0)) {
+              // 隣の床タイルを立地点にする
+              var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+              for (var di = 0; di < 4; di++) {
+                if (tileAt(wx + dirs[di][0], wy + dirs[di][1]) === 0 && !facilityTiles[(wx + dirs[di][0]) + ',' + (wy + dirs[di][1])]) {
+                  found = { tx: wx, ty: wy, sx: (wx + dirs[di][0]) * T + T / 2, sy: (wy + dirs[di][1]) * T + T / 2 };
+                  break;
+                }
+              }
+            }
+          }
+        }
+        if (found) { c.target = found; c.state = 'goMine'; }
+        else if (coreF) moveToward(c, coreF.x - 50, coreF.y + 56, dt, 10);
+      } else if (c.state === 'goMine') {
+        if (!c.target || !isWallTile(tileAt(c.target.tx, c.target.ty))) { c.state = 'idle'; c.target = null; }
+        else if (moveToward(c, c.target.sx, c.target.sy, dt, 8)) c.state = 'mining';
+        if (c.stuckT > 2.4) { c.stuckT = 0; c.state = 'idle'; c.target = null; }
+      } else if (c.state === 'mining') {
+        if (!c.target || !isWallTile(tileAt(c.target.tx, c.target.ty))) {
+          // 掘り終わり：ドロップを回収（少し遅れて消えるドロップを自分のバッグへ）
+          c.state = 'collect'; c.stateT = 0.7; c.target = null;
+        } else {
+          c.face.x = Math.sign(c.target.tx * T + T / 2 - c.x); c.face.y = 0;
+          if (Math.abs(c.target.ty * T + T / 2 - c.y) > Math.abs(c.target.tx * T + T / 2 - c.x)) { c.face.x = 0; c.face.y = Math.sign(c.target.ty * T + T / 2 - c.y); }
+          c.atkCd -= 0; // swingはタイマーで
+          c.stateT -= dt;
+          if (c.stateT <= 0) {
+            c.stateT = 0.75; c.swingT = 0.2;
+            var before = drops.length;
+            mineTile(c.target.tx, c.target.ty, 1, c);
+            // ミネが掘ったドロップは近くのものをバッグに回収する（collectで処理）
+          }
+        }
+      } else if (c.state === 'collect') {
+        c.stateT -= dt;
+        // 近くのドロップを吸い寄せてバッグへ
+        for (var di2 = drops.length - 1; di2 >= 0; di2--) {
+          var dr = drops[di2];
+          if (dist2(c.x, c.y, dr.x, dr.y) < 60 * 60) {
+            c.bag[dr.key] = (c.bag[dr.key] || 0) + 1; c.bagN++;
+            drops.splice(di2, 1);
+          }
+        }
+        if (c.stateT <= 0) c.state = c.bagN >= 4 ? 'deposit' : 'idle';
+      } else if (c.state === 'deposit') {
+        var boxBroken = boxF && boxF.broken; // ボックスが壊れている間は納品できない（壊れた中身は散らばる仕様と統一）
+        if (!boxBroken && moveToward(c, boxF.x, boxF.y + 34, dt, 10)) {
+          Object.keys(c.bag).forEach(function (k) { addBox(k, c.bag[k]); });
+          if (c.bagN > 0) sayBubble(c, '掘った分、箱に入れたよ！');
+          c.bag = {}; c.bagN = 0; c.state = 'idle';
+          if (panelType === 'box') openPanel('box');
+        }
+        if (boxBroken) { c.state = 'idle'; } // バッグは持ったまま、直ったら納品し直す
+        if (!boxBroken && c.stuckT > 2.6) { // 届かない場合はその場で箱へ（拠点内想定の保険）
+          Object.keys(c.bag).forEach(function (k) { addBox(k, c.bag[k]); });
+          c.bag = {}; c.bagN = 0; c.stuckT = 0; c.state = 'idle';
+        }
+      }
+      return;
+    }
+  });
+}
+
+/* ---------------- HUD ---------------- */
+var partyEls = [];
+function buildPartyHud() {
+  var list = document.getElementById('partyList');
+  list.innerHTML = ''; partyEls = [];
+  companions.forEach(function (c) {
+    var row = document.createElement('div');
+    row.className = 'partyRow';
+    row.innerHTML = '<span class="partyDot" style="background:' + c.color + '"></span><span class="partyName">' + c.name + '</span><span class="partyBarOuter"><span class="partyBarFill" style="display:block;width:100%"></span></span><span class="partyNum">100</span>';
+    list.appendChild(row);
+    partyEls.push({ row: row, fill: row.querySelector('.partyBarFill'), num: row.querySelector('.partyNum') });
+  });
+}
+function updatePartyHud() {
+  partyEls.forEach(function (pe, i) {
+    var c = companions[i]; if (!c) return;
+    var pct = clamp(c.hp / c.maxhp * 100, 0, 100);
+    pe.fill.style.width = pct + '%';
+    pe.num.textContent = c.down ? '😵' + Math.ceil(c.downT) : Math.ceil(c.hp);
+    pe.row.classList.toggle('low', c.down || pct <= 30);
+  });
+}
+function updateHUD() {
+  if (!player) return;
+  document.getElementById('hpFill').style.width = clamp(player.hp, 0, 100) + '%';
+  document.getElementById('hpNum').textContent = Math.ceil(player.hp);
+  document.getElementById('huFill').style.width = clamp(player.hu, 0, 100) + '%';
+  document.getElementById('huNum').textContent = Math.ceil(player.hu);
+  document.getElementById('coreLabel').textContent = '💎 コア Lv.' + coreLv + (coreLv >= 5 ? '（覚醒！）' : '');
+  var curNeed = CORE_LV_NEED[coreLv - 1], nextNeed = coreLv < 5 ? CORE_LV_NEED[coreLv] : CORE_LV_NEED[4];
+  var pct = coreLv >= 5 ? 100 : clamp((coreEnergy - curNeed) / (nextNeed - curNeed) * 100, 0, 100);
+  document.getElementById('coreFill').style.width = pct + '%';
+  document.getElementById('coreNum').textContent = coreLv >= 5 ? 'MAX' : coreEnergy + '/' + nextNeed;
+  var day = Math.floor(gameTime / dayLen) + 1;
+  document.getElementById('dayBox').firstChild.textContent = day + '日目';
+  var mm = String(Math.floor(gameTime / 60)).padStart(2, '0'), ss = String(Math.floor(gameTime % 60)).padStart(2, '0');
+  document.getElementById('clock').textContent = mm + ':' + ss;
+  updatePartyHud();
+}
+
+/* ---------------- タイル描画素材 ---------------- */
+function makeTileCanvas(draw) {
+  var c = document.createElement('canvas'); c.width = T; c.height = T;
+  draw(c.getContext('2d')); return c;
+}
+function speck(g, n, colors, smin, smax) {
+  for (var i = 0; i < n; i++) {
+    g.fillStyle = colors[irnd(0, colors.length - 1)];
+    var s = rnd(smin, smax);
+    g.fillRect(rnd(1, T - s - 1), rnd(1, T - s - 1), s, s);
+  }
+}
+var tileImgs = {};
+function buildTileImgs() {
+  tileImgs.floor = [0, 1, 2].map(function (v) {
+    return makeTileCanvas(function (g) {
+      g.fillStyle = '#35304a'; g.fillRect(0, 0, T, T);
+      g.fillStyle = '#39334f'; g.fillRect(0, 0, T, 20);
+      speck(g, 9, ['#2c2740', '#403a59', '#463f61'], 2, 5);
+      if (v === 1) { g.fillStyle = '#2f2a44'; g.fillRect(6, 26, 9, 5); g.fillRect(27, 8, 7, 4); }
+      if (v === 2) { g.fillStyle = '#3f4a3a'; g.fillRect(30, 30, 5, 3); g.fillRect(8, 10, 4, 3); }
+    });
+  });
+  function wallBase(base, dark) {
+    return function (g) {
+      g.fillStyle = base; g.fillRect(0, 0, T, T);
+      g.fillStyle = 'rgba(255,255,255,0.10)'; g.fillRect(0, 0, T, 5);
+      g.fillStyle = dark; g.fillRect(0, T - 6, T, 6);
+      g.fillStyle = 'rgba(0,0,0,0.16)'; g.fillRect(T - 5, 0, 5, T);
+      speck(g, 7, ['rgba(0,0,0,0.14)', 'rgba(255,255,255,0.07)'], 2, 5);
+    };
+  }
+  tileImgs.rock = [0, 1].map(function () { return makeTileCanvas(wallBase('#55496b', '#3c3350')); });
+  tileImgs.dirt = [0, 1].map(function () {
+    return makeTileCanvas(function (g) {
+      wallBase('#6b4e33', '#4e3823')(g);
+      g.strokeStyle = '#84643f'; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(6, 30); g.quadraticCurveTo(16, 24, 22, 31); g.stroke();
+      g.beginPath(); g.moveTo(24, 8); g.quadraticCurveTo(30, 14, 36, 10); g.stroke();
+    });
+  });
+  tileImgs.copper = [0].map(function () {
+    return makeTileCanvas(function (g) {
+      wallBase('#55496b', '#3c3350')(g);
+      g.fillStyle = '#e08a3c';
+      [[10, 12, 7], [26, 24, 6], [16, 30, 5]].forEach(function (b) { g.beginPath(); g.arc(b[0], b[1], b[2], 0, 7); g.fill(); });
+      g.fillStyle = '#f7b267';
+      [[10, 12, 3], [26, 24, 2.4]].forEach(function (b) { g.beginPath(); g.arc(b[0], b[1], b[2], 0, 7); g.fill(); });
+    });
+  });
+  tileImgs.iron = [0].map(function () {
+    return makeTileCanvas(function (g) {
+      wallBase('#55496b', '#3c3350')(g);
+      g.fillStyle = '#cfd6dd';
+      [[12, 14, 6], [28, 27, 5], [24, 9, 4]].forEach(function (b) { g.beginPath(); g.arc(b[0], b[1], b[2], 0, 7); g.fill(); });
+      g.fillStyle = '#eef3f7';
+      [[12, 14, 2.4], [28, 27, 2]].forEach(function (b) { g.beginPath(); g.arc(b[0], b[1], b[2], 0, 7); g.fill(); });
+    });
+  });
+  tileImgs.crystal = [0].map(function () {
+    return makeTileCanvas(function (g) {
+      wallBase('#463a63', '#2f2747')(g);
+      g.fillStyle = '#6ff3ff';
+      g.beginPath(); g.moveTo(12, 32); g.lineTo(17, 12); g.lineTo(22, 32); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(24, 34); g.lineTo(29, 20); g.lineTo(34, 34); g.closePath(); g.fill();
+      g.fillStyle = '#c9fbff';
+      g.beginPath(); g.moveTo(15, 30); g.lineTo(17, 18); g.lineTo(19, 30); g.closePath(); g.fill();
+    });
+  });
+  tileImgs.bedrock = [0].map(function () {
+    return makeTileCanvas(function (g) {
+      g.fillStyle = '#241f31'; g.fillRect(0, 0, T, T);
+      speck(g, 6, ['#1c1826', '#2e2742'], 2, 5);
+      g.strokeStyle = '#17131f'; g.lineWidth = 2; g.strokeRect(1, 1, T - 2, T - 2);
+    });
+  });
+  tileImgs.water = [0, 1].map(function (v) {
+    return makeTileCanvas(function (g) {
+      g.fillStyle = '#1d3a5f'; g.fillRect(0, 0, T, T);
+      g.strokeStyle = 'rgba(140,200,255,0.5)'; g.lineWidth = 2;
+      g.beginPath();
+      if (v === 0) { g.moveTo(5, 13); g.quadraticCurveTo(13, 9, 21, 13); g.moveTo(18, 28); g.quadraticCurveTo(26, 24, 34, 28); }
+      else { g.moveTo(14, 12); g.quadraticCurveTo(22, 8, 30, 12); g.moveTo(4, 29); g.quadraticCurveTo(12, 25, 20, 29); }
+      g.stroke();
+    });
+  });
+}
+function tileImgFor(t, tx, ty) {
+  var v = Math.floor(hash2(tx, ty) * 3) % 3;
+  if (t === 0) return tileImgs.floor[v % tileImgs.floor.length];
+  if (t === 1) return tileImgs.rock[Math.floor(hash2(tx, ty) * 2) % 2];
+  if (t === 2) return tileImgs.dirt[Math.floor(hash2(tx, ty) * 2) % 2];
+  if (t === 3) return tileImgs.copper[0];
+  if (t === 4) return tileImgs.iron[0];
+  if (t === 5) return tileImgs.crystal[0];
+  if (t === 7) return tileImgs.bedrock[0];
+  return tileImgs.floor[0];
+}
+
+/* ---------------- 描画 ---------------- */
+/* A案スプライト：大きめ2頭身。kind = hero / miner / lamp / cook
+   向き（face）で正面・横・背面を描き分け、swingT>0 の間はツルハシ等を振る */
+function rrPath(g, x, y, w, h, r) {
+  g.beginPath();
+  if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h);
+}
+function drawLanternProp(g, lx, ly, sway, big) {
+  var s = big ? 1.25 : 1;
+  g.save(); g.translate(lx, ly); g.rotate(sway); g.scale(s, s);
+  g.strokeStyle = '#4a3826'; g.lineWidth = 2;
+  g.beginPath(); g.arc(0, -11, 4.5, Math.PI, Math.PI * 2); g.stroke();
+  g.fillStyle = '#3a2c1c'; g.fillRect(-6, -8, 12, 3.4);
+  g.save();
+  g.shadowColor = '#ffca3a'; g.shadowBlur = 13;
+  g.fillStyle = '#ffd94d'; rrPath(g, -6.5, -5, 13, 15, 5); g.fill();
+  g.restore();
+  g.fillStyle = '#ffedb0'; rrPath(g, -3.4, -2.5, 6.8, 10, 3); g.fill();
+  g.fillStyle = '#3a2c1c'; g.fillRect(-6, 10, 12, 3.4);
+  g.restore();
+}
+function drawSprite(g, x, y, opt, tNow) {
+  var D = CHAR_DESIGNS[opt.kind] || CHAR_DESIGNS.hero;
+  var face = opt.face || { x: 0, y: 1 };
+  var dir = face.y < 0 ? 'up' : (face.x !== 0 ? 'side' : 'down');
+  var flip = dir === 'side' && face.x < 0 ? -1 : 1;
+  var bob = opt.moving ? Math.sin(opt.bobT || 0) * 2 : Math.sin(tNow * 2 + (opt.phase || 0)) * 0.7;
+  var sc = opt.scale || 1;
+  g.save();
+  g.translate(x, y + bob);
+  g.scale(sc * flip, sc);
+  // 影
+  g.fillStyle = 'rgba(0,0,0,0.35)';
+  g.beginPath(); g.ellipse(0, 20 / 1, 14, 5, 0, 0, 7); g.fill();
+  var legSwing = opt.moving ? Math.sin(opt.bobT || 0) * 3 : 0;
+  // 足（ブーツ）歩行で前後に振れる
+  g.fillStyle = '#4a3423';
+  rrPath(g, -9 + legSwing, 14, 7.5, 6.5, 2.5); g.fill();
+  rrPath(g, 1.5 - legSwing, 14, 7.5, 6.5, 2.5); g.fill();
+  // 背面のときは道具を体の後ろに先に描く
+  if (dir === 'up') drawToolProp(g, opt, dir, tNow);
+  // 体
+  g.fillStyle = D.body; rrPath(g, -12.5, -4, 25, 20, 7); g.fill();
+  g.fillStyle = D.bodyDark; rrPath(g, -12.5, 10, 25, 6, 3); g.fill();
+  if (opt.kind === 'cook') {
+    // 白いエプロン
+    g.fillStyle = '#ffffff'; rrPath(g, -8, -2.5, 16, 17.5, 4); g.fill();
+    g.fillStyle = '#f3d9e2'; g.fillRect(-8, 8.5, 16, 2);
+    g.fillStyle = '#37b6c9';
+    g.beginPath(); g.moveTo(-5, -4.5); g.lineTo(5, -4.5); g.lineTo(0, 0.5); g.closePath(); g.fill();
+  } else if (opt.kind === 'lamp') {
+    g.strokeStyle = 'rgba(90,60,10,0.55)'; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(0, -3); g.lineTo(0, 10); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.20)'; rrPath(g, -9, -2, 5, 11, 2); g.fill();
+  } else if (opt.kind === 'miner') {
+    g.fillStyle = 'rgba(0,0,0,0.16)'; rrPath(g, -12.5, -4, 6, 20, 3); g.fill(); rrPath(g, 6.5, -4, 6, 20, 3); g.fill();
+    g.fillStyle = '#ffd94d'; g.fillRect(-2, 9, 4, 4);
+  } else {
+    g.fillStyle = 'rgba(255,255,255,0.16)'; rrPath(g, -7, -2, 14, 9, 3); g.fill();
+    g.fillStyle = '#5a3a22'; g.fillRect(-12.5, 9, 25, 3.6);
+    g.fillStyle = D.trim; g.fillRect(-2, 9, 4, 3.6);
+  }
+  // 腕（袖＋手）
+  var swingP = opt.swingT > 0 ? 1 - opt.swingT / 0.22 : -1;
+  g.fillStyle = D.bodyDark;
+  g.beginPath(); g.arc(-13.5, 3, 4.4, 0, 7); g.fill();
+  if (swingP < 0) { g.beginPath(); g.arc(13.5, 3, 4.4, 0, 7); g.fill(); }
+  g.fillStyle = D.skin;
+  g.beginPath(); g.arc(-13.5, 8, 3.1, 0, 7); g.fill();
+  if (swingP < 0) { g.beginPath(); g.arc(13.5, 8, 3.1, 0, 7); g.fill(); }
+  // 頭まわり（フードは頭の後ろから）
+  if (opt.kind === 'lamp') {
+    g.fillStyle = D.hat;
+    g.beginPath(); g.arc(0, -15, 14.5, 0, 7); g.fill();
+    g.beginPath(); g.moveTo(-5, -27); g.quadraticCurveTo(1, -35, 7, -27.5); g.quadraticCurveTo(1, -25, -5, -27); g.fill();
+    g.fillStyle = D.hatDark; rrPath(g, -14.5, -8, 5, 13, 2.5); g.fill(); rrPath(g, 9.5, -8, 5, 13, 2.5); g.fill();
+  }
+  // 顔（肌）
+  if (!(opt.kind === 'lamp' && dir === 'up')) {
+    g.fillStyle = D.skin;
+    g.beginPath(); g.arc(0, -14, opt.kind === 'lamp' ? 10.5 : 11.5, 0, 7); g.fill();
+  }
+  if (dir === 'up') {
+    // 背面：後頭部（髪／フード）だけ見える
+    g.fillStyle = opt.kind === 'lamp' ? D.hat : D.hair;
+    g.beginPath(); g.arc(0, -13.5, opt.kind === 'lamp' ? 13.5 : 11, 0, 7); g.fill();
+  } else if (dir === 'side') {
+    g.fillStyle = '#26202e';
+    g.beginPath(); g.arc(5.5, -14, 1.7, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,120,120,0.4)';
+    g.beginPath(); g.arc(8.5, -10.5, 2.4, 0, 7); g.fill();
+    g.strokeStyle = '#b06a3b'; g.lineWidth = 1.3;
+    g.beginPath(); g.arc(3.5, -9.5, 2.6, 0.3, 1.7); g.stroke();
+  } else {
+    g.fillStyle = '#26202e';
+    rrPath(g, -6.2, -16.5, 2.7, 4.2, 1.2); g.fill();
+    rrPath(g, 3.5, -16.5, 2.7, 4.2, 1.2); g.fill();
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(-4.8, -15.6, 0.85, 0, 7); g.fill();
+    g.beginPath(); g.arc(4.9, -15.6, 0.85, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,120,120,0.38)';
+    g.beginPath(); g.arc(-8.6, -10.5, 2.5, 0, 7); g.fill();
+    g.beginPath(); g.arc(8.6, -10.5, 2.5, 0, 7); g.fill();
+    g.strokeStyle = '#b06a3b'; g.lineWidth = 1.3;
+    g.beginPath(); g.arc(0, -10.8, 2.8, 0.4, Math.PI - 0.4); g.stroke();
+  }
+  // 頭の装備
+  drawHeadgear(g, opt, D, dir, tNow);
+  // 道具（正面・横向きは体の手前）
+  if (dir !== 'up') drawToolProp(g, opt, dir, tNow);
+  g.restore();
+}
+function drawHeadgear(g, opt, D, dir, tNow) {
+  if (opt.kind === 'hero' || opt.kind === 'miner' || (CHAR_DESIGNS[opt.kind] && CHAR_DESIGNS[opt.kind].helmet)) {
+    // ヘルメット（ドーム＋つば）
+    g.fillStyle = D.hat;
+    g.beginPath(); g.arc(0, -16.5, 12.6, Math.PI, Math.PI * 2); g.fill();
+    g.fillStyle = D.hatDark; rrPath(g, -14, -17.5, 28, 4.4, 2.2); g.fill();
+    g.fillStyle = D.hair; rrPath(g, -12.3, -14, 3.4, 7, 1.6); g.fill(); rrPath(g, 8.9, -14, 3.4, 7, 1.6); g.fill();
+    // ヘッドライト
+    var lx = dir === 'side' ? 9.5 : 0, ly = dir === 'down' ? -21.5 : -23.5, lr = (opt.kind === 'hero' || (CHAR_DESIGNS[opt.kind] && CHAR_DESIGNS[opt.kind].helmet)) ? 4.6 : 3.4;
+    g.fillStyle = '#3a3f52'; g.beginPath(); g.arc(lx, ly, lr + 1.4, 0, 7); g.fill();
+    g.save(); g.shadowColor = '#ffe66d'; g.shadowBlur = opt.kind === 'hero' ? 11 : 6;
+    g.fillStyle = '#ffe66d'; g.beginPath(); g.arc(lx, ly, lr, 0, 7); g.fill(); g.restore();
+    g.fillStyle = '#fffbe8'; g.beginPath(); g.arc(lx - lr * 0.3, ly - lr * 0.3, lr * 0.42, 0, 7); g.fill();
+  } else if (opt.kind === 'cook') {
+    // キノコ帽子（大きな傘＋水玉）
+    g.fillStyle = '#f7e8c9';
+    g.beginPath(); g.ellipse(0, -20.5, 12.5, 3.4, 0, 0, 7); g.fill();
+    g.fillStyle = D.hat;
+    g.beginPath(); g.ellipse(0, -23, 16.5, 9, 0, Math.PI, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(0, -23, 16.5, 3.2, 0, 0, Math.PI); g.fill();
+    g.fillStyle = '#ffffff';
+    g.beginPath(); g.arc(-8.5, -26.5, 2.7, 0, 7); g.fill();
+    g.beginPath(); g.arc(3.5, -29, 3.1, 0, 7); g.fill();
+    g.beginPath(); g.arc(10.5, -24.5, 2.2, 0, 7); g.fill();
+    g.beginPath(); g.arc(-1.5, -23.5, 1.8, 0, 7); g.fill();
+  }
+  // ランのフードは drawSprite 側で描画済み
+}
+function drawToolProp(g, opt, dir, tNow) {
+  var swingP = opt.swingT > 0 ? 1 - opt.swingT / 0.22 : -1;
+  var tool = opt.toolKind || 'none';
+  if (tool === 'lantern') {
+    // 大きなランタンを体の横に提げる（ゆらゆら揺れる）
+    var sway = Math.sin(tNow * 3 + (opt.phase || 0)) * 0.09 + (opt.moving ? Math.sin(opt.bobT || 0) * 0.05 : 0);
+    g.strokeStyle = '#4a3826'; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(13, 2); g.quadraticCurveTo(17, 4, 16.5, 8); g.stroke();
+    drawLanternProp(g, 16.5, 17, sway, true);
+    return;
+  }
+  if (tool === 'pan') {
+    // フライパン（卵つき）
+    g.save(); g.translate(15, 6); g.rotate(0.5 + Math.sin(tNow * 2 + (opt.phase || 0)) * 0.05);
+    g.strokeStyle = '#5a4632'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(2, 2); g.lineTo(11, 9); g.stroke();
+    g.fillStyle = '#2e2e38'; g.beginPath(); g.arc(0, 0, 7.4, 0, 7); g.fill();
+    g.fillStyle = '#454552'; g.beginPath(); g.arc(0, 0, 5.4, 0, 7); g.fill();
+    if (dir === 'down') {
+      g.fillStyle = '#fff6ea'; g.beginPath(); g.arc(-0.6, -0.4, 3.1, 0, 7); g.fill();
+      g.fillStyle = '#ffb52e'; g.beginPath(); g.arc(-0.4, -0.4, 1.7, 0, 7); g.fill();
+    }
+    g.restore();
+    return;
+  }
+  if (tool === 'none') return;
+  // 振る道具（ツルハシ／剣／釣り竿）：肩を支点に振り下ろす。
+  // 絵文字だと端末ごとに刃の向きが逆になるためベクター描画にし、刃・先端が必ず
+  // キャラの向いている方向（ローカル+x、横向きはスプライトのフリップで反転）を向くようにする
+  var baseAng = dir === 'up' ? -0.6 : 0.55;
+  var ang = swingP >= 0 ? (-2.15 + swingP * 2.75) : baseAng;
+  if (swingP >= 0) {
+    // 振りの軌跡（道具の今の角度に追随させる）
+    g.strokeStyle = 'rgba(255,255,255,' + (0.35 * Math.sin(swingP * Math.PI)) + ')';
+    g.lineWidth = 3.5;
+    g.beginPath(); g.arc(11, 1, 23, ang - 0.62, ang - 0.06); g.stroke();
+  }
+  // 腕（振っている腕は道具と一緒に）
+  g.fillStyle = (CHAR_DESIGNS[opt.kind] || CHAR_DESIGNS.hero).skin;
+  g.save();
+  g.translate(11, 1); g.rotate(ang);
+  g.fillRect(0, -2.2, 9, 4.4);
+  if (tool === 'sword') {
+    // 剣：柄→鍔→刃。刃は +x 方向（＝向いている方向）へ伸びる
+    var sTier = opt.toolTier || 1;
+    g.fillStyle = '#5a3a22'; g.fillRect(3.5, -1.7, 7.5, 3.4);
+    g.fillStyle = '#3a3f52'; g.beginPath(); g.arc(4, 0, 2.2, 0, 7); g.fill();
+    g.fillStyle = '#c9a227'; g.fillRect(11, -4.8, 2.8, 9.6);
+    g.fillStyle = sTier >= 2 ? '#d7dee6' : '#e59a52';
+    g.beginPath(); g.moveTo(13.8, -2.7); g.lineTo(28.5, -1.2); g.lineTo(33.5, 0); g.lineTo(28.5, 1.2); g.lineTo(13.8, 2.7); g.closePath(); g.fill();
+    g.strokeStyle = sTier >= 2 ? '#f4f8fc' : '#ffc98a'; g.lineWidth = 1.1;
+    g.beginPath(); g.moveTo(15, 0); g.lineTo(30.5, 0); g.stroke();
+  } else if (tool === 'rod') {
+    // 釣り竿：先端が向いている方向へ伸びる
+    g.strokeStyle = '#8a5a2e'; g.lineWidth = 2.2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(2, 1.5); g.lineTo(31, -7); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(31, -7); g.lineTo(31, 3); g.stroke();
+    g.fillStyle = '#ff5f4d'; g.beginPath(); g.arc(31, 4.6, 1.9, 0, 7); g.fill();
+  } else {
+    // ツルハシ：柄の先に、両端が尖った塗りつぶしの鉄頭（前＝向いている方向へ反る）
+    g.fillStyle = '#7a4a22'; g.fillRect(3, -1.6, 17.5, 3.2);
+    g.beginPath();
+    g.moveTo(9.5, -11.5);
+    g.quadraticCurveTo(24.5, -9, 26, 0);
+    g.quadraticCurveTo(24.5, 9, 9.5, 11.5);
+    g.quadraticCurveTo(16.8, 6, 18.2, 0);
+    g.quadraticCurveTo(16.8, -6, 9.5, -11.5);
+    g.closePath();
+    g.fillStyle = '#98a2ac'; g.fill();
+    g.strokeStyle = 'rgba(38,42,50,0.65)'; g.lineWidth = 1.1; g.stroke();
+    // 刃のハイライト（外周寄りの細い反り）
+    g.beginPath();
+    g.moveTo(12.5, -9.2);
+    g.quadraticCurveTo(22.8, -6.8, 23.6, 0);
+    g.quadraticCurveTo(22.8, 6.8, 12.5, 9.2);
+    g.quadraticCurveTo(18.6, 4.6, 19.6, 0);
+    g.quadraticCurveTo(18.6, -4.6, 12.5, -9.2);
+    g.closePath();
+    g.fillStyle = 'rgba(225,233,240,0.5)'; g.fill();
+    // 柄と頭の接合部（目釘）
+    g.fillStyle = '#6e767f'; g.fillRect(16.8, -2.8, 4.6, 5.6);
+    g.fillStyle = '#454b53'; g.beginPath(); g.arc(19.1, 0, 1.3, 0, 7); g.fill();
+  }
+  g.restore();
+}
+function drawPillLabel(x, y, text, color) {
+  ctx.font = '800 12px "M PLUS Rounded 1c", sans-serif';
+  var tw = ctx.measureText(text).width + 14;
+  ctx.fillStyle = 'rgba(10,8,24,0.82)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x - tw / 2, y - 9, tw, 19, 9); else ctx.rect(x - tw / 2, y - 9, tw, 19);
+  ctx.fill();
+  ctx.fillStyle = color || '#ffd94d'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y);
+}
+function drawChar(x, y, opt) {
+  if (opt.down) {
+    // 気絶中：スプライトを横倒しに描いて横たわる見た目にする
+    ctx.save();
+    ctx.translate(x, y + 4); ctx.rotate(-Math.PI / 2); ctx.translate(-x, -(y + 4));
+    drawSprite(ctx, x, y + 4, opt, gameTime);
+    ctx.restore();
+    // 頭上に残り秒数のカウントダウン
+    drawPillLabel(x, y - 30, '😵 あと' + Math.max(0, Math.ceil(opt.downT || 0)) + '秒', '#ff9a8a');
+    // 復活作業の進捗バー
+    if (opt.reviveP > 0) {
+      var rp = clamp(opt.reviveP, 0, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(x - 20, y - 46, 40, 6);
+      ctx.fillStyle = '#7ee787'; ctx.fillRect(x - 19, y - 45, 38 * rp, 4);
+      ctx.font = '800 10.5px "M PLUS Rounded 1c", sans-serif'; ctx.fillStyle = '#7ee787'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText('🖐️ 復活作業中 ' + Math.floor(rp * 100) + '%', x, y - 48);
+    }
+    if (opt.promptText) drawPillLabel(x, y - 62, opt.promptText, '#9be8d8');
+    return;
+  }
+  drawSprite(ctx, x, y, opt, gameTime);
+  var bob = opt.moving ? Math.sin(opt.bobT) * 2 : Math.sin(gameTime * 2 + (opt.phase || 0)) * 0.7;
+  var yy = y + bob;
+  // 名前
+  if (opt.name) {
+    ctx.font = '700 10.5px "M PLUS Rounded 1c", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    var tw = ctx.measureText(opt.name).width + 8;
+    ctx.fillRect(x - tw / 2, yy - 50, tw, 13);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(opt.name, x, yy - 38);
+  }
+  // 仲間の頭上HPバー（減っている時だけ表示）
+  if (opt.maxhp && opt.hp < opt.maxhp) {
+    var hr = clamp(opt.hp / opt.maxhp, 0, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(x - 19, yy - 59, 38, 6);
+    ctx.fillStyle = hr > 0.5 ? '#7ee787' : (hr > 0.25 ? '#ffc46b' : '#ff5f4d');
+    ctx.fillRect(x - 18, yy - 58, 36 * hr, 4);
+  }
+  // 吹き出し
+  if (opt.bubble && opt.bubbleT > 0) {
+    ctx.font = '700 11px "M PLUS Rounded 1c", sans-serif';
+    var bw = ctx.measureText(opt.bubble).width + 14;
+    ctx.fillStyle = 'rgba(255,255,255,0.94)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x - bw / 2, yy - 76, bw, 19, 8); else ctx.rect(x - bw / 2, yy - 76, bw, 19);
+    ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - 4, yy - 58); ctx.lineTo(x + 4, yy - 58); ctx.lineTo(x, yy - 52); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#33304a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(opt.bubble, x, yy - 66);
+  }
+  // 近づいた時の🖐️案内（復活・食べ物を渡す）
+  if (opt.promptText) drawPillLabel(x, y + 32, opt.promptText, '#9be8d8');
+}
+function drawTitlePreviews() {
+  var tools = { hero: 'pick', miner: 'pick', lamp: 'lantern', cook: 'pan' };
+  document.querySelectorAll('.charPreview').forEach(function (cvs, i) {
+    var g = cvs.getContext('2d');
+    g.setTransform(2, 0, 0, 2, 0, 0);
+    g.clearRect(0, 0, 72, 72);
+    var kind = cvs.dataset.kind;
+    drawSprite(g, 36, 42, {
+      kind: kind, face: { x: 0, y: 1 }, bobT: 0, moving: false,
+      toolKind: tools[kind], swingT: (kind === 'hero' || kind === 'miner') ? 0.1 : 0, phase: i * 1.7, scale: 1.02
+    }, 1.2);
+  });
+}
+function drawSlime(s, ox, oy) {
+  var x = s.x - ox, y = s.y - oy;
+  var sq = 1 + Math.sin(s.hopT * 5.2) * 0.1;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(x, y + s.r * 0.85, s.r * 0.9, s.r * 0.28, 0, 0, 7); ctx.fill();
+  var scol2 = SLIME_COLORS[s.kind || 'green'] || SLIME_COLORS.green;
+  ctx.fillStyle = s.hurtT > 0 ? '#ffd9d2' : scol2.body;
+  ctx.beginPath(); ctx.ellipse(x, y, s.r * sq, s.r / sq, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.beginPath(); ctx.ellipse(x - s.r * 0.32, y - s.r * 0.36, s.r * 0.24, s.r * 0.15, -0.5, 0, 7); ctx.fill();
+  ctx.fillStyle = '#17351d';
+  ctx.beginPath(); ctx.arc(x - s.r * 0.3, y - s.r * 0.05, s.big ? 4 : 2.6, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + s.r * 0.3, y - s.r * 0.05, s.big ? 4 : 2.6, 0, 7); ctx.fill();
+  if (s.big) { ctx.font = '16px serif'; ctx.textAlign = 'center'; ctx.fillText('👑', x, y - s.r - 6); }
+  if (s.hp < s.maxhp) {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - s.r, y - s.r - 10, s.r * 2, 5);
+    ctx.fillStyle = scol2.bar; ctx.fillRect(x - s.r, y - s.r - 10, s.r * 2 * clamp(s.hp / s.maxhp, 0, 1), 5);
+  }
+}
+var lightCv = document.createElement('canvas'), lightCtx = lightCv.getContext('2d');
+function render() {
+  ctx.fillStyle = '#070512'; ctx.fillRect(0, 0, W, H);
+  if (!player) return;
+  var shX = shake ? rnd(-shake, shake) : 0, shY = shake ? rnd(-shake, shake) : 0;
+  var ox = Math.round(camX + shX), oy = Math.round(camY + shY);
+  var tx0 = Math.max(0, Math.floor(ox / T)), ty0 = Math.max(0, Math.floor(oy / T));
+  var tx1 = Math.min(MW - 1, Math.ceil((ox + W) / T)), ty1 = Math.min(MH - 1, Math.ceil((oy + H) / T));
+  var wFrame = Math.floor(gameTime * 1.4) % 2;
+  for (var ty = ty0; ty <= ty1; ty++) for (var tx = tx0; tx <= tx1; tx++) {
+    var t = grid[tIdx(tx, ty)], px = tx * T - ox, py = ty * T - oy;
+    if (t === 6) { ctx.drawImage(tileImgs.water[wFrame], px, py); continue; }
+    if (isWallTile(t)) {
+      ctx.drawImage(tileImgs.floor[0], px, py);
+      ctx.drawImage(tileImgFor(t, tx, ty), px, py);
+      var maxHp = TILE_HP[t];
+      if (maxHp < 1e8 && tileHp[tIdx(tx, ty)] < maxHp) {
+        var dmgR = 1 - tileHp[tIdx(tx, ty)] / maxHp;
+        ctx.strokeStyle = 'rgba(10,6,20,' + (0.3 + dmgR * 0.6) + ')'; ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(px + 8, py + 10); ctx.lineTo(px + 18, py + 20); ctx.lineTo(px + 14, py + 30);
+        if (dmgR > 0.45) { ctx.moveTo(px + 30, py + 8); ctx.lineTo(px + 22, py + 20); ctx.lineTo(px + 30, py + 30); }
+        ctx.stroke();
+      }
+    } else ctx.drawImage(tileImgFor(0, tx, ty), px, py);
+  }
+  // キノコ畑
+  plots.forEach(function (pl) {
+    var px = pl.x - ox, py = pl.y - oy;
+    ctx.fillStyle = '#4e3823'; ctx.fillRect(px - 17, py - 13, 34, 26);
+    ctx.strokeStyle = '#6b4e33'; ctx.lineWidth = 3; ctx.strokeRect(px - 17, py - 13, 34, 26);
+    ctx.font = (pl.stage >= 3 ? 21 : 13 + pl.stage * 3) + 'px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(pl.stage >= 3 ? '🍄' : '🌱', px, py);
+    if (pl.stage >= 3) { ctx.font = '700 10px sans-serif'; ctx.fillStyle = '#ffd94d'; ctx.fillText('収穫できる！', px, py - 22); }
+  });
+  // 松明
+  torches.forEach(function (tc) {
+    var px = tc.x - ox, py = tc.y - oy;
+    ctx.fillStyle = '#6b4e33'; ctx.fillRect(px - 2.5, py - 2, 5, 13);
+    ctx.font = '15px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🔥', px, py - 8 + Math.sin(gameTime * 9 + tc.x) * 1.2);
+  });
+  // 野生キノコ
+  shrooms.forEach(function (s) {
+    if (s.taken) return;
+    ctx.font = '17px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🍄', s.x - ox, s.y - oy);
+  });
+  // 木材ブロック（倒木：茶色い丸太の塊）
+  woodBlocks.forEach(function (wb) {
+    if (wb.taken) return;
+    var px = wb.x - ox, py = wb.y - oy;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + 10, 19, 5, 0, 0, 7); ctx.fill();
+    // 奥の丸太
+    ctx.fillStyle = '#6e4525'; rrPath(ctx, px - 14, py - 12, 30, 10, 5); ctx.fill();
+    // 手前の丸太（幹＋年輪の断面）
+    ctx.fillStyle = '#8a5a2e'; rrPath(ctx, px - 19, py - 4, 38, 13, 6); ctx.fill();
+    ctx.fillStyle = '#a8703a'; rrPath(ctx, px - 19, py - 4, 38, 5, 3); ctx.fill();
+    ctx.fillStyle = '#d9b078';
+    ctx.beginPath(); ctx.ellipse(px + 17, py + 2.5, 3.4, 6, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#a87f4c'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.ellipse(px + 17, py + 2.5, 1.8, 3.4, 0, 0, 7); ctx.stroke();
+    // 小枝
+    ctx.strokeStyle = '#6e4525'; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(px - 6, py - 9); ctx.lineTo(px - 11, py - 16); ctx.stroke();
+    ctx.fillStyle = '#4e7a3a';
+    ctx.beginPath(); ctx.ellipse(px - 12, py - 17, 3.6, 2.2, -0.5, 0, 7); ctx.fill();
+    // ダメージのヒビ
+    if (wb.hp < 3) {
+      ctx.strokeStyle = 'rgba(30,18,8,0.75)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(px - 8, py - 3); ctx.lineTo(px - 2, py + 3); ctx.lineTo(px - 6, py + 8);
+      if (wb.hp < 2) { ctx.moveTo(px + 8, py - 3); ctx.lineTo(px + 4, py + 4); }
+      ctx.stroke();
+    }
+  });
+  // 施設
+  facilities.forEach(function (f) {
+    var px = f.x - ox, py = f.y - oy;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + 15, 17, 5.5, 0, 0, 7); ctx.fill();
+    if (f.broken) {
+      // 壊れた施設は瓦礫・残骸の見た目になる（機能停止）
+      ctx.fillStyle = '#3f382f';
+      ctx.beginPath(); ctx.ellipse(px, py + 10, 20, 8, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#5d564c';
+      ctx.beginPath(); ctx.ellipse(px - 8, py + 6, 9, 6, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(px + 7, py + 8, 11, 5, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#7a7263';
+      ctx.beginPath(); ctx.ellipse(px + 1, py + 3, 6, 4, 0, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(px - 4, py + 2); ctx.rotate(0.5);
+      ctx.fillStyle = '#6e4525'; ctx.fillRect(-11, -2, 22, 4); ctx.restore();
+      ctx.save(); ctx.translate(px + 6, py + 6); ctx.rotate(-0.35);
+      ctx.fillStyle = '#59391d'; ctx.fillRect(-9, -2, 18, 4); ctx.restore();
+      if (f.type === 'fire') { // 焚き火の残骸は焦げた丸太
+        ctx.fillStyle = '#241d18'; rrPath(ctx, px - 12, py - 3, 24, 6, 3); ctx.fill();
+        ctx.fillStyle = '#171310'; rrPath(ctx, px - 9, py + 2, 18, 5, 2); ctx.fill();
+      }
+      if (f.type === 'furnace') { // かまどの残骸は崩れたドーム片
+        ctx.fillStyle = '#6b5d4f';
+        ctx.beginPath(); ctx.moveTo(px - 13, py + 4); ctx.lineTo(px - 6, py - 8); ctx.lineTo(px + 2, py + 4); ctx.closePath(); ctx.fill();
+      }
+    } else if (f.type === 'core') {
+      // 焚き火が消えている間はコアも発光せず、くすんだ色で静止する
+      var coreLit = fireFuel > 0;
+      var pulse = coreLit ? 1 + Math.sin(gameTime * 2.2) * 0.07 : 1;
+      ctx.save(); ctx.translate(px, py - 8); ctx.scale(pulse, pulse);
+      ctx.fillStyle = coreLit ? '#37c8e8' : '#46525e';
+      ctx.beginPath(); ctx.moveTo(0, -26); ctx.lineTo(13, -4); ctx.lineTo(7, 18); ctx.lineTo(-7, 18); ctx.lineTo(-13, -4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = coreLit ? '#a5f6ff' : '#5f7080';
+      ctx.beginPath(); ctx.moveTo(0, -26); ctx.lineTo(6, -5); ctx.lineTo(0, 12); ctx.lineTo(-6, -5); ctx.closePath(); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = '#57489a'; ctx.fillRect(px - 14, py + 8, 28, 8);
+    } else if (f.type === 'fire') {
+      ctx.font = '19px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('🪵', px, py + 8);
+      if (fireFuel > 0) {
+        var fs = 24 + Math.sin(gameTime * 11) * 3;
+        ctx.font = fs + 'px serif'; ctx.fillText('🔥', px, py - 6);
+      } else {
+        // 消火中：炎なし＋うっすら煙
+        ctx.fillStyle = 'rgba(180,180,200,0.5)';
+        ctx.beginPath(); ctx.ellipse(px + Math.sin(gameTime * 1.8) * 2, py - 12, 5, 7, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px + Math.sin(gameTime * 1.8 + 2) * 3, py - 22, 3.4, 4.6, 0, 0, 7); ctx.fill();
+      }
+      // 燃料ゲージミニ表示（焚き火の下）
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(px - 19, py + 21, 38, 6);
+      if (fireFuel > 0) { ctx.fillStyle = fireFuel > 2 ? '#ff9a3c' : '#ff5f4d'; ctx.fillRect(px - 18, py + 22, 36 * clamp(fireFuel / 6, 0, 1), 4); }
+    } else if (f.type === 'bench') {
+      // 作業台：木の机（天板＋脚＋棚板）＋上に道具と材木
+      ctx.fillStyle = '#5d3c1e';
+      ctx.fillRect(px - 16, py - 1, 5, 16);
+      ctx.fillRect(px + 11, py - 1, 5, 16);
+      ctx.fillStyle = '#6e4525';
+      ctx.fillRect(px - 16, py + 6, 32, 3);
+      // 天板
+      ctx.fillStyle = '#a06a35';
+      ctx.fillRect(px - 21, py - 8, 42, 7);
+      ctx.fillStyle = '#c08547';
+      ctx.fillRect(px - 21, py - 8, 42, 2.5);
+      ctx.strokeStyle = 'rgba(70,42,16,0.55)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px - 7, py - 5.5); ctx.lineTo(px - 7, py - 1); ctx.moveTo(px + 8, py - 5.5); ctx.lineTo(px + 8, py - 1); ctx.stroke();
+      // 天板の上の材木
+      ctx.fillStyle = '#8a5a2e';
+      ctx.fillRect(px - 19, py - 13, 15, 5);
+      ctx.fillStyle = '#d9b078';
+      ctx.beginPath(); ctx.ellipse(px - 19, py - 10.5, 2.2, 2.5, 0, 0, 7); ctx.fill();
+      // ハンマー（立てかけ）
+      ctx.save(); ctx.translate(px + 13, py - 8); ctx.rotate(0.5);
+      ctx.fillStyle = '#7a4a22'; ctx.fillRect(-1.6, -3, 3.2, 11);
+      ctx.fillStyle = '#9aa3ad'; ctx.fillRect(-6.5, -7.5, 13, 5);
+      ctx.fillStyle = '#6e767f'; ctx.fillRect(-6.5, -7.5, 13, 1.8);
+      ctx.restore();
+      // ノコギリの刃（天板の端から）
+      ctx.fillStyle = '#b9c2cc';
+      ctx.beginPath(); ctx.moveTo(px - 21, py - 1); ctx.lineTo(px - 13, py - 1); ctx.lineTo(px - 15, py + 3.5); ctx.lineTo(px - 19, py + 3.5); ctx.closePath(); ctx.fill();
+    } else if (f.type === 'furnace') {
+      // かまど：土・石のドーム本体＋火口の炎＋上に黒い釜
+      var fl = Math.sin(gameTime * 9 + 1.3) * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(px - 20, py + 15);
+      ctx.lineTo(px - 20, py - 1);
+      ctx.arc(px, py - 1, 20, Math.PI, 0);
+      ctx.lineTo(px + 20, py + 15);
+      ctx.closePath();
+      ctx.fillStyle = '#87796a'; ctx.fill();
+      ctx.strokeStyle = '#5d5145'; ctx.lineWidth = 2; ctx.stroke();
+      // 石の継ぎ目
+      ctx.strokeStyle = 'rgba(70,58,46,0.5)'; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(px - 19, py + 4); ctx.lineTo(px + 19, py + 4);
+      ctx.moveTo(px - 6, py - 19); ctx.lineTo(px - 5, py + 4);
+      ctx.moveTo(px + 9, py - 17); ctx.lineTo(px + 10, py + 4);
+      ctx.stroke();
+      // 土台
+      ctx.fillStyle = '#6b5d4f';
+      ctx.fillRect(px - 22, py + 13, 44, 4);
+      // 火口（アーチ型の焚き口）
+      ctx.beginPath();
+      ctx.moveTo(px - 8, py + 13);
+      ctx.lineTo(px - 8, py + 3);
+      ctx.arc(px, py + 3, 8, Math.PI, 0);
+      ctx.lineTo(px + 8, py + 13);
+      ctx.closePath();
+      ctx.fillStyle = '#20130b'; ctx.fill();
+      // 炎
+      ctx.fillStyle = '#ff7a26';
+      ctx.beginPath(); ctx.ellipse(px, py + 9.5, 4.6, 5 + fl * 0.7, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffc93c';
+      ctx.beginPath(); ctx.ellipse(px, py + 11, 2.4, 2.8 + fl * 0.4, 0, 0, 7); ctx.fill();
+      // 上の釜（黒い鍋＋ふた）
+      ctx.fillStyle = '#26242c';
+      ctx.beginPath(); ctx.ellipse(px, py - 20, 11, 5.5, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#3a3742';
+      ctx.beginPath(); ctx.ellipse(px, py - 23.5, 8, 3.4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#17161c';
+      ctx.fillRect(px - 1.6, py - 28.5, 3.2, 2.6);
+    } else {
+      ctx.font = '29px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(f.icon, px, py - 2);
+    }
+    // 施設HPバー（壊せる施設で、減っている時だけ）
+    if (REBUILD_COST[f.type] && !f.broken && f.hp < f.maxhp) {
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(px - 20, py - 33, 40, 6);
+      ctx.fillStyle = f.hp > 50 ? '#7ee787' : (f.hp > 25 ? '#ffc46b' : '#ff5f4d');
+      ctx.fillRect(px - 19, py - 32, 38 * clamp(f.hp / f.maxhp, 0, 1), 4);
+    }
+    // 作り直しの進捗バー
+    if (f.broken && f.rebuilding) {
+      var rpr = clamp(f.rebuilding.t / REBUILD_TIME, 0, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(px - 20, py - 33, 40, 6);
+      ctx.fillStyle = '#ffd94d'; ctx.fillRect(px - 19, py - 32, 38 * rpr, 4);
+      ctx.font = '800 10.5px "M PLUS Rounded 1c", sans-serif'; ctx.fillStyle = '#ffd94d'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText('🔨 作り直し中 ' + Math.floor(rpr * 100) + '%', px, py - 36);
+    }
+    // 精錬の進捗バー
+    if (f.type === 'furnace' && furnaceJob && !f.broken) {
+      var spr = clamp(1 - furnaceJob.t / SMELT_TIME, 0, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(px - 20, py - 40, 40, 6);
+      ctx.fillStyle = '#ffb52e'; ctx.fillRect(px - 19, py - 39, 38 * spr, 4);
+      ctx.font = '800 10.5px "M PLUS Rounded 1c", sans-serif'; ctx.fillStyle = '#ffb52e'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText('🔥 精錬中 ' + furnaceJob.done + '/' + furnaceJob.total, px, py - 43);
+    }
+    // 調理の進捗バー
+    if (f.type === 'fire' && cookQueue.length && !f.broken) {
+      var cpr = clamp(1 - cookQueue[0].t / COOK_TIME, 0, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(px - 20, py - 40, 40, 6);
+      ctx.fillStyle = '#7ee787'; ctx.fillRect(px - 19, py - 39, 38 * cpr, 4);
+      ctx.font = '800 10.5px "M PLUS Rounded 1c", sans-serif'; ctx.fillStyle = '#7ee787'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText('🍳 調理中' + (cookQueue.length > 1 ? '（待ち' + (cookQueue.length - 1) + '）' : ''), px, py - 43);
+    }
+    // 近ければラベル
+    if (player && dist2(player.x, player.y, f.x, f.y) < 62 * 62) {
+      ctx.font = '800 12px "M PLUS Rounded 1c", sans-serif';
+      var label = (HAND_FACILITIES[f.type] ? '🖐️ ' : '👊 ') + f.label + (f.broken ? '（壊れている）' : '');
+      var tw = ctx.measureText(label).width + 14;
+      ctx.fillStyle = 'rgba(10,8,24,0.82)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(px - tw / 2, py - 46, tw, 19, 9); else ctx.rect(px - tw / 2, py - 46, tw, 19);
+      ctx.fill();
+      ctx.fillStyle = '#ffd94d'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(label, px, py - 36);
+    }
+  });
+  // ドロップ
+  drops.forEach(function (d) {
+    var px = d.x - ox, py = d.y - oy + Math.sin(gameTime * 4 + d.x) * 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(d.x - ox, d.y - oy + 8, 8, 3, 0, 0, 7); ctx.fill();
+    ctx.font = '17px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(ITEMS[d.key].icon, px, py);
+  });
+  // 釣り
+  if (player.fishing) {
+    var fz2 = player.fishing;
+    ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(player.x - ox + player.face.x * 14, player.y - oy - 6);
+    ctx.quadraticCurveTo((player.x + fz2.wx) / 2 - ox, Math.min(player.y, fz2.wy) - oy - 26, fz2.wx - ox, fz2.wy - oy);
+    ctx.stroke();
+    ctx.font = '13px serif'; ctx.textAlign = 'center';
+    ctx.fillText('🪱', fz2.wx - ox, fz2.wy - oy + Math.sin(gameTime * 5) * 2);
+    if (fz2.phase === 'bite') {
+      ctx.font = '800 21px "M PLUS Rounded 1c", sans-serif'; ctx.fillStyle = '#ff5f4d';
+      ctx.fillText('HIT!', fz2.wx - ox, fz2.wy - oy - 24);
+    }
+  }
+  // スライム・仲間・プレイヤー（Y順に描く）
+  var drawables = [];
+  slimes.forEach(function (s) { if (NET.mode === 'guest') { if (s.tx === undefined) { s.tx = s.x; s.ty = s.y; } s.x += (s.tx - s.x) * 0.4; s.y += (s.ty - s.y) * 0.4; } drawables.push({ y: s.y, fn: function () { drawSlime(s, ox, oy); } }); });
+  if (NET.mode === 'guest') companions.forEach(function (c) { if (c.tx !== undefined) { c.x += (c.tx - c.x) * 0.35; c.y += (c.ty - c.y) * 0.35; } });
+  if (NET.mode !== 'solo') netRemoteDrawList().forEach(function (r) {
+    drawables.push({ y: r.y, fn: function () { drawChar(r.x - ox, r.y - oy, { kind: r.kind, face: r.face, bobT: r.bobT, moving: r.moving, toolKind: r.tool, toolTier: r.tt, swingT: r.swingT, phase: r.phase, name: r.name, hp: r.hp, maxhp: 100, down: r.down, downT: r.downT, reviveP: r.reviveP, promptText: r.promptText }); } });
+  });
+  companions.forEach(function (c) {
+    drawables.push({ y: c.y, fn: function () {
+      var toolKind = c.role === 'miner' ? 'pick' : (c.role === 'lamp' ? 'lantern' : 'pan');
+      // 近づいた時の案内：気絶中は「🖐️ 復活させる」、HPが減っていれば「🖐️ 食べ物を渡す」
+      var promptText = null;
+      if (player && !player.down && dist2(player.x, player.y, c.x, c.y) < 62 * 62) {
+        if (c.down) promptText = c.revive ? null : '🖐️ 復活させる';
+        else if (c.hp < c.maxhp) promptText = '🖐️ 食べ物を渡す';
+      }
+      // 座標は画面変換して描く
+      drawChar(c.x - ox, c.y - oy, { kind: c.kind, face: c.face, bobT: c.bobT, moving: !c.down, toolKind: toolKind, swingT: c.swingT, name: c.name, bubble: c.bubble, bubbleT: c.bubbleT, phase: c.x, hp: c.hp, maxhp: c.maxhp, down: c.down, downT: c.downT, reviveP: c.revive ? c.revive.t / REVIVE_TIME : 0, promptText: promptText });
+    } });
+  });
+  drawables.push({ y: player.y, fn: function () {
+    var toolKind = selKey === 'sword' ? 'sword' : (selKey === 'rod' ? 'rod' : (selKey === 'lantern' ? 'lantern' : (selKey === 'pick' ? 'pick' : 'none')));
+    drawChar(player.x - ox, player.y - oy, { kind: myCharKind, face: player.face, bobT: player.bobT, moving: player.moving, toolKind: toolKind, toolTier: swordTier, swingT: player.swingT, phase: 0, down: player.down, downT: player.downT, reviveP: player.down ? player.reviveT / REVIVE_TIME : 0 });
+    if (player.ifr > 0 && Math.floor(gameTime * 14) % 2 === 0) {
+      ctx.fillStyle = 'rgba(255,80,60,0.25)';
+      ctx.beginPath(); ctx.arc(player.x - ox, player.y - oy - 4, 20, 0, 7); ctx.fill();
+    }
+    if (player.hu <= 20) { ctx.font = '15px serif'; ctx.textAlign = 'center'; ctx.fillText('🍖', player.x - ox + 14, player.y - oy - 26 + Math.sin(gameTime * 6) * 2); }
+  } });
+  drawables.sort(function (a, b) { return a.y - b.y; });
+  drawables.forEach(function (d) { d.fn(); });
+  // パーティクル
+  particles.forEach(function (q) {
+    ctx.globalAlpha = clamp(1 - q.t / q.life, 0, 1);
+    ctx.fillStyle = q.color;
+    ctx.fillRect(q.x - ox - q.size / 2, q.y - oy - q.size / 2, q.size, q.size);
+  });
+  ctx.globalAlpha = 1;
+  // フローター
+  floaters.forEach(function (fl) {
+    ctx.globalAlpha = clamp(1.3 - fl.t, 0, 1);
+    ctx.font = '800 13.5px "M PLUS Rounded 1c", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    var fx = fl.x - ox, fy = fl.y - oy;
+    ctx.strokeText(fl.text, fx, fy); ctx.fillStyle = fl.color; ctx.fillText(fl.text, fx, fy);
+  });
+  ctx.globalAlpha = 1;
+
+  /* --- 暗闇と光 --- */
+  if (lightCv.width !== W || lightCv.height !== H) { lightCv.width = W; lightCv.height = H; }
+  lightCtx.setTransform(1, 0, 0, 1, 0, 0);
+  lightCtx.globalCompositeOperation = 'source-over';
+  lightCtx.clearRect(0, 0, W, H);
+  // 消火中は闇そのものも深くする（かなり暗い世界）
+  lightCtx.fillStyle = 'rgba(5,3,16,' + (fireFuel > 0 ? 0.88 : 0.95) + ')';
+  lightCtx.fillRect(0, 0, W, H);
+  lightCtx.globalCompositeOperation = 'destination-out';
+  function punch(x, y, r, strength) {
+    var g = lightCtx.createRadialGradient(x, y, r * 0.12, x, y, r);
+    g.addColorStop(0, 'rgba(0,0,0,' + strength + ')');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    lightCtx.fillStyle = g;
+    lightCtx.beginPath(); lightCtx.arc(x, y, r, 0, 7); lightCtx.fill();
+  }
+  facilities.forEach(function (f) {
+    if (f.type === 'core' && fireFuel > 0) punch(f.x - ox, f.y - oy, 215 + coreLv * 26 + Math.sin(gameTime * 2.2) * 9, 0.97);
+    if (f.type === 'fire' && fireFuel > 0) punch(f.x - ox, f.y - oy, 128 + Math.sin(gameTime * 11) * 8, 0.92);
+  });
+  punch(player.x - ox, player.y - oy, hasLantern ? 218 : 128, 0.95);
+  companions.forEach(function (c) { punch(c.x - ox, c.y - oy, c.role === 'lamp' ? 138 : 74, 0.9); });
+  if (NET.mode !== 'solo') netRemoteDrawList().forEach(function (r) { if (!r.down) punch(r.x - ox, r.y - oy, 110, 0.9); });
+  torches.forEach(function (tc) { punch(tc.x - ox, tc.y - oy, 112 + Math.sin(gameTime * 9 + tc.x) * 6, 0.92); });
+  // クリスタル壁・キノコのほのかな光
+  for (var ty2 = ty0; ty2 <= ty1; ty2++) for (var tx2 = tx0; tx2 <= tx1; tx2++) {
+    if (grid[tIdx(tx2, ty2)] === 5) punch(tx2 * T + T / 2 - ox, ty2 * T + T / 2 - oy, 56, 0.55);
+  }
+  shrooms.forEach(function (s) { if (!s.taken) punch(s.x - ox, s.y - oy, 36, 0.4); });
+  ctx.drawImage(lightCv, 0, 0, W, H);
+  // コアと焚き火の暖色グロー（暗闇の上にうっすら）
+  ctx.globalCompositeOperation = 'lighter';
+  facilities.forEach(function (f) {
+    if (f.type !== 'core' && f.type !== 'fire') return;
+    if (fireFuel <= 0) return; // 消火中は焚き火のグローもコアのグローもなし
+    var r = f.type === 'core' ? 130 : 74;
+    var g2 = ctx.createRadialGradient(f.x - ox, f.y - oy, 4, f.x - ox, f.y - oy, r);
+    g2.addColorStop(0, f.type === 'core' ? 'rgba(80,200,255,0.20)' : 'rgba(255,150,50,0.20)');
+    g2.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g2;
+    ctx.beginPath(); ctx.arc(f.x - ox, f.y - oy, r, 0, 7); ctx.fill();
+  });
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* ---------------- メインループ ---------------- */
+var lastTs = 0;
+function loop(ts) {
+  requestAnimationFrame(loop);
+  var dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
+  lastTs = ts;
+  if (state === 'play' && player) { if (NET.mode === 'guest') guestUpdate(dt); else update(dt); render(); }
+}
+
+/* ---------------- 開始 ---------------- */
+function startGame() { /* オフライン1人練習（従来の1人用そのまま） */
+  NET.mode = 'solo'; NET.isHost = false;
+  startGameCore(0, 1);
+}
+function startGameCore(seed, humans) {
+  initAudio();
+  endAllHolds();
+  resetInv();
+  pickTier = 1; swordTier = 0; hasRod = false; hasLantern = false;
+  coreEnergy = 0; coreLv = 1; cleared = false;
+  fireFuel = 6;
+  furnaceJob = null; cookQueue = [];
+  gameTime = 0; dayPrev = 1; minedCount = 0; killCount = 0; spawnT = 6;
+  drops = []; particles = []; floaters = []; slimes = [];
+  selKey = 'pick'; closePanel();
+  document.getElementById('fadeBlack').style.opacity = 0;
+  if (seed) { mapSeed = seed; rngState = (seed >>> 0) || 1; }
+  var spots = genMap();
+  mapSeed = null;
+  player = makePlayer();
+  var mateN = NET.mode === 'solo' ? 3 : Math.max(0, Math.min(3, 4 - (humans || 1)));
+  companions = makeCompanions().slice(0, mateN);
+  buildPartyHud();
+  if (NET.mode !== 'guest') slimes.push(makeSlime(spots.gx * T + T / 2, spots.gy * T + T / 2, 'blue'));
+  addInv('mushroom', 2);
+  state = 'play';
+  document.getElementById('titleScr').style.display = 'none';
+  refreshHotbar(); updateHUD();
+  toast('💎 コアを Lv.5 まで育てよう！まずは近くの壁を掘ってみて', 3400);
+  if (mateN > 0) setTimeout(function () { if (state === 'play') toast('仲間のミネ・ラン・ココも一緒にがんばってるよ🤝', 2600); }, 3800);
+}
+var _bs = document.getElementById('btnStart'); if (_bs) _bs.addEventListener('click', startGame);
+document.getElementById('btnHelp').addEventListener('click', function () { initAudio(); document.getElementById('helpScr').classList.add('open'); });
+document.getElementById('btnHelpClose').addEventListener('click', function () { document.getElementById('helpScr').classList.remove('open'); });
+document.getElementById('btnContinue').addEventListener('click', function () { document.getElementById('clearScr').classList.remove('open'); });
+document.getElementById('btnMute').addEventListener('click', function () {
+  muted = !muted;
+  this.textContent = muted ? '🔇' : '🔊';
+  if (ambientNodes) ambientNodes.g.gain.value = muted ? 0 : 0.016;
+});
+
+/* ============================================================
+   オンライン協力版レイヤー（Firebase Realtime Database / ホスト権威）
+   無人島サバイバーズ オンライン版と同じ方式：
+   - ルームは rooms/<4桁コード> 配下のみ読み書き（meta.game = "gankutsu" が目印）
+   - ホストが世界の状態（タイル差分・スライム・施設・ボックス・コア・焚き火・
+     ドロップ・ジョブ・CPU仲間）を world スナップショットで配信
+   - 各プレイヤーは自分の位置・HP・空腹・気絶状態を players/<uid> に配信
+   - ゲスト→ホストの操作は req、ホスト→ゲストへの通知（被弾・アイテム付与）は ev/<uid>
+   ============================================================ */
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyC8duWm-8gTcUpRlCtBK1xEaondFFx-WWY",
+  authDomain: "sukiyaki-ranking.firebaseapp.com",
+  databaseURL: "https://sukiyaki-ranking-default-rtdb.firebaseio.com",
+  projectId: "sukiyaki-ranking",
+  storageBucket: "sukiyaki-ranking.firebasestorage.app",
+  messagingSenderId: "832774377011",
+  appId: "1:832774377011:web:609c5047f1084099b19d46"
+};
+/* キャラビジュアル8種（A案ちびキャラの色・装備バリエーション） */
+CHAR_DESIGNS.heroR = { body: '#d64541', bodyDark: '#a02c26', trim: '#ffd94d', skin: '#ffd9b3', hair: '#3a2418', hat: '#d64541', hatDark: '#a02c26', helmet: true };
+CHAR_DESIGNS.heroG = { body: '#3aa655', bodyDark: '#27753c', trim: '#ffd94d', skin: '#f7c795', hair: '#20301c', hat: '#3aa655', hatDark: '#27753c', helmet: true };
+CHAR_DESIGNS.heroP = { body: '#8a4fd0', bodyDark: '#65359e', trim: '#ffd94d', skin: '#ffd9b3', hair: '#2c1e3f', hat: '#8a4fd0', hatDark: '#65359e', helmet: true };
+CHAR_DESIGNS.heroY = { body: '#e0a81c', bodyDark: '#a97a0e', trim: '#5a3a22', skin: '#f7c795', hair: '#4a2f16', hat: '#f2b81e', hatDark: '#c78f0a', helmet: true };
+var CHAR_VARIANTS = [
+  { kind: 'hero',  name: 'あお' },
+  { kind: 'heroR', name: 'あか' },
+  { kind: 'heroG', name: 'みどり' },
+  { kind: 'heroP', name: 'むらさき' },
+  { kind: 'heroY', name: 'きいろ' },
+  { kind: 'miner', name: 'オレンジ' },
+  { kind: 'lamp',  name: 'ランタン' },
+  { kind: 'cook',  name: 'キノコ帽' }
+];
+var myName = 'あなた', myCharIdx = 0, myCharKind = 'hero';
+var NET = {
+  mode: 'solo', uid: '', code: null, isHost: false, seed: 1,
+  roomRef: null, myRef: null, players: {}, meta: {}, started: false,
+  disp: {}, pendingPick: {}, pendingShroom: {}, tileDirty: {}, dropSeq: 0,
+  revivingTarget: null, hostGone: false, pubCount: 0, lastCpuRevive: 0
+};
+(function () {
+  var k = 'gk_uid_v1', u = null;
+  try { u = localStorage.getItem(k); if (!u) { u = 'u' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); localStorage.setItem(k, u); } } catch (e) { u = 'u' + Date.now().toString(36); }
+  NET.uid = u;
+})();
+var netDb = null;
+function fbInit() {
+  if (netDb) return true;
+  try {
+    if (typeof firebase === 'undefined') return false;
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    netDb = firebase.database();
+    return true;
+  } catch (e) { return false; }
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+/* ---- プロフィール（名前・キャラ）を localStorage に記憶（無人島と同じ） ---- */
+var GK_PROFILE_KEY = 'gk_profile_v1';
+function saveProfile() { try { localStorage.setItem(GK_PROFILE_KEY, JSON.stringify({ name: myName, char: myCharIdx })); } catch (e) {} }
+function loadProfile() {
+  try {
+    var p = JSON.parse(localStorage.getItem(GK_PROFILE_KEY) || 'null');
+    if (!p) return;
+    if (typeof p.name === 'string' && p.name) { myName = p.name.slice(0, 10); var inp = document.getElementById('inName'); if (inp) inp.value = myName; }
+    if (typeof p.char === 'number' && p.char >= 0 && p.char < CHAR_VARIANTS.length) { myCharIdx = Math.floor(p.char); myCharKind = CHAR_VARIANTS[myCharIdx].kind; }
+  } catch (e) {}
+}
+function buildCharGrid() {
+  var g = document.getElementById('charGrid'); if (!g) return;
+  g.innerHTML = '';
+  CHAR_VARIANTS.forEach(function (v, i) {
+    var d = document.createElement('div');
+    d.className = 'charCell' + (i === myCharIdx ? ' sel' : '');
+    var cvs = document.createElement('canvas'); cvs.width = 144; cvs.height = 144;
+    d.appendChild(cvs);
+    var lb = document.createElement('div'); lb.className = 'cn'; lb.textContent = v.name; d.appendChild(lb);
+    d.addEventListener('click', function () { initAudio(); myCharIdx = i; myCharKind = v.kind; saveProfile(); buildCharGrid(); });
+    g.appendChild(d);
+    var gg = cvs.getContext('2d');
+    gg.setTransform(2, 0, 0, 2, 0, 0);
+    gg.clearRect(0, 0, 72, 72);
+    var tool = v.kind === 'lamp' ? 'lantern' : (v.kind === 'cook' ? 'pan' : 'pick');
+    drawSprite(gg, 36, 44, { kind: v.kind, face: { x: 0, y: 1 }, bobT: 0, moving: false, toolKind: tool, swingT: 0.1, phase: i * 1.3, scale: 1.02 }, 1.2);
+  });
+}
+function titleError(msg) { var e = document.getElementById('titleErr'); if (e) e.textContent = msg; }
+
+/* ---------------- ルーム作成／参加／ロビー ---------------- */
+function enterRoom(code, asHost) {
+  NET.code = code; NET.isHost = asHost; NET.mode = asHost ? 'host' : 'guest'; NET.started = false; NET.hostGone = false;
+  NET.roomRef = netDb.ref('rooms/' + code);
+  NET.myRef = NET.roomRef.child('players/' + NET.uid);
+  NET.myRef.set({ name: myName, char: myCharIdx, x: CX * T + T / 2, y: (CY + 2) * T + T / 2, fx: 0, fy: 1, hp: 100, hu: 100, down: 0, downT: 0, reviveP: 0, tool: 'pick', tt: 0, swing: 0, lastSeen: Date.now() });
+  NET.myRef.onDisconnect().remove();
+  if (asHost) {
+    NET.roomRef.child('meta').set({ game: 'gankutsu', host: NET.uid, phase: 'lobby', seed: NET.seed, hostBeat: Date.now() });
+    NET.roomRef.child('meta').onDisconnect().update({ hostBeat: 0 });
+  }
+  attachNetListeners();
+  document.getElementById('titleScr').style.display = 'none';
+  document.getElementById('lobbyScr').style.display = 'flex';
+  renderLobbyList();
+}
+function renderLobbyList() {
+  var list = document.getElementById('lobbyList'); if (!list || NET.started) return;
+  var ids = Object.keys(NET.players);
+  list.innerHTML = '';
+  ids.forEach(function (id) {
+    var r = NET.players[id] || {};
+    var li = document.createElement('li');
+    var tags = '';
+    if (NET.meta && NET.meta.host === id) tags += '<span class="tag">ホスト</span> ';
+    if (id === NET.uid) tags += '<span class="tag">あなた</span>';
+    li.innerHTML = '<span>' + escapeHtml(r.name || '？') + '</span><span>' + tags + '</span>';
+    list.appendChild(li);
+  });
+  var n = ids.length;
+  var info = document.getElementById('lobbyInfo');
+  var mates = Math.max(0, Math.min(3, 4 - n));
+  if (info) info.textContent = '現在 ' + n + ' 人（2〜8人で開始できます）' + (n >= 1 && n < 4 ? '／ 4人未満なので CPU仲間が ' + mates + ' 人補充されます' : '');
+  if (!NET.isHost && NET.meta && NET.meta.hostBeat === 0 && info) info.textContent = 'ホストが退出しました。退出して入り直してね';
+  var btn = document.getElementById('btnStartOnline');
+  if (btn) {
+    btn.style.display = NET.isHost ? '' : 'none';
+    btn.disabled = !(n >= 2 && n <= 8);
+    btn.textContent = n >= 2 ? 'ゲーム開始（' + n + '人）' : 'ゲーム開始（2人から）';
+  }
+  var wait = document.getElementById('lobbyWait');
+  if (wait) wait.style.display = NET.isHost ? 'none' : '';
+  var codeEl = document.getElementById('lobbyCode');
+  if (codeEl) codeEl.textContent = NET.code || '----';
+}
+function attachNetListeners() {
+  var rr = NET.roomRef;
+  rr.child('players').on('value', function (s) { NET.players = s.val() || {}; if (!NET.started) renderLobbyList(); });
+  rr.child('meta').on('value', function (s) {
+    var m = s.val() || {}; NET.meta = m;
+    if (m.phase === 'play' && !NET.started) { NET.started = true; startOnlineGame(m.seed || NET.seed); }
+    if (!NET.started) renderLobbyList();
+  });
+  rr.child('tiles').on('child_added', netTileApply);
+  rr.child('tiles').on('child_changed', netTileApply);
+  rr.child('world').on('value', function (s) { if (NET.mode === 'guest' && NET.started) applyWorld(s.val()); });
+  rr.child('ev/' + NET.uid).on('child_added', function (s) { var ev = s.val(); s.ref.remove(); if (ev) netProcessEvent(ev); });
+  if (NET.isHost) rr.child('req').on('child_added', function (s) { var q = s.val(); s.ref.remove(); if (q) netProcessReq(q); });
+}
+function netTileApply(s) {
+  if (NET.mode !== 'guest' || !grid.length) return;
+  var idx = parseInt(s.key, 10), v = s.val();
+  if (isNaN(idx) || typeof v !== 'number') return;
+  grid[idx] = v; tileHp[idx] = TILE_HP[v] || 0;
+}
+function startOnlineGame(seed) {
+  document.getElementById('lobbyScr').style.display = 'none';
+  document.getElementById('titleScr').style.display = 'none';
+  var humans = Object.keys(NET.players).length || 1;
+  startGameCore(seed || 1, humans);
+  if (NET.mode === 'host' && NET.roomRef) NET.roomRef.child('world').set(netBuildWorld());
+  toast(NET.mode === 'host' ? '🏠 オンライン開始！みんなでコアを育てよう' : '🌐 オンライン開始！ホストと同期中…', 3000);
+}
+
+/* ---------------- 汎用：リクエスト／イベント ---------------- */
+function netReq(obj) { if (NET.mode === 'guest' && NET.roomRef) { obj.u = NET.uid; NET.roomRef.child('req').push(obj); } }
+function netGive(uid, key, n) { if (NET.roomRef) NET.roomRef.child('ev/' + uid).push({ type: 'give', key: key, n: n }); }
+function netSendEvent(uid, ev) { if (NET.roomRef) NET.roomRef.child('ev/' + uid).push(ev); }
+function netProcessEvent(ev) {
+  if (!ev || state !== 'play' || !player) return;
+  if (ev.type === 'give') {
+    addInv(ev.key, ev.n || 1); SE.pickup();
+    addFloater(player.x, player.y - 24, (ITEMS[ev.key] ? ITEMS[ev.key].icon : '') + ' ' + (ITEMS[ev.key] ? ITEMS[ev.key].name : ev.key) + ' +' + (ev.n || 1), '#ffe9a8');
+    refreshHotbar();
+  } else if (ev.type === 'hurt') {
+    hurtPlayer(ev.dmg || 8);
+  } else if (ev.type === 'toast') {
+    toast(ev.msg, 2800);
+  }
+}
+/* ゲストがスライムを叩いた（実ダメージはホストが処理） */
+function netHitSlime(s, dmg, dir) {
+  var i = slimes.indexOf(s); if (i < 0) return;
+  s.hurtT = 0.18;
+  addFloater(s.x, s.y - s.r - 8, '-' + dmg, '#ff9a8a');
+  burst(s.x, s.y, (SLIME_COLORS[s.kind || 'green'] || SLIME_COLORS.green).burst, 6, 90); SE.slime();
+  netReq({ t: 'hitSlime', i: i, dmg: dmg, dx: dir.x, dy: dir.y });
+}
+
+/* ---------------- 他プレイヤー（リモート）参照ヘルパー ---------------- */
+function netRemoteEnts() {
+  var out = [];
+  if (NET.mode === 'solo') return out;
+  Object.keys(NET.players).forEach(function (id) {
+    if (id === NET.uid) return;
+    var r = NET.players[id];
+    if (!r || typeof r.x !== 'number') return;
+    out.push({ x: r.x, y: r.y, uid: id, isRemote: true, down: !!r.down, r: 13 });
+  });
+  return out;
+}
+function netRemoteNear(x, y, maxD) {
+  if (NET.mode === 'solo') return false;
+  var bd = maxD * maxD;
+  return Object.keys(NET.players).some(function (id) {
+    if (id === NET.uid) return false;
+    var r = NET.players[id];
+    return r && typeof r.x === 'number' && dist2(x, y, r.x, r.y) < bd;
+  });
+}
+function netNearestDownRemote(maxD) {
+  if (NET.mode === 'solo' || !player) return null;
+  var best = null, bd = maxD * maxD;
+  Object.keys(NET.players).forEach(function (id) {
+    if (id === NET.uid) return;
+    var r = NET.players[id];
+    if (!r || !r.down || typeof r.x !== 'number') return;
+    var d = dist2(player.x, player.y, r.x, r.y);
+    if (d < bd) { bd = d; best = { uid: id, name: r.name || '仲間', x: r.x, y: r.y }; }
+  });
+  return best;
+}
+/* 自分のノードに書かれた reviveBy が新しいか（他人が復活作業をしてくれている） */
+function netReviveByFresh() {
+  if (NET.mode === 'solo') return false;
+  var rb = (NET.players[NET.uid] || {}).reviveBy;
+  return !!(rb && Date.now() - rb.t < 1500);
+}
+/* 仲間の復活作業が進む条件：作業者（ホスト本人 or リモートの by）が近くにいる */
+function netReviverNear(c) {
+  if (c.revive && c.revive.by && c.revive.by !== 'host') {
+    var r = NET.players[c.revive.by];
+    if (!r || r.down || typeof r.x !== 'number') return false;
+    return dist2(r.x, r.y, c.x, c.y) < 72 * 72;
+  }
+  return !!(player && !player.down) && dist2(player.x, player.y, c.x, c.y) < 72 * 72;
+}
+/* CPU仲間が助けに行く対象：ホストプレイヤー or 気絶中のリモートプレイヤー */
+function netRescueTarget() {
+  if (player && player.down) return { x: player.x, y: player.y, uid: null };
+  if (NET.mode === 'host') {
+    var best = null, bd = 1e18;
+    Object.keys(NET.players).forEach(function (id) {
+      if (id === NET.uid) return;
+      var r = NET.players[id];
+      if (!r || !r.down || typeof r.x !== 'number') return;
+      var d = dist2(player.x, player.y, r.x, r.y);
+      if (d < bd) { bd = d; best = { x: r.x, y: r.y, uid: id }; }
+    });
+    return best;
+  }
+  return null;
+}
+function netWriteReviveBy(uid) {
+  if (!NET.roomRef) return;
+  var now = Date.now();
+  if (now - NET.lastCpuRevive < 400) return;
+  NET.lastCpuRevive = now;
+  NET.roomRef.child('players/' + uid + '/reviveBy').set({ by: 'cpu', t: now });
+}
+/* 描画用リモート一覧（表示座標は補間で滑らかに） */
+function netRemoteDrawList() {
+  var out = [];
+  if (NET.mode === 'solo') return out;
+  Object.keys(NET.players).forEach(function (id) {
+    if (id === NET.uid) return;
+    var r = NET.players[id];
+    if (!r || typeof r.x !== 'number') return;
+    var d = NET.disp[id];
+    if (!d) { d = NET.disp[id] = { x: r.x, y: r.y }; }
+    d.x += (r.x - d.x) * 0.35; d.y += (r.y - d.y) * 0.35;
+    var v = CHAR_VARIANTS[r.char || 0] || CHAR_VARIANTS[0];
+    var moving = Math.abs(r.x - d.x) + Math.abs(r.y - d.y) > 2.5;
+    out.push({
+      uid: id, x: d.x, y: d.y, kind: v.kind,
+      face: (r.fx !== undefined) ? { x: r.fx, y: r.fy } : { x: 0, y: 1 },
+      bobT: performance.now() / 95, moving: moving,
+      tool: r.tool || 'pick', tt: r.tt || 0, swingT: r.swing ? 0.15 : 0,
+      name: r.name || '？', phase: id.length * 1.7,
+      hp: (r.hp !== undefined ? r.hp : 100), down: !!r.down, downT: r.downT || 0, reviveP: r.reviveP || 0,
+      promptText: (r.down && player && !player.down && dist2(player.x, player.y, r.x, r.y) < 62 * 62) ? '🖐️ 復活させる' : null
+    });
+  });
+  return out;
+}
+
+/* ---------------- world スナップショット（ホスト→全員） ---------------- */
+function netBuildWorld() {
+  return {
+    t: Math.round(gameTime * 10) / 10,
+    fire: Math.round(fireFuel * 100) / 100,
+    ce: coreEnergy, cl: coreLv, cleared: cleared ? 1 : 0,
+    box: box,
+    sl: slimes.map(function (s) { return [Math.round(s.x), Math.round(s.y), s.kind, Math.round(s.hp), s.maxhp, Math.round(s.hopT * 10) / 10]; }),
+    dr: drops.map(function (d) { return [d.id || 0, Math.round(d.x), Math.round(d.y), d.key]; }),
+    fc: facilities.map(function (f) { return [f.type, Math.round(f.hp), f.broken ? 1 : 0, f.rebuilding ? Math.round(f.rebuilding.t * 10) / 10 : -1]; }),
+    wb: woodBlocks.map(function (w) { return [w.taken ? 1 : 0, w.hp]; }),
+    sh: shrooms.map(function (s) { return s.taken ? '1' : '0'; }).join(''),
+    pl: plots.map(function (p) { return p.stage; }),
+    tc: torches.map(function (t) { return [t.tx, t.ty]; }),
+    job: furnaceJob ? [furnaceJob.from, furnaceJob.to, furnaceJob.total, furnaceJob.done, Math.round(furnaceJob.t * 10) / 10] : null,
+    cq: cookQueue.map(function (q) { return [q.give, q.name, Math.round(q.t * 10) / 10]; }),
+    mt: companions.map(function (c) {
+      return [Math.round(c.x), Math.round(c.y), c.face.x, c.face.y, Math.round(c.hp), c.down ? 1 : 0, Math.round(c.downT * 10) / 10,
+        c.revive ? Math.round(c.revive.t / REVIVE_TIME * 100) / 100 : 0, c.swingT > 0 ? 1 : 0, (c.bubbleT > 0 ? c.bubble : ''), Math.round(c.bobT * 10) / 10];
+    })
+  };
+}
+function applyWorld(w) {
+  if (!w) return;
+  gameTime = w.t || 0;
+  fireFuel = (typeof w.fire === 'number') ? w.fire : 6;
+  coreEnergy = w.ce || 0; coreLv = w.cl || 1;
+  if (w.cleared && !cleared) { cleared = true; showClear(); }
+  if (w.box) box = w.box;
+  if (w.sl) {
+    var used = [];
+    w.sl.forEach(function (a) {
+      var s = slimes.find(function (x) { return !x._snap && Math.abs(x.x - a[0]) < 90 && Math.abs(x.y - a[1]) < 90 && x.kind === a[2]; });
+      if (!s) { s = makeSlime(a[0], a[1], a[2]); slimes.push(s); s.x = a[0]; s.y = a[1]; }
+      s._snap = true; used.push(s);
+      s.tx = a[0]; s.ty = a[1]; s.hp = a[3]; s.maxhp = a[4]; s.hopT = a[5];
+    });
+    slimes = slimes.filter(function (s) { return used.indexOf(s) >= 0; });
+    slimes.forEach(function (s) { s._snap = false; });
+  }
+  if (w.dr) {
+    drops = w.dr.map(function (a) { return { id: a[0], x: a[1], y: a[2], key: a[3], vx: 0, vy: 0, t: 0, seed: a[0] * 37 % 100 }; });
+    Object.keys(NET.pendingPick).forEach(function (id) { if (!w.dr.some(function (a) { return a[0] === +id; })) delete NET.pendingPick[id]; });
+  }
+  if (w.fc) w.fc.forEach(function (a) {
+    var f = facByType(a[0]); if (!f) return;
+    f.hp = a[1]; f.broken = !!a[2];
+    f.rebuilding = a[3] >= 0 ? { t: a[3] } : null;
+  });
+  if (w.wb) w.wb.forEach(function (a, i) { var wb2 = woodBlocks[i]; if (wb2) { wb2.taken = !!a[0]; wb2.hp = a[1]; } });
+  if (typeof w.sh === 'string') for (var si = 0; si < shrooms.length && si < w.sh.length; si++) shrooms[si].taken = w.sh[si] === '1';
+  Object.keys(NET.pendingShroom).forEach(function (i) { if (shrooms[+i] && shrooms[+i].taken) delete NET.pendingShroom[i]; });
+  if (w.pl) w.pl.forEach(function (st, i) { if (plots[i]) plots[i].stage = st; });
+  if (w.tc) torches = w.tc.map(function (a) { return { tx: a[0], ty: a[1], x: a[0] * T + T / 2, y: a[1] * T + T / 2 }; });
+  furnaceJob = w.job ? { from: w.job[0], to: w.job[1], total: w.job[2], done: w.job[3], t: w.job[4], owner: 'host' } : null;
+  cookQueue = (w.cq || []).map(function (a) { return { give: a[0], name: a[1], t: a[2], cost: {}, owner: 'host' }; });
+  if (w.mt) {
+    if (companions.length !== w.mt.length) { companions = makeCompanions().slice(0, w.mt.length); buildPartyHud(); }
+    w.mt.forEach(function (a, i) {
+      var c = companions[i]; if (!c) return;
+      if (c._snapInit !== 1) { c._snapInit = 1; c.x = a[0]; c.y = a[1]; }
+      c.tx = a[0]; c.ty = a[1]; c.face = { x: a[2], y: a[3] }; c.hp = a[4];
+      c.down = !!a[5]; c.downT = a[6];
+      c.revive = a[7] > 0 ? { t: a[7] * REVIVE_TIME, by: 'host' } : null;
+      c.swingT = a[8] ? 0.15 : 0; c.bubble = a[9] || ''; c.bubbleT = a[9] ? 0.6 : 0; c.bobT = a[10];
+    });
+  }
+}
+
+/* ---------------- req 処理（ホスト） ---------------- */
+function netProcessReq(q) {
+  if (!q || state !== 'play') return;
+  var rq = NET.players[q.u];
+  switch (q.t) {
+    case 'mine': mineTile(q.tx, q.ty, q.tier || 1, null); break;
+    case 'hitSlime': { var s = slimes[q.i]; if (s && !s.dead) damageSlime(s, q.dmg || 2, { x: q.dx || 0, y: q.dy || 0 }); break; }
+    case 'wood': {
+      var w = woodBlocks[q.i];
+      if (w && !w.taken) {
+        w.hp -= 1; burst(w.x, w.y, '#b08954', 5, 80); SE.hitRock();
+        if (w.hp <= 0) { w.taken = true; w.respawnT = 120; w.hp = 3; spawnDrop(w.x, w.y, 'wood', irnd(1, 3)); SE.brk(); }
+      }
+      break;
+    }
+    case 'pickup': {
+      var di = drops.findIndex(function (d) { return d.id === q.id; });
+      if (di >= 0) {
+        var d = drops[di];
+        if (!rq || dist2(rq.x, rq.y, d.x, d.y) < 110 * 110) { drops.splice(di, 1); netGive(q.u, d.key, 1); }
+      }
+      break;
+    }
+    case 'shroom': {
+      var sm = shrooms[q.i];
+      if (sm && !sm.taken) { sm.taken = true; netGive(q.u, 'mushroom', 1); }
+      break;
+    }
+    case 'plot': { var pl = plots[q.i]; if (pl && pl.stage >= 3) { pl.stage = 0; pl.timer = 0; netGive(q.u, 'mushroom', irnd(1, 2)); } break; }
+    case 'torch': {
+      var txi = q.tx | 0, tyi = q.ty | 0;
+      if (grid[tyi * MW + txi] === 0 && !torches.some(function (t) { return t.tx === txi && t.ty === tyi; })) torches.push({ tx: txi, ty: tyi, x: txi * T + T / 2, y: tyi * T + T / 2 });
+      break;
+    }
+    case 'smelt': {
+      if (furnaceJob) { netSendEvent(q.u, { type: 'toast', msg: 'かまどは使用中だった…' }); break; }
+      var f = facByType('furnace');
+      if (f && f.broken) { netSendEvent(q.u, { type: 'toast', msg: 'かまどは壊れている…' }); break; }
+      furnaceJob = { from: q.from, to: q.to, total: q.n, done: 0, t: SMELT_TIME, owner: q.u };
+      SE.craft();
+      break;
+    }
+    case 'cook': {
+      var ff = facByType('fire');
+      if (ff && ff.broken) { netSendEvent(q.u, { type: 'toast', msg: '焚き火は壊れている…' }); break; }
+      cookQueue.push({ give: q.give, name: q.name, cost: q.cost || {}, t: COOK_TIME, owner: q.u });
+      break;
+    }
+    case 'fuel': if (q.n > 0) fireFuel = clamp(fireFuel + q.n, 0, 6); break;
+    case 'feed': feedCore(q.amt || 0); break;
+    case 'boxIn': box[q.key] = (box[q.key] || 0) + (q.n || 1); break;
+    case 'boxOut': {
+      var have = box[q.key] || 0, n2 = Math.min(have, q.n || 1);
+      if (n2 > 0) { box[q.key] = have - n2; netGive(q.u, q.key, n2); }
+      break;
+    }
+    case 'rebuild': {
+      var f2 = facByType(q.ftype);
+      if (f2 && f2.broken && !f2.rebuilding) { f2.rebuilding = { t: 0 }; toast('🔨 誰かが ' + f2.name + ' の再建を始めた', 2000); }
+      break;
+    }
+    case 'feedMate': {
+      var c = companions[q.i];
+      if (c && !c.down && healFoodKey(q.key)) {
+        var heal = foodHealAmount(q.key);
+        c.hp = clamp(c.hp + heal, 0, c.maxhp);
+        addFloater(c.x, c.y - 32, '+' + heal + ' ❤️', '#7ee787');
+        sayBubble(c, 'ありがとう！');
+      }
+      break;
+    }
+    case 'reviveMate': { var c2 = companions[q.i]; if (c2 && c2.down && !c2.revive) c2.revive = { t: 0, by: q.u }; break; }
+  }
+}
+
+/* ---------------- 自分の状態の配信（150ms）＋復活作業の維持 ---------------- */
+function netTickReviveTarget() {
+  var tid = NET.revivingTarget;
+  if (!tid || !NET.roomRef) return;
+  var r = NET.players[tid];
+  var ok = r && r.down && player && !player.down && typeof r.x === 'number' && dist2(player.x, player.y, r.x, r.y) < 72 * 72;
+  if (ok) NET.roomRef.child('players/' + tid + '/reviveBy').set({ by: NET.uid, t: Date.now() });
+  else { NET.roomRef.child('players/' + tid + '/reviveBy').set(null); NET.revivingTarget = null; }
+}
+setInterval(function () {
+  if (NET.mode === 'solo' || !NET.roomRef) return;
+  NET.pubCount++;
+  if (state === 'play' && player && NET.myRef) {
+    var tk = selKey === 'sword' ? 'sword' : (selKey === 'rod' ? 'rod' : (selKey === 'lantern' ? 'lantern' : (selKey === 'pick' ? 'pick' : 'none')));
+    NET.myRef.update({
+      x: Math.round(player.x), y: Math.round(player.y), fx: player.face.x, fy: player.face.y,
+      hp: Math.ceil(player.hp), hu: Math.ceil(player.hu), down: player.down ? 1 : 0,
+      downT: Math.round(player.downT * 10) / 10, reviveP: player.down ? Math.round(player.reviveT / REVIVE_TIME * 100) / 100 : 0,
+      tool: tk, tt: swordTier, swing: player.swingT > 0 ? 1 : 0, lastSeen: Date.now()
+    });
+  } else if (NET.pubCount % 20 === 0 && NET.myRef) {
+    NET.myRef.update({ lastSeen: Date.now() });
+  }
+  netTickReviveTarget();
+}, 150);
+/* ホスト：タイル差分の送信＋world配信（400ms） */
+setInterval(function () {
+  if (NET.mode !== 'host' || !NET.roomRef || !NET.started || state !== 'play') return;
+  var keys = Object.keys(NET.tileDirty);
+  if (keys.length) {
+    var upd = {};
+    keys.forEach(function (k) { upd[k] = NET.tileDirty[k]; });
+    NET.tileDirty = {};
+    NET.roomRef.child('tiles').update(upd);
+  }
+  NET.roomRef.child('world').set(netBuildWorld());
+}, 400);
+/* ホストの生存ビート（ゲストが切断検知に使う） */
+setInterval(function () {
+  if (NET.mode === 'host' && NET.roomRef) NET.roomRef.child('meta/hostBeat').set(Date.now());
+}, 3000);
+
+/* ---------------- ゲスト用 update（自分と見た目だけを進める） ---------------- */
+function guestUpdate(dt) {
+  gameTime += dt;
+  tickHold(dt);
+  var p = player;
+  if (p.swingCd > 0) p.swingCd -= dt;
+  if (p.swingT > 0) p.swingT -= dt;
+  if (p.ifr > 0) p.ifr -= dt;
+  if (p.hurtT > 0) p.hurtT -= dt;
+  slimes.forEach(function (s) { if (s.hurtT > 0) s.hurtT -= dt; s.hopT += dt; });
+  companions.forEach(function (c) { if (c.bubbleT > 0) c.bubbleT -= dt; if (c.hurtT > 0) c.hurtT -= dt; });
+  if (p.down) {
+    p.downT -= dt;
+    var rb = (NET.players[NET.uid] || {}).reviveBy;
+    if (rb && Date.now() - rb.t < 1500 && p.downT > 0) {
+      p.reviveT += dt;
+      if (p.reviveT >= REVIVE_TIME) revivePlayer();
+    }
+    if (p.down && p.downT <= 0) downTimeoutPlayer();
+  } else {
+    var mx = padVec.x, my = padVec.y;
+    if (keys['a'] || keys['arrowleft']) mx -= 1;
+    if (keys['d'] || keys['arrowright']) mx += 1;
+    if (keys['w'] || keys['arrowup']) my -= 1;
+    if (keys['s'] || keys['arrowdown']) my += 1;
+    var ml = Math.sqrt(mx * mx + my * my);
+    if (ml > 1) { mx /= ml; my /= ml; ml = 1; }
+    p.moving = ml > 0.12 && !panelType;
+    if (p.fishing && (mx !== 0 || my !== 0)) { p.fishing = null; toast('釣りをやめた'); }
+    if (p.moving && !p.fishing) {
+      p.face.x = Math.abs(mx) > Math.abs(my) ? Math.sign(mx) : 0;
+      p.face.y = Math.abs(my) >= Math.abs(mx) ? Math.sign(my) : 0;
+      if (p.face.x !== 0 && p.face.y !== 0) p.face.y = 0;
+      var sp = p.speed * (panelType ? 0 : 1);
+      tryMove(p, mx * sp * dt, my * sp * dt);
+      p.bobT += dt * 11;
+    }
+    p.hu = clamp(p.hu - dt * (100 / 330), 0, 100);
+    if (p.hu <= 0) { p.hp -= dt * 1.6; if (p.hp <= 0) startDownPlayer('🍖 おなかがすいて気絶した！仲間が助けに来てくれるはず…（30秒以内）'); }
+    else {
+      var cf2 = facByType('core'), ff2 = facByType('fire');
+      var warm = (cf2 && dist2(p.x, p.y, cf2.x, cf2.y) < 170 * 170) || (ff2 && fireFuel > 0 && dist2(p.x, p.y, ff2.x, ff2.y) < 120 * 120);
+      if (warm && p.hu > 25 && p.hp < 100) p.hp = clamp(p.hp + dt * 2.4, 0, 100);
+    }
+    if (p.fishing) {
+      var fz = p.fishing;
+      if (fz.phase === 'wait') {
+        fz.t -= dt;
+        if (fz.t <= 0) { fz.phase = 'bite'; fz.t = 0.85; SE.slime(); toast('❗ HIT！ 👊を押して！', 800); }
+      } else {
+        fz.t -= dt;
+        if (fz.t <= 0) { p.fishing = null; toast('逃げられた…'); }
+      }
+      document.getElementById('btnAction').classList.toggle('hit', fz.phase === 'bite');
+    } else document.getElementById('btnAction').classList.remove('hit');
+  }
+  if (!p.down) {
+    for (var di2 = 0; di2 < drops.length; di2++) {
+      var dd = drops[di2];
+      if (!dd.id || NET.pendingPick[dd.id]) continue;
+      if (dist2(p.x, p.y, dd.x, dd.y) < 22 * 22) { NET.pendingPick[dd.id] = 1; netReq({ t: 'pickup', id: dd.id }); }
+    }
+    shrooms.forEach(function (s, si) {
+      if (s.taken || NET.pendingShroom[si]) return;
+      if (dist2(p.x, p.y, s.x, s.y) < 24 * 24) { NET.pendingShroom[si] = 1; netReq({ t: 'shroom', i: si }); }
+    });
+  }
+  panelTickT -= dt;
+  if (panelTickT <= 0) {
+    panelTickT = 1;
+    if (panelType === 'furnace' && furnaceJob) openPanel('furnace');
+    else if (panelType === 'fire' && cookQueue.length) openPanel('fire');
+    else if (panelType) { var pf = facByType(panelType); if (pf && pf.rebuilding) openPanel(panelType); }
+  }
+  for (var pi = particles.length - 1; pi >= 0; pi--) { var q = particles[pi]; q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.9; q.vy *= 0.9; if (q.t > q.life) particles.splice(pi, 1); }
+  for (var fi = floaters.length - 1; fi >= 0; fi--) { var fl = floaters[fi]; fl.t += dt; fl.y -= 26 * dt; if (fl.t > 1.15) floaters.splice(fi, 1); }
+  if (shake > 0) shake = Math.max(0, shake - dt * 22);
+  camX = clamp(p.x - W / 2, 0, Math.max(0, MW * T - W));
+  camY = clamp(p.y - H / 2, 0, Math.max(0, MH * T - H));
+  updateHUD();
+  if (NET.meta.hostBeat && Date.now() - NET.meta.hostBeat > 12000 && !NET.hostGone) {
+    NET.hostGone = true;
+    toast('⚠️ ホストとの接続が切れたみたい…ホストが戻るか、タイトルに戻って入り直してね', 5000);
+  }
+}
+
+/* ---------------- タイトル／ロビーのボタン ---------------- */
+document.getElementById('btnSolo').addEventListener('click', function () {
+  readProfileFromForm();
+  NET.mode = 'solo'; NET.isHost = false;
+  startGame();
+});
+document.getElementById('btnCreate').addEventListener('click', function () {
+  initAudio();
+  readProfileFromForm();
+  if (!myName) { titleError('名前を入力してね'); return; }
+  saveProfile();
+  if (!fbInit()) { titleError('通信の初期化に失敗しました（ネット接続を確認してね）'); return; }
+  titleError('ルームを作成中…');
+  var code = String(Math.floor(1000 + Math.random() * 9000));
+  netDb.ref('rooms/' + code + '/meta').once('value').then(function (s) {
+    if (s.exists()) { titleError('コードが重なった！もう一度「ルームを作る」を押してね'); return; }
+    NET.seed = Math.floor(Math.random() * 2000000000) + 1;
+    enterRoom(code, true);
+  }).catch(function () { titleError('通信エラー。もう一度試してね'); });
+});
+document.getElementById('btnJoin').addEventListener('click', function () {
+  initAudio();
+  readProfileFromForm();
+  if (!myName) { titleError('名前を入力してね'); return; }
+  saveProfile();
+  var code = (document.getElementById('inCode').value || '').trim();
+  if (!/^\d{4}$/.test(code)) { titleError('4桁のルームコードを入力してね'); return; }
+  if (!fbInit()) { titleError('通信の初期化に失敗しました（ネット接続を確認してね）'); return; }
+  titleError('ルームを探しています…');
+  netDb.ref('rooms/' + code + '/meta').once('value').then(function (s) {
+    if (!s.exists()) { titleError('そのコードのルームは見つかりません'); return; }
+    var m = s.val();
+    if (m.game !== 'gankutsu') { titleError('そのコードは別のゲームのルームです'); return; }
+    if (m.phase && m.phase !== 'lobby') { titleError('そのルームはもう始まっています'); return; }
+    netDb.ref('rooms/' + code + '/players').once('value').then(function (ps) {
+      var n = ps.numChildren();
+      if (n >= 8) { titleError('そのルームは満員です（8人まで）'); return; }
+      enterRoom(code, false);
+    });
+  }).catch(function () { titleError('通信エラー。もう一度試してね'); });
+});
+document.getElementById('btnStartOnline').addEventListener('click', function () {
+  if (!NET.isHost || !NET.roomRef) return;
+  var n = Object.keys(NET.players).length;
+  if (n < 2 || n > 8) return;
+  initAudio();
+  NET.roomRef.child('tiles').remove();
+  NET.roomRef.child('world').remove();
+  NET.roomRef.child('req').remove();
+  NET.roomRef.child('ev').remove();
+  NET.roomRef.child('meta').update({ phase: 'play', hostBeat: Date.now() });
+});
+document.getElementById('btnLeave').addEventListener('click', function () {
+  try { if (NET.myRef) NET.myRef.remove(); } catch (e) {}
+  location.reload();
+});
+function readProfileFromForm() {
+  var v = (document.getElementById('inName').value || '').trim().slice(0, 10);
+  myName = v || 'あなた';
+}
+/* ゲーム中の拡大・文字選択・長押しコールアウト無効化（無人島と同じ処理を追加） */
+document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+document.addEventListener('dblclick', function (e) { e.preventDefault(); });
+document.addEventListener('touchmove', function (e) {
+  if (!e.target.closest || !e.target.closest('#panelCard,.helpCard,#titleScr,#lobbyScr')) e.preventDefault();
+}, { passive: false });
+loadProfile();
+buildCharGrid();
+
+buildTileImgs();
+refreshHotbar();
+drawTitlePreviews();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
