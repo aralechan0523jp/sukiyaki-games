@@ -278,7 +278,7 @@
    岩窟サバイバーズ（試作） 見下ろし2D・協力サバイバル
    ============================================================ */
 var T = 40;                 // タイルサイズ(px)
-var MW = 96, MH = 72;       // マップ広さ(タイル)
+var MW = 144, MH = 108;       // マップ広さ(タイル)
 var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 var W = 0, H = 0, DPR = 1;
 function resize() {
@@ -440,7 +440,7 @@ var CHAR_DESIGNS = {
   lamp:  { body: '#e8b71f', bodyDark: '#b8890f', trim: '#7a4a21', skin: '#ffd9b3', hair: '#6b4a2a', hat: '#f2c230', hatDark: '#d9a416' },
   cook:  { body: '#e86a92', bodyDark: '#bd446e', trim: '#ffffff', skin: '#ffd9b3', hair: '#8a3324', hat: '#e2483d', hatDark: '#b82f24' }
 };
-var CX = 48, CY = 36; // 拠点中心タイル
+var CX = 72, CY = 54; // 拠点中心タイル
 
 function resetInv() { inv = {}; box = {}; ITEM_ORDER.forEach(function (k) { inv[k] = 0; box[k] = 0; }); }
 function addInv(k, n) { inv[k] = (inv[k] || 0) + n; if (inv[k] < 0) inv[k] = 0; refreshHotbar(); }
@@ -477,8 +477,8 @@ function genMap() {
   // 拠点の広場
   carveCircle(CX, CY, 8, 0);
   // ランダムウォークで洞窟を掘る
-  for (i = 0; i < 30; i++) {
-    var x = CX, y = CY, steps = irnd(160, 420);
+  for (i = 0; i < 45; i++) {
+    var x = CX, y = CY, steps = irnd(240, 630);
     for (var s = 0; s < steps; s++) {
       var r = rnd01() < 0.22 ? 1 : 0;
       carveCircle(x, y, r, 0);
@@ -488,16 +488,16 @@ function genMap() {
     }
   }
   // 地下湖（南西）
-  var lx = CX - 27, ly = CY + 17;
+  var lx = CX - 40, ly = CY + 26;
   carvePath(CX, CY, lx, ly, 1);
   carveCircle(lx, ly, 5, 6);
   carveCircle(lx + 2, ly - 2, 3, 6);
   // クリスタル洞（北東・遠方）
-  var gx = CX + 29, gy = CY - 20;
+  var gx = CX + 44, gy = CY - 30;
   carvePath(CX, CY, gx, gy, 1);
   carveCircle(gx, gy, 6, 0);
   // 土壁をところどころに（柔らかい壁）
-  for (i = 0; i < 2600; i++) {
+  for (i = 0; i < 5800; i++) {
     tx = irnd(2, MW - 3); ty = irnd(2, MH - 3);
     if (grid[tIdx(tx, ty)] === 1 && Math.abs(tx - CX) + Math.abs(ty - CY) > 6 && rnd01() < 0.4) grid[tIdx(tx, ty)] = 2;
   }
@@ -508,20 +508,20 @@ function genMap() {
       if (vx > 1 && vy > 1 && vx < MW - 2 && vy < MH - 2 && isWallTile(grid[tIdx(vx, vy)]) && grid[tIdx(vx, vy)] !== 7) grid[tIdx(vx, vy)] = type;
     }
   }
-  for (i = 0; i < 46; i++) { // 銅（中距離）
-    tx = CX + irnd(-34, 34); ty = CY + irnd(-26, 26);
+  for (i = 0; i < 100; i++) { // 銅（中距離）
+    tx = CX + irnd(-51, 51); ty = CY + irnd(-39, 39);
     var d = Math.abs(tx - CX) + Math.abs(ty - CY);
-    if (d > 9 && d < 52 && tileAt(tx, ty) !== 6) vein(tx, ty, 3, irnd(3, 6));
+    if (d > 9 && d < 78 && tileAt(tx, ty) !== 6) vein(tx, ty, 3, irnd(3, 6));
   }
-  for (i = 0; i < 34; i++) { // 鉄（遠め）
-    tx = CX + irnd(-42, 42); ty = CY + irnd(-32, 32);
+  for (i = 0; i < 75; i++) { // 鉄（遠め）
+    tx = CX + irnd(-63, 63); ty = CY + irnd(-48, 48);
     d = Math.abs(tx - CX) + Math.abs(ty - CY);
     if (d > 20 && tileAt(tx, ty) !== 6) vein(tx, ty, 4, irnd(3, 5));
   }
-  for (i = 0; i < 16; i++) { // クリスタル（最遠＋洞の周囲）
-    tx = CX + irnd(-44, 44); ty = CY + irnd(-33, 33);
+  for (i = 0; i < 36; i++) { // クリスタル（最遠＋洞の周囲）
+    tx = CX + irnd(-66, 66); ty = CY + irnd(-50, 50);
     d = Math.abs(tx - CX) + Math.abs(ty - CY);
-    if (d > 34 && tileAt(tx, ty) !== 6) vein(tx, ty, 5, irnd(2, 4));
+    if (d > 51 && tileAt(tx, ty) !== 6) vein(tx, ty, 5, irnd(2, 4));
   }
   for (ty = gy - 8; ty <= gy + 8; ty++) for (tx = gx - 8; tx <= gx + 8; tx++) { // 洞の壁はクリスタル多め
     if (tx > 1 && ty > 1 && tx < MW - 2 && ty < MH - 2 && isWallTile(grid[tIdx(tx, ty)]) && rnd01() < 0.4) grid[tIdx(tx, ty)] = 5;
@@ -529,7 +529,7 @@ function genMap() {
   // タイルHP初期化
   for (i = 0; i < MW * MH; i++) { var t = grid[i]; tileHp[i] = TILE_HP[t] || 0; }
   // 野生キノコ（壁際の床）
-  for (i = 0; i < 900 && shrooms.length < 46; i++) {
+  for (i = 0; i < 2000 && shrooms.length < 100; i++) {
     tx = irnd(2, MW - 3); ty = irnd(2, MH - 3);
     if (grid[tIdx(tx, ty)] !== 0) continue;
     var nearWall = isWallTile(tileAt(tx + 1, ty)) || isWallTile(tileAt(tx - 1, ty)) || isWallTile(tileAt(tx, ty + 1)) || isWallTile(tileAt(tx, ty - 1));
@@ -546,7 +546,7 @@ function genMap() {
   addFac('furnace', CX + 4, CY + 1, '🔥', 'かまど');
   addFac('box', CX, CY + 3, '📦', '共有ボックス');
   // 木材ブロック（倒木）：拠点から離れた床に点在。👊3回で壊れて木材1〜3個、2分で復活
-  for (i = 0; i < 1600 && woodBlocks.length < 24; i++) {
+  for (i = 0; i < 3600 && woodBlocks.length < 54; i++) {
     tx = irnd(2, MW - 3); ty = irnd(2, MH - 3);
     if (grid[tIdx(tx, ty)] !== 0) continue;
     if (Math.abs(tx - CX) + Math.abs(ty - CY) <= 10) continue;
