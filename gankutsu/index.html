@@ -1425,11 +1425,23 @@ function doHandAction() {
   var downMate = null, dmD = 58 * 58;
   companions.forEach(function (c) { if (!c.down || c.out) return; var d = dist2(player.x, player.y, c.x, c.y); if (d < dmD) { dmD = d; downMate = c; } });
   if (downMate && !downMate.revive) {
-    downMate.revive = { t: 0, by: NET.mode === 'guest' ? NET.uid : 'host' };
-    if (NET.mode === 'guest') netReq({ t: 'reviveMate', i: companions.indexOf(downMate) });
+    downMate.revive = { t: 0, helpers: {} };
+    downMate.revive.helpers[netSelfKey()] = Date.now();
+    if (isGuestMode()) netReq({ t: 'reviveMate', i: companions.indexOf(downMate) });
     SE.craft();
     toast('🖐️ ' + downMate.name + ' の復活作業をはじめた！近くにいてね（15秒）', 2800);
     return;
+  }
+  if (downMate && downMate.revive) {
+    // 既に始まっている復活作業に加わる（作業人数が多いほど速く進む）
+    if (!downMate.revive.helpers) downMate.revive.helpers = {};
+    if (!downMate.revive.helpers[netSelfKey()]) {
+      downMate.revive.helpers[netSelfKey()] = Date.now();
+      if (isGuestMode()) netReq({ t: 'reviveMate', i: companions.indexOf(downMate) });
+      SE.craft();
+      toast('🖐️ ' + downMate.name + ' の復活作業に加わった！人数が多いほど速い', 2400);
+      return;
+    }
   }
   var sleepRemote = netNearestSleepRemote(58);
   if (sleepRemote) { NET.wakingTarget = sleepRemote.uid; toast('🖐️ ' + sleepRemote.name + ' を起こしはじめた！近くにいてね（5秒）', 2400); return; }
@@ -1996,7 +2008,7 @@ function hurtPlayer(dmg) {
 /* プレイヤーが気絶：60秒間、移動も行動もできない。仲間が近くで15秒かけて復活させてくれる */
 function startDownPlayer(msg) {
   if (player.down) return;
-  player.hp = 0; player.down = true; player.downT = DOWN_TIME; player.reviveT = 0;
+  player.hp = 0; player.down = true; player.downT = DOWN_TIME; player.reviveT = 0; player._rvH = {};
   player.sleepT = 0; player.fetch = null; // 眠ったまま倒れた場合は気絶フローへ（眠りは解除）
   player.moving = false;
   closePanel();
@@ -2005,7 +2017,7 @@ function startDownPlayer(msg) {
 }
 /* 仲間による復活が完了（HP50で起き上がる） */
 function revivePlayer() {
-  player.down = false; player.hp = 50; player.reviveT = 0;
+  player.down = false; player.hp = 50; player.reviveT = 0; player._rvH = {};
   document.getElementById('fadeBlack').style.opacity = 0;
   burst(player.x, player.y, '#7ee787', 16, 120); SE.levelup();
   toast('🖐️ 仲間が復活させてくれた！（HP50）', 2800);
@@ -2024,7 +2036,7 @@ function downTimeoutPlayer() {
   } else {
     dropList.forEach(function (kv) { spawnDrop(player.x, player.y, kv[0], kv[1]); });
   }
-  player.out = true; player.downT = 0; player.reviveT = 0; player.sleepT = 0; player.wakeT = 0;
+  player.out = true; player.downT = 0; player.reviveT = 0; player._rvH = {}; player.sleepT = 0; player.wakeT = 0;
   document.getElementById('fadeBlack').style.opacity = 0;
   if (typeof hideGiveUpDialog === 'function') hideGiveUpDialog(); // 脱落後は金での復活・リスタートは使えない
   if (typeof giveUpLatch !== 'undefined') giveUpLatch = true;
@@ -2450,15 +2462,16 @@ function update(dt) {
   if (p.ifr > 0) p.ifr -= dt;
   if (p.hurtT > 0) p.hurtT -= dt;
   if (p.down) {
-    // 気絶中：動けない・何もできない。近くに仲間がいれば復活作業が進む（15秒）
+    // 気絶中：動けない・何もできない。近くの仲間や他プレイヤーが復活作業を進める（15秒÷作業人数の速さ）
     // 誰かが復活作業を進めている間は、60秒の気絶タイマーが止まる（中断されると再開する）
+    // 作業者の誰かが気絶すると進捗は0にリセットされる（reviveTickLocalPlayer 内で処理）
     // 脱落（p.out）したらタイマーも復活も進まない：体は倒れたまま残り、本人の画面は観戦モードになる
-    var rescuerNear = !p.out && (companions.some(function (c) { return !c.down && !(c.sleepT > 0) && dist2(c.x, c.y, p.x, p.y) < 42 * 42; }) || netReviveByFresh());
-    if (rescuerNear && p.downT > 0) {
-      p.reviveT += dt;
+    var rvRate = p.out ? 0 : reviveTickLocalPlayer(p, dt);
+    if (rvRate > 0 && p.downT > 0) {
+      p.reviveT += dt * rvRate;
       if (p.reviveT >= REVIVE_TIME) revivePlayer();
     }
-    if (!rescuerNear && !p.out) p.downT -= dt;
+    if (rvRate === 0 && !p.out) p.downT -= dt;
     if (p.down && !p.out && p.downT <= 0) downTimeoutPlayer();
   } else {
     if (p.sleepT > 0) p.sleepT -= dt; // 催眠ガスで眠っている（時間で自然に起きる）
@@ -3265,20 +3278,17 @@ function updateCompanions(dt) {
 
     if (c.down) {
       if (c.out) return; // 脱落：その階では復活しない。体は倒れた場所に横たわったまま残り、AIは停止する（狙われもしない）
-      // 気絶中：動けない。プレイヤーが🖐️で始めた復活作業は、プレイヤーが近くにいる間だけ進む（15秒）
+      // 気絶中：動けない。🖐️で始めた復活作業は、作業者が近くにいる間だけ進む（15秒÷作業人数の速さ）
       // 復活作業が進んでいる間は、60秒の気絶タイマーが止まる（中断されると再開する）
-      var cReviving = false;
-      if (c.revive && netReviverNear(c)) {
-        c.revive.t += dt;
-        cReviving = true;
-        if (c.revive.t >= REVIVE_TIME) {
-          c.down = false; c.hp = 50; c.revive = null; c.state = 'idle'; c.target = null;
-          burst(c.x, c.y, '#7ee787', 14, 110); SE.levelup();
-          sayBubble(c, 'ありがとう！助かった…');
-          toast('🖐️ ' + c.name + ' を復活させた！（HP50）', 2600);
-          updateHUD();
-          return;
-        }
+      // 作業者の誰かが気絶すると進捗は0にリセットされる（netTickMateRevive 内で処理）
+      var cReviving = netTickMateRevive(c, dt);
+      if (cReviving && c.revive && c.revive.t >= REVIVE_TIME) {
+        c.down = false; c.hp = 50; c.revive = null; c.state = 'idle'; c.target = null;
+        burst(c.x, c.y, '#7ee787', 14, 110); SE.levelup();
+        sayBubble(c, 'ありがとう！助かった…');
+        toast('🖐️ ' + c.name + ' を復活させた！（HP50）', 2600);
+        updateHUD();
+        return;
       }
       if (!cReviving) c.downT -= dt;
       if (c.down && c.downT <= 0) {
@@ -3312,7 +3322,7 @@ function updateCompanions(dt) {
     var rescueT = netRescueTarget();
     if (rescueT) {
       moveToward(c, rescueT.x, rescueT.y, dt, 24);
-      if (rescueT.uid && dist2(c.x, c.y, rescueT.x, rescueT.y) < 42 * 42) netWriteReviveBy(rescueT.uid);
+      if (rescueT.uid && dist2(c.x, c.y, rescueT.x, rescueT.y) < 42 * 42) netWriteReviveBy(rescueT.uid, companions.indexOf(c));
       return;
     }
 
@@ -5050,11 +5060,79 @@ function netNearestSleepRemote(maxD) {
   });
   return best;
 }
-/* 自分のノードに書かれた reviveBy が新しいか（他人が復活作業をしてくれている） */
+/* 自分のノードに書かれた reviveBy が新しいか（他人が復活作業をしてくれている）
+   reviveBy は作業者ごとのマップ { <uid or 'cpu<仲間index>': {t} }。1件でも新しければ true */
 function netReviveByFresh() {
   if (NET.mode === 'solo') return false;
   var rb = (NET.players[NET.uid] || {}).reviveBy;
-  return !!(rb && Date.now() - rb.t < 1500);
+  if (!rb) return false;
+  var now = Date.now();
+  return Object.keys(rb).some(function (k) { var e = rb[k]; return !!(e && typeof e.t === 'number' && now - e.t < 1500); });
+}
+/* 復活作業の作業者キー：ホスト本人／ソロは 'host'、ゲストは自分の uid */
+function netSelfKey() { return NET.mode === 'guest' ? NET.uid : 'host'; }
+/* 自分（ローカルプレイヤー）の復活進捗を1フレーム進めるための速度（＝現在の作業人数）を返す。
+   作業者＝近くの意識あるCPU仲間（ゲスト時は数えない：仲間はホスト権威で reviveBy 'cpu<i>' 経由）＋
+   自分のノードへ reviveBy を書いている人。作業者の誰かが気絶したら p.reviveT を0にリセットする。
+   作業者が自発的に離れた場合はリセットしない（進捗は止まるだけ）。p._rvH に作業者の最終貢献時刻を持つ */
+function reviveTickLocalPlayer(p, dt) {
+  if (!p || p.out) return 0;
+  var now = Date.now();
+  if (!p._rvH) p._rvH = {};
+  var rate = 0;
+  if (NET.mode !== 'guest') {
+    companions.forEach(function (c, i) {
+      if (!c.down && !(c.sleepT > 0) && dist2(c.x, c.y, p.x, p.y) < 42 * 42) { rate++; p._rvH['c' + i] = now; }
+    });
+  }
+  if (NET.mode !== 'solo') {
+    var rbMap = (NET.players[NET.uid] || {}).reviveBy;
+    if (rbMap) Object.keys(rbMap).forEach(function (k) {
+      var e = rbMap[k];
+      if (e && typeof e.t === 'number' && now - e.t < 1500) { rate++; p._rvH[k] = now; }
+    });
+  }
+  // 作業者の気絶チェック：最近（2.5秒以内）まで貢献していた作業者が倒れていたら進捗リセット
+  var keys = Object.keys(p._rvH);
+  for (var j = 0; j < keys.length; j++) {
+    var k2 = keys[j], downed = false;
+    if (now - p._rvH[k2] > 2500) { delete p._rvH[k2]; continue; }
+    if (k2.indexOf('cpu') === 0) downed = !!(companions[+k2.slice(3)] && companions[+k2.slice(3)].down);
+    else if (k2.charAt(0) === 'c') downed = !!(companions[+k2.slice(1)] && companions[+k2.slice(1)].down);
+    else { var r2 = NET.players[k2]; downed = !!(r2 && r2.down); }
+    if (downed) { p.reviveT = 0; p._rvH = {}; break; }
+  }
+  return rate;
+}
+/* 仲間の復活進捗（ホスト／ソロ権威）：c.revive.helpers = { <作業者キー>: 最終貢献時刻 }。
+   近くにいて意識のある作業者の人数ぶん速く進む。作業者の誰かが気絶したら進捗を0にリセットし、
+   その作業者は登録から外れる（残りの作業者は0から続ける）。作業者が誰もいなくなったら c.revive を畳む。
+   戻り値＝このフレームで進捗したか（気絶タイマーを止めるかどうか） */
+function netTickMateRevive(c, dt) {
+  if (!c.revive) return false;
+  if (!c.revive.helpers) c.revive.helpers = {};
+  var now = Date.now();
+  var rate = 0;
+  Object.keys(c.revive.helpers).forEach(function (k) {
+    var near = false, down = false;
+    if (k === 'host') {
+      down = !player || !!player.down;
+      near = !!player && !player.down && !(player.sleepT > 0) && dist2(player.x, player.y, c.x, c.y) < 72 * 72;
+    } else {
+      var r = NET.players[k];
+      down = !!(r && r.down);
+      near = !!r && !r.down && typeof r.x === 'number' && !(NET.sleepT[k] > 0) && dist2(r.x, r.y, c.x, c.y) < 72 * 72;
+    }
+    if (down && now - c.revive.helpers[k] < 2500) {
+      c.revive.t = 0; // 貢献者が気絶：進捗リセット＋その作業者を外す
+      delete c.revive.helpers[k];
+      return;
+    }
+    if (near) { rate++; c.revive.helpers[k] = now; }
+  });
+  if (Object.keys(c.revive.helpers).length === 0) { c.revive = null; return false; }
+  if (rate > 0) { c.revive.t += dt * rate; return true; }
+  return false;
 }
 /* 仲間の復活作業が進む条件：作業者（ホスト本人 or リモートの by）が近くにいて、眠っていないこと */
 function netReviverNear(c) {
@@ -5090,12 +5168,16 @@ function netRescueTarget() {
   }
   return null;
 }
-function netWriteReviveBy(uid) {
+function netWriteReviveBy(uid, ci) {
   if (!NET.roomRef) return;
   var now = Date.now();
-  if (now - NET.lastCpuRevive < 400) return;
+  // 仲間ごとに reviveBy/cpu<index> を書く（対象側が人数を数え、誰が気絶したか分かるように）
+  if (!NET.lastCpuReviveMap) NET.lastCpuReviveMap = {};
+  var key = uid + ':cpu' + ci;
+  if (now - (NET.lastCpuReviveMap[key] || 0) < 400) return;
+  NET.lastCpuReviveMap[key] = now;
   NET.lastCpuRevive = now;
-  NET.roomRef.child('players/' + uid + '/reviveBy').set({ by: 'cpu', t: now });
+  NET.roomRef.child('players/' + uid + '/reviveBy/cpu' + ci).set({ t: now });
 }
 /* 描画用リモート一覧（表示座標は補間で滑らかに） */
 function netRemoteDrawList() {
@@ -5518,7 +5600,16 @@ function netProcessReq(q) {
       }
       break;
     }
-    case 'reviveMate': { var c2 = companions[q.i]; if (c2 && c2.down && !c2.out && !c2.revive) c2.revive = { t: 0, by: q.u }; break; }
+    case 'reviveMate': {
+      // 復活作業の開始／途中参加：作業者として登録する（既に始まっていても helpers に加える）
+      var c2 = companions[q.i];
+      if (c2 && c2.down && !c2.out) {
+        if (!c2.revive) c2.revive = { t: 0, helpers: {} };
+        if (!c2.revive.helpers) c2.revive.helpers = {};
+        c2.revive.helpers[q.u] = Date.now();
+      }
+      break;
+    }
     case 'dropAll': {
       // ゲストの脱落時ドロップ：ドロップはホスト権威なので、本人の配信座標にホストが実物を登録する
       // （out フラグの伝播より req が先に届くことがあるため、条件は「気絶中であること」で判定する）
@@ -5652,8 +5743,9 @@ function netTickReviveTarget() {
   if (!tid || !NET.roomRef) return;
   var r = NET.players[tid];
   var ok = r && r.down && !r.out && player && !player.down && !(player.sleepT > 0) && typeof r.x === 'number' && dist2(player.x, player.y, r.x, r.y) < 72 * 72;
-  if (ok) NET.roomRef.child('players/' + tid + '/reviveBy').set({ by: NET.uid, t: Date.now() });
-  else { NET.roomRef.child('players/' + tid + '/reviveBy').set(null); NET.revivingTarget = null; }
+  // reviveBy は作業者ごとのマップ：自分のキーだけを書く／消す（他の作業者の分は消さない）
+  if (ok) NET.roomRef.child('players/' + tid + '/reviveBy/' + NET.uid).set({ t: Date.now() });
+  else { NET.roomRef.child('players/' + tid + '/reviveBy/' + NET.uid).set(null); NET.revivingTarget = null; }
 }
 /* 起こし中の対象の wakeBy を維持する（netTickReviveTarget と同じ流儀：条件が崩れたら解除） */
 function netTickWakeTarget() {
@@ -5723,15 +5815,15 @@ function guestUpdate(dt) {
   }
   companions.forEach(function (c) { if (c.bubbleT > 0) c.bubbleT -= dt; if (c.hurtT > 0) c.hurtT -= dt; });
   if (p.down) {
-    // 誰かが復活作業を進めている間（reviveBy が新鮮な間）は、60秒の気絶タイマーが止まる
+    // 誰かが復活作業を進めている間は、60秒の気絶タイマーが止まる（進捗は作業人数倍の速さ。
+    // 作業者の誰かが気絶すると進捗は0にリセットされる。どちらも reviveTickLocalPlayer が処理）
     // 脱落（p.out）したらタイマーも復活も進まない（体は倒れたまま残り、本人の画面は観戦モード）
-    var rb = (NET.players[NET.uid] || {}).reviveBy;
-    var beingRevived = !p.out && !!(rb && Date.now() - rb.t < 1500);
-    if (beingRevived && p.downT > 0) {
-      p.reviveT += dt;
+    var rvRate = p.out ? 0 : reviveTickLocalPlayer(p, dt);
+    if (rvRate > 0 && p.downT > 0) {
+      p.reviveT += dt * rvRate;
       if (p.reviveT >= REVIVE_TIME) revivePlayer();
     }
-    if (!beingRevived && !p.out) p.downT -= dt;
+    if (rvRate === 0 && !p.out) p.downT -= dt;
     if (p.down && !p.out && p.downT <= 0) downTimeoutPlayer();
   } else {
     if (p.sleepT > 0) p.sleepT -= dt; // 催眠ガスで眠っている（時間で自然に起きる）
