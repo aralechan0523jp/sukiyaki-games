@@ -720,22 +720,6 @@
       }
       #stage.coop #rikki2{ display:block; }
       #rikki2 canvas{ width:100%; height:auto; display:block; }
-      /* ---------- 協力プレイ：レーン交代のお知らせ ---------- */
-      #swapBanner{
-        position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-        z-index:45; pointer-events:none; opacity:0; text-align:center; white-space:nowrap;
-        font-family:"Mochiy Pop One",sans-serif; font-size:clamp(34px,10vw,52px); color:#fff;
-        background:var(--red); border:3px solid #fff; border-radius:999px; padding:8px 34px;
-        box-shadow:0 5px 0 rgba(90,30,10,.45);
-      }
-      #swapBanner.show{ animation:swapIn 1.8s ease-out; }
-      @keyframes swapIn{
-        0%{ opacity:0; transform:translate(-50%,-50%) scale(.5) rotate(-4deg); }
-        15%{ opacity:1; transform:translate(-50%,-50%) scale(1.12) rotate(2deg); }
-        28%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); }
-        80%{ opacity:1; }
-        100%{ opacity:0; transform:translate(-50%,-50%) scale(1); }
-      }
       /* 救済食材には目印を付けない：下段の食材は上段の通常食材とまったく同じ見た目で流れる */
       #judgePop.cover{ color:#2e9e4f; text-shadow:2px 2px 0 #14532a, -1px -1px 0 #14532a, 1px -1px 0 #14532a, -1px 1px 0 #14532a; }
       #stage.coop #potBanner{ top:45%; }
@@ -764,7 +748,7 @@
       #testBadge[hidden]{ display:none; }
       @media (prefers-reduced-motion: reduce){
         #flames::before, .flame{ animation:none; }
-        #judgePop.show, #sfxPop.show, #banner.show, #comboBanner.show, #potSvgWrap.bounce, #warnBanner.show, #potBanner.show, #swapBanner.show{ animation-duration:.01s; }
+        #judgePop.show, #sfxPop.show, #banner.show, #comboBanner.show, #potSvgWrap.bounce, #warnBanner.show, #potBanner.show{ animation-duration:.01s; }
         #comboBanner.show{ animation-name:comboIn; }
         #crackers.on .cracker.left, #crackers.on .cracker.right{ animation-duration:.01s; }
         .ranking-row.first, .ranking-row.first .ranking-score,
@@ -875,7 +859,6 @@
           </div>
           <div id="potBanner"></div>
           <div id="warnBanner"></div>
-          <div id="swapBanner">レーン交代！</div>
           <div id="blackout" aria-hidden="true">
             <div class="bo-rikki">
               <svg viewBox="0 0 120 150"><circle cx="36" cy="44" r="10" fill="#fffbe8" style="filter:drop-shadow(0 0 6px #ffe45e) drop-shadow(0 0 14px #ffd83d)"/><circle cx="58" cy="44" r="10" fill="#fffbe8" style="filter:drop-shadow(0 0 6px #ffe45e) drop-shadow(0 0 14px #ffd83d)"/><ellipse cx="36" cy="45" rx="3.2" ry="5.4" fill="#22252a"/><ellipse cx="58" cy="45" rx="3.2" ry="5.4" fill="#22252a"/><circle cx="34.6" cy="41.4" r="1.7" fill="#ffffff"/><circle cx="56.6" cy="41.4" r="1.7" fill="#ffffff"/></svg>
@@ -2672,20 +2655,13 @@
     function bottomIsMine() {
       return G.mode === 'coop' && COOP.role === 'guest';
     }
-    /* 現在メインのレーンは COOP.mainBottom（人前が奇数なら下段）で表す */
-    function showLaneBanner() {
-      const el = $('swapBanner');
-      if (!el) return;
-      el.className = '';
-      void el.offsetWidth;
-      el.className = 'show';
-    }
+    /* 現在メインのレーンは COOP.mainBottom（人前が奇数なら下段）で表す。
+       交代のとき画面中央へのお知らせ表示は出さない（交代自体はそのまま行う） */
     function syncMainLane() {
       if (G.mode !== 'coop') return;
       const mb = (G.pots % 2) === 1;
       if (mb === COOP.mainBottom) return;
       COOP.mainBottom = mb;
-      if (G.playing && !G.over) showLaneBanner();
     }
     /* ホストが自分のレーン（上段）の結果を、ゲストの画面にも表示させるための通知 */
     function sendCoopDisplay(r, n, j) {
