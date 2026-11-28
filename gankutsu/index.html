@@ -213,14 +213,13 @@
     <div class="sub">オンライン協力版 ― 仲間と掘って、地下12階を目指そう</div>
     <div class="titlePanel">
       <div class="nameRow"><span style="color:#ffe9c9;font-weight:700">名前</span><input id="inName" maxlength="10" placeholder="名前を入力" autocomplete="off"></div>
-      <div class="charNote">キャラを選んでね（ゲーム中もこの見た目で表示されます）</div>
       <div id="charGrid"></div>
       <button class="bigBtn goldBtn" id="btnCreate">🏠 ルームを作る</button>
       <div class="joinRow"><input id="inCode" maxlength="4" inputmode="numeric" placeholder="1234" autocomplete="off"><button class="bigBtn blueBtn" id="btnJoin">🚪 コードで参加</button></div>
       <div id="titleErr"></div>
       <button class="bigBtn sub2" id="btnSolo">1人で練習</button>
       <button class="bigBtn sub2" id="btnHelp">❓ 遊び方</button>
-      <div class="note">オンラインは2〜8人協力。ホストが「ルームを作る」→ 4桁コードを仲間に伝えてね。<br>名前とキャラは自動で記憶されます。ホストが抜けると試合は止まります。</div>
+      <div class="note">オンラインは2〜8人協力。ホストが「ルームを作る」→ 4桁コードを仲間に伝えてね。<br>ホストが抜けるとゲームは止まります。</div>
     </div>
   </div>
 </div>
@@ -239,37 +238,20 @@
 <div class="overlay" id="helpScr">
       <div class="helpCard">
         <h2>⛏️ あそびかた</h2>
-        <b>移動</b>：左下のスライドパッド／WASD・矢印キー<br />
-        <b>アクション</b>：右下の👊ボタン／スペースキー。<b>長押しすると、押し続けている間アクションが繰り返される</b>（掘る・たたく・食べる等）。離すと止まるよ。壁を掘る・敵をたたく・食べる、状況で自動で切り替わるよ。<br />
-        <b>施設メニュー</b>：💎コア・🔥製錬炉・📦共有ボックス・🔥焚き火・🔨作業台は、👊の上にある<b>🖐️ボタン／Eキー</b>で開くよ（👊では開きません）。<br />
-        <b>アイテム選択</b>：下のアイテム欄をタップ／数字キー。<br /><br />
-        <b>拠点の施設</b><br />
-        💎 コア…アーティファクトを献上する祭壇（光源にもなる）。献上すると次の階へ進める<br />
-        🗝️ 宝箱…各階に7個。🖐️で開ける。中身は空っぽ×3・アーティファクト×1・ミミック×1・催眠ガス×2。アーティファクトをコアに献上すると次の階へ（持ち物・道具はリセット）。地下12階の献上でエンディング！<br />
-        🔨 作業台…ピッケル・剣・ランタン・たいまつ・篝火・方位磁石を作る（作成には1件<b>4秒</b>かかる。作業台の近くに人がいる間だけ進むよ）<br />
-        🔥 製錬炉…鉱石をインゴットに精錬する（精錬1回につき木材1個が必要・<b>1個10秒</b>かかる。終わると自動でアイテム欄に入る）。精錬は離れていても進むよ<br />
-        🔥 焚き火…火は共有ボックスの木材で自動で保たれる（25秒ごとに木材1個を消費し、ボックスの木材がなくなると消える）。火がついている間は料理（焼ききのこ・シチュー、<b>1品3秒</b>かかる）も作れて、そばでは体力が回復する。火が消えると光も回復も止まるよ。火が消えたら、再点火には<b>木材1個と20秒の作業</b>が必要だよ（🖐️メニューの「火をつける」から開始。作業は焚き火の近くにいる間だけ進む）<br />
-        📋 注文キュー…料理と精錬とクラフトは<b>別々のキュー</b>（各最大<b>20件</b>）で、<b>同時に進められる</b>。料理は<b>焚き火の近くに人がいる間だけ</b>、クラフトは<b>作業台の近くに人がいる間だけ</b>進み、精錬は離れていても進むよ<br />
-        📦 共有ボックス…仲間とアイテムを出し入れ<br />
-        🍄 菜園…🖐️でキノコを植えるとキノコ畑になる（キノコは手持ち→共有ボックスの順に使う）。🖐️で水をあげると育ち（水も手持ち→共有ボックスの順に使う）、育ったキノコは👊で収穫（収穫しても植え直しは要らない。仲間のココも手伝ってくれる）<br /><br />
-        <b>ヒント</b><br />
-        ・鉄鉱石は銅のピッケル、クリスタルは鉄のピッケルでないと掘れない<br />
-        ・ピッケルや剣を振ると、1振りごとに空腹が0.3減る（空振りでも減るよ）。空腹が0になると体力が減っていくうえに、<b>足も半分の速さ</b>になる。おなかが空く前に料理を食べよう<br />
-        ・🪵 木材ブロック（茶色い倒木）を👊で3回叩くと木材が1〜3個取れる（取った場所は2分で復活）。木材は焚き火の燃料と製錬炉の精錬に使うよ<br />
-        ・💧 水は地底湖の岸で水に向かって🖐️を押すと汲める（<b>3秒</b>かかる・動くと中断・最大<b>10個</b>まで）。料理には水が1品につき1個必要だよ。仲間のココも共有ボックスの水とキノコで料理してくれるよ<br />
-        ・暗い場所にはスライムがいる。たいまつ（持っている間だけ明るい・1本1分で燃え尽きる）・篝火（地面に置く）やランタンで明るくしよう<br />
-        ・スライムは速くて、見つけると遠くまで追ってくる。一番近い人や施設を狙うよ。<b>赤いスライム</b>は緑より速さ・体力2倍で攻撃も強い。自分から25マスより外側のマップのあちこちには、もっと強い<b>黄色いスライム</b>（体力4倍・攻撃8・速さ300）と<b>紫スライム</b>（体力6倍・攻撃12・速さ500）も現れるよ。四隅の洞にいる<b>青い大スライム</b>は速さ・体力10倍、攻撃19のボスだよ（北東のクリスタル洞には必ずいて、ほかの洞にいるかは階ごとにランダム）<br />
-        ・四隅の洞には<b>ゴブリン</b>の番人がいて（洞ごとに1〜5体、クリスタル洞は3体）、弓矢で遠くから攻撃してくるよ。矢は<b>壁を越えてくる</b>ので物陰では防げない！撃たれたら動いて避けよう。体力は40と高めだけど足は遅い。倒しても60秒で復活する番人だよ<br />
-        ・仲間のHPは左上のリストでいつも見える。HPが減った仲間に近づいて<b>🖐️</b>を押すと、手持ちの食べ物を1つ渡して回復できる（👊では渡せない。施設のそばでは施設メニューが優先）。<b>ゼリーやキノコでは体力は増えない</b>ので、シチューなどの料理を渡そう<br />
-        ・スライムは拠点の施設（製錬炉・作業台・焚き火・共有ボックス）も攻撃して<b>壊す</b>よ（施設HP100）。壊れると使えなくなり、ボックスの中身や精錬・調理中だった素材は地面に散らばる（触れると拾える）。壊れた施設（瓦礫）の上は歩けるよ。壊れた施設は🖐️パネルから素材を払って作り直そう（約20秒・近くにいる間だけ進む）。壊れる前なら、🖐️パネルから少しの材料で修復できるよ（修復には<b>3秒の作業</b>が必要で、近くにいる間だけ進む。完了でHP満タンに戻る）<br />
-        ・宝箱の<b>ミミック</b>は体力50・攻撃18・速さは青い大スライムと同じお宝モンスター。倒すと🪙金（70%で1個）とクリスタルが手に入るよ。<b>催眠ガス</b>は半径3タイル以内の全員が15秒眠ってしまう（眠っている間もモンスターに狙われる！HPが0になれば気絶する）<br />
-        ・🔴 <b>赤いゼリー</b>はスライムがまれに落とすレア素材（全スライム1%・青い大スライムは99%）。ゴブリンは🪙金を10%で落とすよ<br />
-        ・🧭 <b>方位磁石</b>（作業台：赤いゼリー1個＋銅インゴット3個）を持つと、アーティファクトのある方向を矢印で示してくれる。誰かがアーティファクトを持っている間は針が止まるよ<br />
-        ・🪙 <b>金</b>は特別なアイテム：<b>階を進んでも消えない</b>（手持ちも共有ボックスの中もそのまま持ち越される）。さらに気絶した時、金1個で<b>その場で復活</b>したり、<b>その階層を最初からやり直したり</b>できる（やり直しても所持品は減らない）<br />
-        ・モンスターは階が深いほど・日数が経つほど体力が増える（基礎HPは1階1日目6→12階1日目39）。深い階ほど備えを整えよう<br />
-        ・誰かが復活作業を進めている間は、気絶の30秒タイマーが止まるよ。あきらめずに助け合おう<br />
-        ・焚き火やコアのそばでは体力がゆっくり回復する（空腹が減っていると回復しない）<br />
-        ・HPが0になると<b>30秒間気絶</b>して動けなくなる。仲間がそばで15秒かけて復活させてくれる（HP50で復活）。仲間が気絶したら、近づいて<b>🖐️</b>で復活作業をはじめよう。30秒以内に助けられないと、持ち物が全部消えて拠点からHP満タンでやり直しになるよ（仲間は拠点で目覚めるだけ）
+        <b>【目的】</b><br />
+        宝箱のアーティファクトをコアに献上すると次の階へ。<br /><br />
+        <b>【操作】</b><br />
+        移動：左下のスライドパッド／WASD・矢印キー<br />
+        👊／スペース：掘る・たたく・食べる<br />
+        🖐️／Eキー：施設メニューを開く・宝箱を開ける・水を汲む<br />
+        アイテム選択：下のアイテム欄をタップ／数字キー<br /><br />
+        <b>【拠点の施設】</b><br />
+        💎 コア：アーティファクトを献上する祭壇<br />
+        🔨 作業台：道具や装備を作る<br />
+        🔥 製錬炉：鉱石をインゴットに変える<br />
+        🔥 焚き火：料理ができる。近づくとHP回復<br />
+        📦 共有ボックス：みんなで使う倉庫<br />
+        🍄 菜園：🖐️で植えて水をやると育つ。育ったら🖐️で収穫
         <div style="text-align:center;margin-top:14px;"><button class="bigBtn" id="btnHelpClose" style="font-size:16px;min-height:48px;padding:8px 30px;">とじる</button></div>
       </div>
     </div>
@@ -505,7 +487,7 @@ var HTORCH_TIME = 60; // たいまつ1本の持続時間（秒）
 var htorchT = HTORCH_TIME; // 燃焼中の1本の残り時間（所持数が0の間は満タンにリセットされる）
 var selKey = 'pick'; // 選択中ホットバーキー
 var coreEnergy = 0, coreLv = 1, cleared = false;
-var fireFuel = 25; // 焚き火の点火タイマー（秒）：火がついている間カウントダウンし、0になるたび共有ボックスの木材を1個消費して25秒に戻す。ボックスに木材がなければ0のまま消火（fireFuel > 0 が「点火中」の判定）
+var fireFuel = 45; // 焚き火の点火タイマー（秒）：火がついている間カウントダウンし、0になるたび共有ボックスの木材を1個消費して45秒に戻す。ボックスに木材がなければ0のまま消火（fireFuel > 0 が「点火中」の判定）
 /* 施設の破壊・作り直し・時間のかかる精錬/調理 */
 var REBUILD_COST = {
   furnace: { stone: 50, wood: 10, copperOre: 10 },
@@ -1121,9 +1103,9 @@ function makePlayer() {
 }
 function makeCompanions() {
   var defs = [
-    { role: 'miner', kind: 'miner', name: 'ミネ', icon: '⛏️', color: '#e07b26', hair: '#33302e', x: CX - 1, y: CY + 3 },
-    { role: 'lamp', kind: 'lamp', name: 'ラン', icon: lanternIconHtml(), color: '#e8b71f', hair: '#6b4a2a', x: CX + 1, y: CY + 3 },
-    { role: 'cook', kind: 'cook', name: 'ココ', icon: '🍳', color: '#e86a92', hair: '#8a3324', x: CX - 4, y: CY + 3 }
+    { role: 'miner', kind: 'miner', name: 'ガド', icon: '🛡️', color: '#e07b26', hair: '#33302e', x: CX - 1, y: CY + 3 },
+    { role: 'lamp', kind: 'lamp', name: 'ラン', icon: '⛏️', color: '#e8b71f', hair: '#6b4a2a', x: CX + 1, y: CY + 3 },
+    { role: 'cook', kind: 'cook', name: 'クク', icon: '🍳', color: '#e86a92', hair: '#8a3324', x: CX - 4, y: CY + 3 }
   ];
   return defs.map(function (d) {
     return {
@@ -1131,7 +1113,8 @@ function makeCompanions() {
       x: d.x * T + T / 2, y: d.y * T + T / 2, r: 12, speed: 148,
       hp: 100, maxhp: 100, hurtT: 0, down: false, downT: 0, revive: null, sleepT: 0,
       face: { x: 0, y: 1 }, swingT: 0, bobT: rnd(0, 6), bubble: '', bubbleT: 0,
-      target: null, bag: {}, bagN: 0, state: 'idle', stateT: 0, stuckT: 0, lastX: 0, lastY: 0, atkCd: 0, cookT: 3
+      target: null, bag: {}, bagN: 0, state: 'idle', stateT: 0, stuckT: 0, lastX: 0, lastY: 0, atkCd: 0, cookT: 3,
+      homeX: d.x * T + T / 2, homeY: d.y * T + T / 2
     };
   });
 }
@@ -1436,6 +1419,17 @@ function doHandAction() {
     var ch0 = chests[ci];
     if (!ch0.opened && dist2(player.x, player.y, ch0.x, ch0.y) < 52 * 52) { openChest(ch0); return; }
   }
+  // キノコ畑の収穫（植えてあって育ち切った畑の近くで🖐️。収穫すると乾くので、また水やりが必要。
+  // 植える・水やりと同じ菜園枠：施設パネル・水汲み・宝箱より後、食べ物受け渡しより前に判定する）
+  for (var hi = 0; hi < plots.length; hi++) {
+    var hp3 = plots[hi];
+    if (hp3.planted && hp3.stage >= 3 && dist2(player.x, player.y, hp3.x, hp3.y) < 52 * 52) {
+      hp3.stage = 0; hp3.timer = 0; hp3.wet = false;
+      if (isGuestMode()) { netReq({ t: 'plot', i: hi }); SE.pickup(); } // ゲスト：収穫物の付与はホスト権威（'plot' リクエスト）
+      else { addInv('mushroom', irnd(1, 2)); SE.pickup(); }
+      addFloater(hp3.x, hp3.y - 18, '🍄 収穫！', '#ffd94d'); refreshHotbar(); return;
+    }
+  }
   // キノコ畑の水やり（植えてあって乾いている畑の近くで🖐️。水は手持ち→共有ボックスの順に消費する。
   // 施設パネル・水汲み・宝箱より後、食べ物受け渡しより前に判定する。水が手持ちにもボックスにも無ければ発動せず後続へ進む）
   for (var wi = 0; wi < plots.length; wi++) {
@@ -1575,15 +1569,7 @@ function doAction() {
   // 仲間への食べ物の受け渡し・宝箱を開ける・水を汲む・畑の水やりも🖐️専用（👊ではできない）
   var fac = nearPunchFacility(58);
   if (fac) { openPanel(fac.type); return; }
-  // キノコ畑の収穫（植えてあって育ち切った畑だけ。収穫すると乾くので、また水やりが必要）
-  for (var i = 0; i < plots.length; i++) {
-    var p = plots[i];
-    if (p.planted && p.stage >= 3 && dist2(player.x, player.y, p.x, p.y) < 52 * 52) {
-      p.stage = 0; p.timer = 0; if (NET.mode === 'guest') netReq({ t: 'plot', i: plots.indexOf(p) }); else { addInv('mushroom', irnd(1, 2)); SE.pickup(); }
-      p.wet = false; addFloater(p.x, p.y - 18, '🍄 収穫！', '#ffd94d'); refreshHotbar(); return;
-    }
-  }
-  // キノコ畑の水やり・菜園への植え付けは🖐️専用（doHandAction 側で処理する）。👊では水やりも植え付けもできない
+  // キノコ畑の収穫・水やり・菜園への植え付けはすべて🖐️専用（doHandAction 側で処理する）。👊ではできない
   // 食べる（選択中が食べ物）
   if (ITEMS[selKey] && ITEMS[selKey].food && inv[selKey] > 0) {
     var f = ITEMS[selKey].food;
@@ -2204,7 +2190,7 @@ function openPanel(type) {
   if (facObj && REBUILD_COST[type] && facObj.broken) {
     if (facObj.rebuilding) {
       var rpct = Math.floor(facObj.rebuilding.t / REBUILD_TIME * 100);
-      body.appendChild(el('<div style="font-size:14px;line-height:1.7;">🔨 <b>' + facObj.label + ' を作り直し中…</b><br>近くにいる間だけ進むよ（離れると止まる）。</div>'));
+      body.appendChild(el('<div style="font-size:14px;line-height:1.7;">🔨 <b>' + facObj.label + ' を作り直し中…</b></div>'));
       body.appendChild(el('<div id="coreProgOuter"><div id="coreProgFill" style="width:' + rpct + '%;background:linear-gradient(90deg,#f0a62c,#ffd94d);"></div></div>'));
       body.appendChild(el('<div style="font-size:13px;color:#bdb2dd;">進みぐあい ' + rpct + '%（あと約 ' + Math.ceil(REBUILD_TIME - facObj.rebuilding.t) + ' 秒）</div>'));
     } else {
@@ -2240,7 +2226,7 @@ function openPanel(type) {
     if (facObj.repairing) {
       // 修復の作業中：進捗バー（作り直しと同形式）。この間は修復ボタンは出ない（同時1つだけ）
       var rpct3 = Math.floor(facObj.repairing.t / REPAIR_TIME * 100);
-      body.appendChild(el('<div style="font-size:14px;line-height:1.7;">🔧 <b>' + facObj.label + ' を修復中…</b><br>近くにいる間だけ進むよ（離れると止まる）。</div>'));
+      body.appendChild(el('<div style="font-size:14px;line-height:1.7;">🔧 <b>' + facObj.label + ' を修復中…</b></div>'));
       body.appendChild(el('<div id="coreProgOuter"><div id="coreProgFill" style="width:' + rpct3 + '%;background:linear-gradient(90deg,#43c465,#7ee787);"></div></div>'));
       body.appendChild(el('<div style="font-size:13px;color:#bdb2dd;">進みぐあい ' + rpct3 + '%（あと約 ' + Math.ceil(REPAIR_TIME - facObj.repairing.t) + ' 秒）</div>'));
     } else {
@@ -2324,7 +2310,7 @@ function openPanel(type) {
     if (relighting) {
       // 再点火の作業中：進捗バー（作り直しと同形式）。この間は通常の燃料投入はできない
       var rlpct = Math.floor(fireFac.relight.t / RELIGHT_TIME * 100);
-      body.appendChild(el('<div style="font-size:14px;line-height:1.7;">🔥 <b>再点火の作業中…</b><br>近くにいる間だけ進むよ（離れると止まる）。</div>'));
+      body.appendChild(el('<div style="font-size:14px;line-height:1.7;">🔥 <b>再点火の作業中…</b></div>'));
       body.appendChild(el('<div id="coreProgOuter"><div id="coreProgFill" style="width:' + rlpct + '%;background:linear-gradient(90deg,#f0a62c,#ffd94d);"></div></div>'));
       body.appendChild(el('<div style="font-size:13px;color:#bdb2dd;">進みぐあい ' + rlpct + '%（あと約 ' + Math.ceil(RELIGHT_TIME - fireFac.relight.t) + ' 秒）</div>'));
     } else if (!lit) {
@@ -2494,8 +2480,8 @@ function update(dt) {
   plots.forEach(function (pl) {
     if (pl.planted && pl.wet && pl.stage < 3) { pl.timer += dt; if (pl.timer > 16) { pl.timer = 0; pl.stage++; } }
   });
-  /* --- 焚き火の燃料（ゲージ廃止：25秒ごとに共有ボックスの木材を1個消費して火を維持する） ---
-     fireFuel は「次の消費までの残り秒数」。点火中はカウントダウンし、0になるたびにボックスの木材で次の25秒へ。
+  /* --- 焚き火の燃料（ゲージ廃止：45秒ごとに共有ボックスの木材を1個消費して火を維持する） ---
+     fireFuel は「次の消費までの残り秒数」。点火中はカウントダウンし、0になるたびにボックスの木材で次の45秒へ。
      消費の判定はホスト/ソロ権威（ゲストはスナップショットの fireFuel で追随し、自分のタイマーでは消火しない）。
      焚き火・共有ボックスのどちらかが壊れている間は木材を使えない（0扱い）。手持ちの木材は自動では使わない。
      一度消えたら自動では再点火しない（再点火はパネルからの20秒作業のみ） */
@@ -2506,7 +2492,7 @@ function update(dt) {
         var fireF5 = facByType('fire'), boxF5 = facByType('box');
         while (fireFuel <= 0 && fireF5 && !fireF5.broken && boxF5 && !boxF5.broken && (box.wood || 0) >= 1) {
           addBox('wood', -1);
-          fireFuel += 25;
+          fireFuel += 45;
         }
         if (fireFuel <= 0) {
           fireFuel = 0;
@@ -2546,14 +2532,14 @@ function update(dt) {
         }
       }
     }
-    /* 再点火の進捗（消火中の焚き火だけ。作り直しと同じ流儀で、近くにいる間だけ進み、離れると止まる。完了で点火し、次の木材消費まで25秒） */
+    /* 再点火の進捗（消火中の焚き火だけ。作り直しと同じ流儀で、近くにいる間だけ進み、離れると止まる。完了で点火し、次の木材消費まで45秒） */
     if (f.relight && f.type === 'fire' && !f.broken) {
       var rlNear = (!p.down && dist2(p.x, p.y, f.x, f.y) < 80 * 80) || netRemoteNear(f.x, f.y, 80);
       if (rlNear) {
         f.relight.t += dt;
         if (f.relight.t >= RELIGHT_TIME) {
           f.relight = null;
-          fireFuel = 25;
+          fireFuel = 45;
           burst(f.x, f.y, '#ff9a3c', 18, 120); SE.levelup();
           toast('🔥 焚き火に火がついた！');
           if (panelType === 'fire') openPanel('fire');
@@ -2579,7 +2565,7 @@ function update(dt) {
      精錬：製錬炉が無事なら、プレイヤーが離れていても進む（1個10秒）
      料理：火がついていて、焚き火の近く（再建と同じ80px）に人間がいる間だけ進む（1品3秒）
      クラフト：作業台が無事で、作業台の近く（80px）に人間がいる間だけ進む（1件4秒）
-     ココが自動料理をしている間は、料理キューだけが待つ（精錬・クラフトキューは影響を受けない） */
+     ククが自動料理をしている間は、料理キューだけが待つ（精錬・クラフトキューは影響を受けない） */
   if (smeltQueue.length) {
     var job = smeltQueue[0];
     var furnF = facByType('furnace');
@@ -3064,6 +3050,64 @@ function updateCompanionMining(c, dt, boxF) {
   }
   return false;
 }
+/* 拠点周辺（中心からマンハッタン26タイル以内）の未回収の木材ブロックのうち、仲間に一番近いものを探す */
+function findCompanionWoodTarget(c) {
+  var best = null, bd = 1e18;
+  woodBlocks.forEach(function (wb) {
+    if (wb.taken) return;
+    if (Math.abs(wb.tx - CX) + Math.abs(wb.ty - CY) > 26) return;
+    var d = dist2(c.x, c.y, wb.x, wb.y);
+    if (d < bd) { bd = d; best = wb; }
+  });
+  return best;
+}
+/* 仲間共通の木材ブロック作業フロー（goWood→chopWood→collect）。処理したら true を返す。
+   壊し方はプレイヤーと同じ：0.75秒間隔で叩き、3回で木材1〜3個がドロップ（2分で復活）。回収→納品は採掘フローと共通 */
+function updateCompanionWood(c, dt, boxF) {
+  if (c.state === 'goWood') {
+    if (!c.wtarget || c.wtarget.taken) { c.state = 'idle'; c.wtarget = null; }
+    else if (moveToward(c, c.wtarget.x, c.wtarget.y, dt, 30)) { c.state = 'chopWood'; c.stateT = 0; }
+    if (c.stuckT > 2.4) { c.stuckT = 0; c.state = 'idle'; c.wtarget = null; }
+    return true;
+  }
+  if (c.state === 'chopWood') {
+    var wb = c.wtarget;
+    if (!wb || wb.taken) { c.state = 'idle'; c.wtarget = null; return true; }
+    c.face.x = Math.sign(wb.x - c.x); c.face.y = 0;
+    if (Math.abs(wb.y - c.y) > Math.abs(wb.x - c.x)) { c.face.x = 0; c.face.y = Math.sign(wb.y - c.y); }
+    c.stateT -= dt;
+    if (c.stateT <= 0) {
+      c.stateT = 0.75; c.swingT = 0.2;
+      wb.hp -= 1; burst(wb.x, wb.y, '#b08954', 5, 80);
+      if (wb.hp <= 0) {
+        wb.taken = true; wb.respawnT = 120; wb.hp = 3;
+        spawnDrop(wb.x, wb.y, 'wood', irnd(1, 3));
+        c.wtarget = null; c.state = 'collect'; c.stateT = 0.7;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+/* 地底湖の岸（水タイルに隣接する床タイル）のうち、拠点中心に最も近い立地点を探す。無ければ null */
+function findWaterShore() {
+  var best = null, bd = 1e18;
+  var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (var ty = 1; ty < MH - 1; ty++) for (var tx = 1; tx < MW - 1; tx++) {
+    if (tileAt(tx, ty) !== 6) continue;
+    for (var di = 0; di < 4; di++) {
+      var sx = tx + dirs[di][0], sy = ty + dirs[di][1];
+      if (tileAt(sx, sy) !== 0) continue;
+      if (facilityTiles[sx + ',' + sy]) continue;
+      var wm = woodTileMap[sx + ',' + sy];
+      if (wm && !wm.taken) continue;
+      var cxp = sx * T + T / 2, cyp = sy * T + T / 2;
+      var d = dist2(cxp, cyp, CX * T + T / 2, CY * T + T / 2);
+      if (d < bd) { bd = d; best = { x: cxp, y: cyp }; }
+    }
+  }
+  return best;
+}
 function updateCompanions(dt) {
   companions.forEach(function (c) {
     if (c.bubbleT > 0) c.bubbleT -= dt;
@@ -3116,24 +3160,16 @@ function updateCompanions(dt) {
     var boxF = facilities.filter(function (f) { return f.type === 'box'; })[0];
 
     if (c.role === 'lamp') {
-      // プレイヤーの後ろについてくる＋近くのスライムをたたく＋合間に採掘ヘルプ
-      var foe = nearestSlime(c.x, c.y, 95);
-      if (foe) {
-        // 戦闘優先：採掘中なら中断して戦う
-        if (c.state === 'goMine' || c.state === 'mining') { c.state = 'idle'; c.target = null; }
-        if (moveToward(c, foe.x, foe.y, dt, foe.r + 12) && c.atkCd <= 0 && !losBlocked(c.x, c.y, foe.x, foe.y)) {
-          c.atkCd = 0.8; c.swingT = 0.2; damageSlime(foe, 3, { x: Math.sign(foe.x - c.x) || 1, y: 0 });
-        }
-        return;
-      }
+      // ラン：灯り担当＋採掘。拠点周辺（半径9〜15タイル）の掘れる壁と木材ブロックを対象に採掘・回収し、
+      // 取れた物はバッグ→共有ボックスへ運ぶ。対象がなければ初期位置付近で待機する（ランタンの光は描画側で維持）
       if (updateCompanionMining(c, dt, boxF)) return;
+      if (updateCompanionWood(c, dt, boxF)) return;
       if (c.bagN >= 4) { c.state = 'deposit'; return; }
-      // 採掘ヘルプ：自分の6タイル以内に掘れる壁があり、人間プレイヤーが12タイル以内にいる時だけ
-      var helpL = null;
-      if (humanNear(c.x, c.y, 12)) helpL = findCompanionMineTarget(Math.floor(c.x / T), Math.floor(c.y / T), 1, 6, partyPickTier());
-      if (helpL) { c.target = helpL; c.state = 'goMine'; return; }
-      var txp = player.x - player.face.x * 44, typ = player.y - player.face.y * 44;
-      if (dist2(c.x, c.y, txp, typ) > 30 * 30) moveToward(c, txp, typ, dt, 16);
+      var foundL = findCompanionMineTarget(CX, CY, 9, 15, partyPickTier());
+      if (foundL) { c.target = foundL; c.state = 'goMine'; return; }
+      var wbL = findCompanionWoodTarget(c);
+      if (wbL) { c.wtarget = wbL; c.state = 'goWood'; return; }
+      if (dist2(c.x, c.y, c.homeX, c.homeY) > 24 * 24) moveToward(c, c.homeX, c.homeY, dt, 10);
       else if (Math.random() < dt * 0.2) sayBubble(c, 'まわりは明るくしとくね');
       return;
     }
@@ -3142,6 +3178,7 @@ function updateCompanions(dt) {
       // 敵が近い時は採掘ヘルプを中断する（役割の合間の手伝いなので、危険な時は掘らない）
       if ((c.state === 'goMine' || c.state === 'mining') && nearestSlime(c.x, c.y, 70)) { c.state = 'idle'; c.target = null; }
       if (updateCompanionMining(c, dt, boxF)) return;
+      if (updateCompanionWood(c, dt, boxF)) return;
       // 1) 畑が育っていたら収穫してボックスへ 2) 焚き火で焼ききのこ作り（火が消えている間は作らない） 3) 乾いた畑にボックスの水で水やり 4) 未植えの畑にボックスのキノコを植える 5) 焚き火の近くで待機
       // ※料理を畑仕事より先にするのは、ボックスの水・キノコを料理優先で使うため（従来の検証済み挙動を維持）
       var ripe = null, dryPlot = null, emptyPlot = null;
@@ -3156,13 +3193,27 @@ function updateCompanions(dt) {
         else if ((box.mushroom || 0) >= 1 && (box.water || 0) >= 1 && (box.grilledMush || 0) < 4 && fireFuel > 0) c.state = 'cook';
         else if (dryPlot && (box.water || 0) >= 1) c.state = 'waterPlot';
         else if (emptyPlot && (box.mushroom || 0) >= 1) c.state = 'plantPlot';
+        else if ((box.water || 0) + (c.bag.water || 0) < 3 && findWaterShore()) c.state = 'goFetch'; // ボックスの水が3個未満なら湖へ汲みに行く
         else if (c.bagN >= 4) c.state = 'deposit';
         else {
-          // 役割の合間の採掘ヘルプ：自分の6タイル以内に掘れる壁があり、人間プレイヤーが12タイル以内にいる時だけ
-          var helpC = null;
-          if (!nearestSlime(c.x, c.y, 70) && humanNear(c.x, c.y, 12)) helpC = findCompanionMineTarget(Math.floor(c.x / T), Math.floor(c.y / T), 1, 6, partyPickTier());
-          if (helpC) { c.target = helpC; c.state = 'goMine'; }
+          // 空いている時は木材集め：拠点近くの木材ブロックを壊してボックスへ運ぶ
+          var wbC = !nearestSlime(c.x, c.y, 70) ? findCompanionWoodTarget(c) : null;
+          if (wbC) { c.wtarget = wbC; c.state = 'goWood'; }
           else if (fireF) moveToward(c, fireF.x + 26, fireF.y + 30, dt, 8);
+        }
+      } else if (c.state === 'goFetch') {
+        var shore = findWaterShore();
+        if (!shore) { c.state = 'idle'; }
+        else if ((box.water || 0) + (c.bag.water || 0) >= 3) { c.state = c.bagN > 0 ? 'deposit' : 'idle'; }
+        else if (moveToward(c, shore.x, shore.y, dt, 10)) { c.state = 'fetching'; c.stateT = FETCH_TIME; }
+        if (c.stuckT > 3) { c.stuckT = 0; c.state = 'idle'; }
+      } else if (c.state === 'fetching') {
+        // 岸で約3秒待機して水+1をバッグへ。必要数（ボックス＋バッグで3個）に届くまで繰り返し、届いたら納品へ
+        c.stateT -= dt;
+        if (c.stateT <= 0) {
+          c.bag.water = (c.bag.water || 0) + 1; c.bagN++;
+          c.swingT = 0.2; sayBubble(c, '水を汲んだよ💧');
+          c.state = ((box.water || 0) + (c.bag.water || 0) >= 3 || c.bagN >= 4) ? 'deposit' : 'goFetch';
         }
       } else if (c.state === 'harvest') {
         if (!ripe) { c.state = 'idle'; }
@@ -3217,32 +3268,17 @@ function updateCompanions(dt) {
     }
 
     if (c.role === 'miner') {
-      if (c.state === 'idle') {
-        if (c.bagN >= 4) { c.state = 'deposit'; return; }
-        // 遠征支援：拠点中心から20タイル以上離れた人間プレイヤーがいれば、その周囲（半径8タイル以内）の壁を掘る。
-        // いなければ従来通り、拠点から半径9〜15タイル以内の壁を掘る。掘れる種類はパーティ最高ティアに追随
-        var tierM = partyPickTier();
-        var anchorM = null, bestHd = 1e18;
-        var humansM = [{ x: player.x, y: player.y }];
-        if (typeof netRemoteEnts === 'function') netRemoteEnts().forEach(function (e) { if (!e.down) humansM.push(e); });
-        humansM.forEach(function (hp2) {
-          if (dist2(hp2.x, hp2.y, CX * T + T / 2, CY * T + T / 2) > 20 * T * 20 * T) {
-            var cd2 = dist2(c.x, c.y, hp2.x, hp2.y);
-            if (cd2 < bestHd) { bestHd = cd2; anchorM = hp2; }
-          }
-        });
-        var foundM = null;
-        if (anchorM) {
-          // 遠征支援：プレイヤーから10タイルより遠い間は、まずプレイヤーに近づく（近づいてから周囲を掘る）
-          if (dist2(c.x, c.y, anchorM.x, anchorM.y) > 10 * T * 10 * T) { moveToward(c, anchorM.x, anchorM.y, dt, 30); return; }
-          foundM = findCompanionMineTarget(Math.floor(anchorM.x / T), Math.floor(anchorM.y / T), 2, 8, tierM);
-        } else {
-          foundM = findCompanionMineTarget(CX, CY, 9, 15, tierM);
+      // ガド：拠点防衛専門。拠点中心から半径12タイル（480px）以内にいるモンスターのうち、
+      // 中心に一番近いものを狙って追いかけ、仲間共通の攻撃（atkCd 0.8秒・ダメージ3・LOS判定）で倒す。
+      // 範囲内にモンスターがいなければ、自分の初期位置付近で待機する
+      var foeG = nearestSlime(CX * T + T / 2, CY * T + T / 2, 480);
+      if (foeG) {
+        if (moveToward(c, foeG.x, foeG.y, dt, foeG.r + 12) && c.atkCd <= 0 && !losBlocked(c.x, c.y, foeG.x, foeG.y)) {
+          c.atkCd = 0.8; c.swingT = 0.2; damageSlime(foeG, 3, { x: Math.sign(foeG.x - c.x) || 1, y: 0 });
         }
-        if (foundM) { c.target = foundM; c.state = 'goMine'; }
-        else if (anchorM) moveToward(c, anchorM.x, anchorM.y, dt, 30); // 掘る壁がなければ遠征中のプレイヤーのそばへ
-        else if (coreF) moveToward(c, coreF.x - 50, coreF.y + 56, dt, 10);
-      } else updateCompanionMining(c, dt, boxF);
+      } else if (dist2(c.x, c.y, c.homeX, c.homeY) > 24 * 24) {
+        moveToward(c, c.homeX, c.homeY, dt, 10);
+      }
       return;
     }
   });
@@ -4426,7 +4462,7 @@ function startGameCore(seed, humans) {
     inv.gold = keepGoldInv; box.gold = keepGoldBox;
   }
   coreEnergy = 0; coreLv = 1; cleared = false;
-  fireFuel = 25;
+  fireFuel = 45;
   cookQueue = []; smeltQueue = []; craftQueue = [];
   gameTime = 0; dayPrev = 1; minedCount = 0; killCount = 0; spawnT = 6; spawnT2 = 6;
   drops = []; particles = []; floaters = []; slimes = []; arrows = [];
@@ -4436,8 +4472,14 @@ function startGameCore(seed, humans) {
   var spots = genMap();
   mapSeed = null;
   player = makePlayer();
-  var mateN = NET.mode === 'solo' ? 3 : Math.max(0, Math.min(3, 4 - (humans || 1)));
-  companions = makeCompanions().slice(0, mateN);
+  var allMates = makeCompanions();
+  if (NET.mode === 'solo') companions = allMates;
+  else {
+    // お手伝いダイアログの選択（meta.mates／NET.matesSel）があればそれを優先し、選択された仲間だけを編成する
+    var msSel = (typeof netMatesSel === 'function') ? netMatesSel() : null;
+    if (msSel) companions = allMates.filter(function (c, i) { return !!msSel[i]; });
+    else companions = allMates.slice(0, Math.max(0, Math.min(3, 4 - (humans || 1))));
+  }
   buildPartyHud();
   if (NET.mode !== 'guest') {
     placeCaveMonsters(spots);
@@ -4445,8 +4487,8 @@ function startGameCore(seed, humans) {
   state = 'play';
   document.getElementById('titleScr').style.display = 'none';
   refreshHotbar(); updateHUD();
-  toast('🗝️ この階の宝箱（7個）を探そう！アーティファクトをコアに献上すると次の階へ進めるよ', 3400);
-  if (mateN > 0) setTimeout(function () { if (state === 'play') toast('仲間の' + companions.map(function (c) { return c.name; }).join('・') + 'も一緒にがんばってるよ🤝', 2600); }, 3800);
+  toast('🗝️ アーティファクトを探そう', 3400);
+  if (companions.length > 0) setTimeout(function () { if (state === 'play') toast('仲間のガド・ラン・ククも一緒にがんばってるよ🤝', 2600); }, 3800);
 }
 var _bs = document.getElementById('btnStart'); if (_bs) _bs.addEventListener('click', startGame);
 document.getElementById('btnHelp').addEventListener('click', function () { initAudio(); document.getElementById('helpScr').classList.add('open'); });
@@ -4503,7 +4545,8 @@ var NET = {
   fetchJobs: {}, sleepT: {}, // fetchJobs: uid->{t,x,y} ホスト権威の汲水チャンネル / sleepT: uid->残り睡眠秒数（催眠ガス・ホスト権威）
   lastGov: 0, // 最後に受けたゲームオーバー演出の通知（meta.gov）
   lastOffer: 0, // 最後に受けた献上演出の通知（meta.offer）
-  revivingTarget: null, hostGone: false, pubCount: 0, lastCpuRevive: 0, lastRst: 0
+  revivingTarget: null, hostGone: false, pubCount: 0, lastCpuRevive: 0, lastRst: 0,
+  matesSel: null // お手伝いダイアログの選択 [ガド,ラン,クク] の 1/0。ルームセッション中ずっと保持する
 };
 (function () {
   /* uidはタブごとに持つ（sessionStorage）。localStorageだと同じ端末の2タブ目が
@@ -4601,8 +4644,7 @@ function renderLobbyList() {
   });
   var n = ids.length;
   var info = document.getElementById('lobbyInfo');
-  var mates = Math.max(0, Math.min(3, 4 - n));
-  if (info) info.textContent = '現在 ' + n + ' 人（2〜8人で開始できます）' + (n >= 1 && n < 4 ? '／ 4人未満なので CPU仲間が ' + mates + ' 人補充されます' : '');
+  if (info) info.textContent = '現在 ' + n + ' 人（2〜8人で開始できます）';
   if (!NET.isHost && NET.meta && NET.meta.hostBeat === 0 && info) info.textContent = 'ホストが退出しました。退出して入り直してね';
   var btn = document.getElementById('btnStartOnline');
   if (btn) {
@@ -4620,6 +4662,7 @@ function attachNetListeners() {
   rr.child('players').on('value', function (s) { NET.players = s.val() || {}; if (!NET.started) renderLobbyList(); });
   rr.child('meta').on('value', function (s) {
     var m = s.val() || {}; NET.meta = m;
+    if (m.mates && m.mates.length === 3) NET.matesSel = [m.mates[0] ? 1 : 0, m.mates[1] ? 1 : 0, m.mates[2] ? 1 : 0]; // お手伝い編成を全員で共有
     if (m.phase === 'play' && !NET.started) { NET.started = true; startOnlineGame(m.seed || NET.seed); playStartCutscene(); }
     if (!NET.started) renderLobbyList();
     /* 全員気絶の時間停止／やりなおしはホスト権威。ゲストは meta 経由で追随する */
@@ -4852,7 +4895,7 @@ function netBuildWorld() {
 function applyWorld(w) {
   if (!w) return;
   gameTime = w.t || 0;
-  fireFuel = (typeof w.fire === 'number') ? w.fire : 25;
+  fireFuel = (typeof w.fire === 'number') ? w.fire : 45;
   coreEnergy = w.ce || 0; coreLv = w.cl || 1;
   if (w.cleared && !cleared) { cleared = true; ended = true; showEnding(); }
   if (w.box) box = w.box;
@@ -4943,7 +4986,7 @@ function applyWorld(w) {
     });
   }
   if (w.mt) {
-    if (companions.length !== w.mt.length) { companions = makeCompanions().slice(0, w.mt.length); buildPartyHud(); }
+    if (companions.length !== w.mt.length) { companions = netDefaultCompanions(w.mt.length); buildPartyHud(); }
     w.mt.forEach(function (a, i) {
       var c = companions[i]; if (!c) return;
       if (c._snapInit !== 1) { c._snapInit = 1; c.x = a[0]; c.y = a[1]; }
@@ -5730,7 +5773,12 @@ function playStartCutscene() {
   if (typeof closePanel === 'function') closePanel();
   buildOfferOverlay();
   if (offerEls) {
-    offerEls.wrap.style.display = 'flex'; offerEls.wrap.style.opacity = '0'; offerEls.wrap.style.transition = 'opacity ' + (OFFER_FADE_MS / 1000) + 's ease';
+    // 最初の1フレームから真っ暗にする：トランジションなしで即座に opacity=1 にし、強制リフローで反映を確定させる。
+    // 暗転ピークで「地下1階」を出してフェードインする以降の流れは従来どおり startCutTick が進める
+    offerEls.wrap.style.display = 'flex';
+    offerEls.wrap.style.transition = 'none';
+    offerEls.wrap.style.opacity = '1';
+    void offerEls.wrap.offsetWidth; // 強制リフロー
     offerEls.bigWrap.style.display = 'flex'; offerEls.big.style.opacity = '0'; offerEls.big.textContent = ''; offerEls.big.style.transition = 'opacity .45s ease';
   }
   startCut.timer = setInterval(startCutTick, 50);
@@ -6041,16 +6089,110 @@ document.getElementById('btnJoin').addEventListener('click', function () {
     });
   }).catch(function () { titleError('通信エラー。もう一度試してね'); });
 });
+/* お手伝いダイアログの選択 [ガド,ラン,クク]（1=連れて行く）。NET.matesSel → meta.mates の順で解決する */
+function netMatesSel() {
+  var ms = NET.matesSel || (NET.meta && NET.meta.mates) || null;
+  if (!ms || ms.length !== 3) return null;
+  return [ms[0] ? 1 : 0, ms[1] ? 1 : 0, ms[2] ? 1 : 0];
+}
+/* 仲間編成の標準形：お手伝い選択があればその編成、無ければ先頭 n 人（従来の補充ルール） */
+function netDefaultCompanions(n) {
+  var all = makeCompanions();
+  var ms = netMatesSel();
+  if (ms) return all.filter(function (c, i) { return !!ms[i]; });
+  return all.slice(0, n);
+}
+/* ---------------- お手伝いダイアログ（ホスト・3人以下の時だけ、最初の開始前に出す） ---------------- */
+var matesEls = null, matesState = [1, 1, 1], matesDoneCb = null;
+var MATES_DEFS = [
+  { icon: '🛡️', name: 'ガド', role: '拠点の守り' },
+  { icon: '⛏️', name: 'ラン', role: '灯りと採掘' },
+  { icon: '🍳', name: 'クク', role: '料理と菜園' }
+];
+function buildMatesModal() {
+  if (matesEls || typeof document === 'undefined' || !document.body) return;
+  var wrap = document.createElement('div');
+  wrap.style.position = 'fixed'; wrap.style.inset = '0'; wrap.style.zIndex = '30';
+  wrap.style.display = 'none'; wrap.style.alignItems = 'center'; wrap.style.justifyContent = 'center';
+  wrap.style.background = 'rgba(5,3,13,0.82)'; wrap.style.padding = '18px';
+  var card = document.createElement('div');
+  card.style.background = '#241a38'; card.style.border = '2px solid #ffd94d88'; card.style.borderRadius = '16px';
+  card.style.padding = '22px 20px'; card.style.maxWidth = '420px'; card.style.width = '92%';
+  card.style.textAlign = 'center'; card.style.color = '#ffe9c9'; card.style.boxShadow = '0 10px 40px #000c';
+  var msg = document.createElement('div');
+  msg.style.fontSize = '19px'; msg.style.fontWeight = '900'; msg.style.lineHeight = '1.6';
+  msg.textContent = 'お手伝いしますか？';
+  var sub = document.createElement('div');
+  sub.style.fontSize = '13.5px'; sub.style.margin = '10px 0 14px'; sub.style.lineHeight = '1.7'; sub.style.color = '#d8c9a8';
+  sub.innerHTML = '⚠️現在のプレイヤー数だと難しい難易度になってるよ<br>ゲームに自信がない人はお手伝いメンバー選んでね';
+  var row = document.createElement('div');
+  row.style.display = 'flex'; row.style.gap = '8px'; row.style.justifyContent = 'center';
+  var btns = MATES_DEFS.map(function (d, i) {
+    var b = document.createElement('button');
+    b.style.flex = '1'; b.style.padding = '10px 4px'; b.style.borderRadius = '12px'; b.style.cursor = 'pointer';
+    b.style.fontWeight = '900'; b.style.fontSize = '15px'; b.style.lineHeight = '1.45';
+    b.innerHTML = d.icon + ' ' + d.name + '<br><span style="font-size:11px;font-weight:700;">' + d.role + '</span>';
+    b.addEventListener('click', function () { matesState[i] = matesState[i] ? 0 : 1; refreshMatesModal(); });
+    row.appendChild(b);
+    return b;
+  });
+  var selLine = document.createElement('div');
+  selLine.style.fontSize = '13.5px'; selLine.style.margin = '12px 0 14px'; selLine.style.color = '#ffd94d'; selLine.style.fontWeight = '800';
+  var bGo = document.createElement('button');
+  bGo.style.fontSize = '17px'; bGo.style.fontWeight = '900'; bGo.style.padding = '12px 26px'; bGo.style.width = '100%';
+  bGo.style.borderRadius = '12px'; bGo.style.border = 'none'; bGo.style.cursor = 'pointer';
+  bGo.style.background = 'linear-gradient(#ffd94d, #f0a62c)'; bGo.style.color = '#4a2f00';
+  bGo.addEventListener('click', function () {
+    wrap.style.display = 'none';
+    var cb = matesDoneCb; matesDoneCb = null;
+    if (cb) cb(matesState.slice());
+  });
+  card.appendChild(msg); card.appendChild(sub); card.appendChild(row); card.appendChild(selLine); card.appendChild(bGo);
+  wrap.appendChild(card);
+  document.body.appendChild(wrap);
+  matesEls = { wrap: wrap, btns: btns, selLine: selLine, bGo: bGo };
+}
+function refreshMatesModal() {
+  if (!matesEls) return;
+  matesEls.btns.forEach(function (b, i) {
+    if (matesState[i]) {
+      b.style.background = 'linear-gradient(#ffd94d, #f0a62c)'; b.style.color = '#4a2f00'; b.style.border = '2px solid #ffe9a8';
+    } else {
+      b.style.background = '#453d68'; b.style.color = '#cfc4e8'; b.style.border = '2px solid #5d5484';
+    }
+  });
+  var chosen = MATES_DEFS.filter(function (d, i) { return matesState[i]; }).map(function (d) { return d.name; });
+  matesEls.selLine.textContent = '選んだ仲間：' + (chosen.length ? chosen.join('・') : 'なし');
+  matesEls.bGo.textContent = chosen.length ? 'このメンバーでスタート' : 'お手伝いはいらない';
+}
+function showMatesDialog(cb) {
+  buildMatesModal();
+  if (!matesEls) { cb([1, 1, 1]); return; }
+  matesState = [1, 1, 1]; // 初期状態は全員選択
+  matesDoneCb = cb;
+  refreshMatesModal();
+  matesEls.wrap.style.display = 'flex';
+}
+function netStartOnlineNow() {
+  NET.roomRef.child('tiles').remove();
+  NET.roomRef.child('world').remove();
+  NET.roomRef.child('req').remove();
+  NET.roomRef.child('ev').remove();
+  var upd = { phase: 'play', hostBeat: Date.now() };
+  if (NET.matesSel) upd.mates = NET.matesSel; // お手伝い編成を phase と同じ更新で全員へ送る
+  NET.roomRef.child('meta').update(upd);
+}
 document.getElementById('btnStartOnline').addEventListener('click', function () {
   if (!NET.isHost || !NET.roomRef) return;
   var n = Object.keys(NET.players).length;
   if (n < 2 || n > 8) return;
   initAudio();
-  NET.roomRef.child('tiles').remove();
-  NET.roomRef.child('world').remove();
-  NET.roomRef.child('req').remove();
-  NET.roomRef.child('ev').remove();
-  NET.roomRef.child('meta').update({ phase: 'play', hostBeat: Date.now() });
+  if (n <= 3) {
+    // 3人以下：開始前にホストだけにお手伝いダイアログを出す（ゲストはロビーで待機し、phase はまだ play にしない）
+    showMatesDialog(function (sel) { NET.matesSel = sel; netStartOnlineNow(); });
+    return;
+  }
+  netStartOnlineNow();
 });
 document.getElementById('btnLeave').addEventListener('click', function () {
   try { if (NET.myRef) NET.myRef.remove(); } catch (e) {}
