@@ -706,7 +706,12 @@
         border:3px solid rgba(255,255,255,.9); border-radius:50%;
         z-index:2; pointer-events:none; opacity:0;
       }
-      #stage.coop #targetRing2, #stage.coop #apRing2{ display:block; }
+      #stage.coop #targetRing2{ display:block; }
+      /* 協力プレイでは両レーンとも判定サークルは「白＋ピンクの輪」だけに統一する。
+         アプローチリング（近づくと大きく出る白い外側の輪）はメイン／サポートで
+         見た目に差が出るため、協力プレイでは上下どちらのレーンにも出さない
+         （1人用の #apRing は従来どおり使う） */
+      #stage.coop #apRing, #stage.coop #apRing2{ display:none; }
       #stage.coop #guideLine{ display:none; }
       #stage.coop #rikki{ bottom:auto; top:calc(33% - 59px); width:clamp(84px, 22%, 110px); }
       #rikki2{
@@ -715,7 +720,7 @@
       }
       #stage.coop #rikki2{ display:block; }
       #rikki2 canvas{ width:100%; height:auto; display:block; }
-      /* ---------- 協力プレイ：担当レーン交代のお知らせ ---------- */
+      /* ---------- 協力プレイ：レーン交代のお知らせ ---------- */
       #swapBanner{
         position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
         z-index:45; pointer-events:none; opacity:0; text-align:center; white-space:nowrap;
@@ -870,7 +875,7 @@
           </div>
           <div id="potBanner"></div>
           <div id="warnBanner"></div>
-          <div id="swapBanner">交代！</div>
+          <div id="swapBanner">レーン交代！</div>
           <div id="blackout" aria-hidden="true">
             <div class="bo-rikki">
               <svg viewBox="0 0 120 150"><circle cx="36" cy="44" r="10" fill="#fffbe8" style="filter:drop-shadow(0 0 6px #ffe45e) drop-shadow(0 0 14px #ffd83d)"/><circle cx="58" cy="44" r="10" fill="#fffbe8" style="filter:drop-shadow(0 0 6px #ffe45e) drop-shadow(0 0 14px #ffd83d)"/><ellipse cx="36" cy="45" rx="3.2" ry="5.4" fill="#22252a"/><ellipse cx="58" cy="45" rx="3.2" ry="5.4" fill="#22252a"/><circle cx="34.6" cy="41.4" r="1.7" fill="#ffffff"/><circle cx="56.6" cy="41.4" r="1.7" fill="#ffffff"/></svg>
@@ -907,7 +912,7 @@
       <section id="roomScreen" hidden>
         <div class="room-card">
           <h2 class="room-title">👥 協力プレイ（オンライン）</h2>
-          <p class="room-lead">1P（上段）が切って、切り逃した食材は下段の右から流れ直してくるよ。2P（下段）が切れば「ナイスカバー！」でハートは減らずコンボも続く。2人とも逃したらハート−1。ハート・スコア・コンボ・人前は2人で共有だよ。石・どくキノコ・くさった肉は特別ルール：1Pがスルーしても得点にはならず、下段へ流れ直してくるよ。2Pも切らずにスルーできたら＋150点。どちらの段でも切ってしまったらハート−1だよ。鍋が1人前完成するたびに、1Pと2Pの担当レーンが「交代！」して入れ替わるよ（キャラと名前はそのまま、上の段と下の段だけ交代）。</p>
+          <p class="room-lead">1P（上段）と2P（下段）の担当は固定だよ。最初は上段に食材が流れて1Pが切り、切り逃した食材は下段の右から流れ直して2Pが救済するよ。救済側が切れば「ナイスカバー！」でハートは減らずコンボも続く。2人とも逃したらハート−1。鍋が1人前完成するごとに「レーン交代！」で、今度は下段に食材が流れて2Pが切り、切り逃しは上段へ流れ直して1Pが救済するよ（キャラや名前は動かない）。ハート・スコア・コンボ・人前は2人で共有だよ。石・どくキノコ・くさった肉は特別ルール：メインのレーンでスルーしても得点にはならず、もう一方のレーンへ流れ直してくるよ。そちらでも切らずにスルーできたら＋150点。どちらの段でも切ってしまったらハート−1だよ。</p>
           <div id="coopEntryPanel">
             <button class="btn green" id="coopCreateBtn" type="button">🏠 部屋を作る（1P・上段）</button>
             <p class="room-msg" id="coopCreateMsg"></p>
@@ -1978,12 +1983,17 @@
           item = FOODS[fi];
           itemKey = { t: 'f', i: fi };
         }
+        /* 協力プレイでは「食材が流れるメインレーン」が1人前ごとに切り替わる：
+           生成時点の決定的な人前数（genPots）が偶数＝上段、奇数＝下段。
+           プレイヤーの担当は固定（1P＝上段／2P＝下段）で、キャラは動かない。
+           genPots は両端末で必ず同じ値になるため、レーンも両端末で一致する */
+        const noteLane = (G.mode === 'coop' && potsNow % 2 === 1) ? 'b' : 't';
         const el = document.createElement('div');
-        el.className = 'note' + (hazard ? ' hazard' : '') + (shirataki ? ' long shirataki' + (xlong ? ' xlong' : '') : '') + (size === 1.5 ? ' big' : size === 0.5 ? ' small' : '');
+        el.className = 'note' + (noteLane === 'b' ? ' lane-b' : '') + (hazard ? ' hazard' : '') + (shirataki ? ' long shirataki' + (xlong ? ' xlong' : '') : '') + (size === 1.5 ? ' big' : size === 0.5 ? ' small' : '');
         el.innerHTML = '<div class="centerGuide"></div><div class="foodSvg">' + item.svg + '</div><div class="foodName">' + item.name + '</div>';
         el.style.display = 'none';
         els.notes.appendChild(el);
-        const noteObj = { id: G.noteSeq, lane: 't', itemKey: itemKey, hitTime: hitTime, el: el, svg: item.svg, hazard: hazard, long: shirataki, xlong: xlong, shirataki: shirataki, judged: false, falling: false, fallStart: 0, travel: travel, size: size, pw: pw, gw: gw, level: lv };
+        const noteObj = { id: G.noteSeq, lane: noteLane, itemKey: itemKey, hitTime: hitTime, el: el, svg: item.svg, hazard: hazard, long: shirataki, xlong: xlong, shirataki: shirataki, judged: false, falling: false, fallStart: 0, travel: travel, size: size, pw: pw, gw: gw, level: lv };
         G.noteSeq++;
         G.notes.push(noteObj);
         if (G.notesById) G.notesById.set(noteObj.id, noteObj);
@@ -2255,15 +2265,15 @@
 
     /* 上段と下段のまいちゃんを各キャンバスへ描く。
        キャンバスの内部座標系は 120x150、キャラは x=44 / 足元y=118 / スケール1 で配置。
-       協力プレイで担当レーンが交代したら、キャラ（リボン・服の色・名前）は
-       プレイヤーに付いたまま、レーンの上下の位置だけが入れ替わる */
+       協力プレイでもキャラクターの位置は絶対に変えない：上段は常に1P（ホスト、
+       ピンクのリボン・グレーのピンストライプ）、下段は常に2P（ゲスト、紫のリボン・
+       紺のピンストライプ）。1人前ごとに切り替わるのは「食材が流れるレーン」だけ */
     function drawMaiChars(now) {
-      const topGuest = G.mode === 'coop' && COOP.swapped;
       if (maiCanvas) {
         const g1 = maiCanvas.getContext('2d');
         g1.clearRect(0, 0, maiCanvas.width, maiCanvas.height);
         g1.save(); g1.scale(maiCanvas.width / 120, maiCanvas.height / 150);
-        drawMai(g1, 44, 118, 1, topGuest ? '#7b6fd0' : '#e91e63', G.chopAnimStart > 0 ? G.chopAnimStart : 0, coopCharLabel(topGuest), topIsMine(), topGuest ? '#3f4c77' : '#6d7078');
+        drawMai(g1, 44, 118, 1, '#e91e63', G.chopAnimStart > 0 ? G.chopAnimStart : 0, coopCharLabel(false), topIsMine(), '#6d7078');
         /* ミス直後だけ汗マーク（従来の表情変化の名残） */
         if (now < G.faceUntil) {
           g1.fillStyle = '#7ec8f7';
@@ -2280,7 +2290,7 @@
         const g2 = maiCanvas2.getContext('2d');
         g2.clearRect(0, 0, maiCanvas2.width, maiCanvas2.height);
         g2.save(); g2.scale(maiCanvas2.width / 120, maiCanvas2.height / 150);
-        drawMai(g2, 44, 118, 1, topGuest ? '#e91e63' : '#7b6fd0', G.chopAnimStartB > 0 ? G.chopAnimStartB : 0, coopCharLabel(!topGuest), bottomIsMine(), topGuest ? '#6d7078' : '#3f4c77');
+        drawMai(g2, 44, 118, 1, '#7b6fd0', G.chopAnimStartB > 0 ? G.chopAnimStartB : 0, coopCharLabel(true), bottomIsMine(), '#3f4c77');
         g2.restore();
       }
     }
@@ -2354,7 +2364,8 @@
         els.apRing.style.opacity = ratio < 0.98 ? '0.85' : '0';
         els.apRing.style.transform = 'scale(' + s + ')';
       } else els.apRing.style.opacity = '0';
-      /* アプローチリング（下段・協力プレイで下段担当が自分のレーンの目安にする） */
+      /* アプローチリング（下段）。協力プレイでは両レーンの判定サークルの
+         見た目をそろえるため、CSSで上下とも非表示にしている（1人用は上段のみ使用） */
       if (els.apRing2) {
         let nextRescue = null;
         if (G.mode === 'coop' && bottomIsMine()) {
@@ -2474,10 +2485,11 @@
       const guided = G.pots < 3;
       els.stage.classList.toggle('guided', guided);
       els.notes.classList.toggle('guided', guided);
-      /* 協力プレイ：人前が増えたら担当レーンの交代を反映する。ホストは自分の
-         集計のたびに、ゲストはホストから共有状態が届くたびにここを通るので、
-         交代のタイミングはホスト確定で両端末がそろう */
-      syncSwap();
+      /* 協力プレイ：人前が増えたら「食材が流れるメインレーン」の切り替わりを
+         反映する。ホストは自分の集計のたびに、ゲストはホストから共有状態が
+         届くたびにここを通るので、切り替わりのタイミングはホスト確定で
+         両端末がそろう */
+      syncMainLane();
     }
     function spawnHalves(n) {
       const x = parseFloat(n.el.style.left) || layoutCache.targetX;
@@ -2602,8 +2614,10 @@
     }
     function doChop() {
       if (!G.playing || G.paused || G.over || !AC) return;
-      /* 協力プレイでは上段の担当だけが上段を切れる（交代で担当が入れ替わる） */
-      if (G.mode === 'coop' && !topIsMine()) return;
+      /* 協力プレイでは上段はホスト（1P）固定：ホストだけが上段を切れる。
+         上段がメインのときは通常食材を、メインが下段のときは下段から
+         流れ直してきた救済食材を切る（どちらもこの1つの操作で判定する） */
+      if (G.mode === 'coop' && COOP.role !== 'host') return;
       /* 連打対策：1回切ったらクールダウン中は入力を無視する。
          基本0.2秒、ただし高テンポで正規のパターンが切れなくならないよう
          「その時点の8分音符間隔の8割」を上限とする */
@@ -2621,89 +2635,71 @@
         if (d < bestAbs) { bestAbs = d; best = n; }
       }
       if (best && bestAbs <= best.gw) {
-        if (G.mode === 'coop' && COOP.role === 'guest') {
-          /* ゲストが上段担当（交代後）：演出は自分の端末で行い、結果はホストへ
-             送って集計してもらう（自分のスコア表示は共有状態で届く） */
-          const perfect = bestAbs <= best.pw;
-          best.judged = true;
-          if (best.hazard) {
-            showJudge('miss', 'ダメ！', 't');
-            sfxMiss();
-            G.faceUntil = AC.currentTime + 0.45;
-          } else {
-            sfxChop(perfect);
-            showJudge(perfect ? 'perfect' : 'good', perfect ? 'PERFECT!' : 'GOOD', 't');
-            showSfxPop(perfect, 't');
-            spawnHalves(best);
-          }
-          best.el.remove();
-          const bidx = G.notes.indexOf(best);
-          if (bidx >= 0) G.notes.splice(bidx, 1);
-          if (COOP.roomRef) {
-            COOP.roomRef.child('covers/t' + best.id).set({
-              r: best.hazard ? 'hz' : 'cut', ln: 't', rd: G.round,
-              j: perfect ? 'PERFECT' : 'GOOD',
-              tm: Math.round((now - G.startTime) * 1000)
-            });
-          }
-        } else {
-          if (best.hazard) judgeHazardHit(best);
-          else judgeHit(best, bestAbs);
-          /* 協力プレイ：ホストは上段の結果をイベントとしてゲストへ知らせる
-             （ノーツID・判定・判定時刻のみ。位置はゲストが自分の時計で再現する） */
-          if (G.mode === 'coop' && COOP.role === 'host' && COOP.roomRef) {
-            COOP.roomRef.child('events/t' + best.id).set({
-              r: best.hazard ? 'hz' : 'cut', ln: 't', rd: G.round,
-              j: bestAbs <= best.pw ? 'PERFECT' : 'GOOD',
-              tm: Math.round((now - G.startTime) * 1000)
-            });
-          }
+        /* 救済食材（下段メインの切り逃しが流れ直してきたもの）を切ったら
+           カバー扱い、それ以外は通常のカットとして集計する */
+        const isCover = G.mode === 'coop' && !!best.rescue;
+        if (best.hazard) judgeHazardHit(best);
+        else judgeHit(best, bestAbs, undefined, isCover);
+        /* 協力プレイ：ホストは上段の結果をイベントとしてゲストへ知らせる
+           （ノーツID・判定・判定時刻のみ。位置はゲストが自分の時計で再現する） */
+        if (G.mode === 'coop' && COOP.role === 'host' && COOP.roomRef) {
+          COOP.roomRef.child('events/t' + best.id).set({
+            r: best.hazard ? 'hz' : (isCover ? 'cover' : 'cut'), ln: 't', rd: G.round,
+            j: bestAbs <= best.pw ? 'PERFECT' : 'GOOD',
+            tm: Math.round((now - G.startTime) * 1000)
+          });
         }
       }
       else sfxWhiff();
     }
 
-    /* ================= 協力プレイ：担当レーンの交代 =================
-       鍋が1人前完成するたびに、1P（ホスト）と2P（ゲスト）の担当レーンが入れ替わる。
-       交代状態は「完成した人前の偶奇」から両端末が同じように決められる：
+    /* ================= 協力プレイ：メインレーンの切り替わり =================
+       プレイヤーの担当は固定（1P＝ホストは常に上段、2P＝ゲストは常に下段で、
+       キャラクターと名前ラベルは一切動かない）。代わりに「食材が流れる
+       メインのレーン」が鍋1人前完成ごとに上→下→上→…と切り替わる。
+       メインのレーンは完成した人前の偶奇で決まる（偶数＝上段、奇数＝下段）：
        ホストは自分の集計で、ゲストはホストから届く共有状態（state の pots）で
-       人前が増えたことを知り、updatePot 経由で syncSwap が両端末とも
-       同じタイミングで交代を反映する（ホスト確定ベースなのでずれない）。
-       ホスト／ゲストの立場（集計・部屋の管理）は変わらず、担当レーンだけが替わる。
-       流れている途中の食材・下段の救済食材はそのまま残り、新しい担当が引き継ぐ */
+       人前が増えたことを知り、updatePot 経由で syncMainLane が両端末とも
+       同じタイミングで切り替わりを反映する（ホスト確定ベースなのでずれない）。
+       譜面生成側も同じ偶奇（生成専用カウンタ genPots）でノートのレーンを
+       決めるため、両端末で譜面とレーンが必ず一致する。
+       切り替わりの時点で流れ途中の食材・救済食材はそのまま残り、持ち主の
+       レーンでそのまま判定される（救済は常に「もう一方のレーン」へ流れる） */
     function topIsMine() {
       if (G.mode !== 'coop') return true;
-      return (COOP.role === 'host') !== !!COOP.swapped;
+      return COOP.role === 'host';
     }
     function bottomIsMine() {
-      return G.mode === 'coop' && !topIsMine();
+      return G.mode === 'coop' && COOP.role === 'guest';
     }
-    function showSwapBanner() {
+    /* 現在メインのレーンは COOP.mainBottom（人前が奇数なら下段）で表す */
+    function showLaneBanner() {
       const el = $('swapBanner');
       if (!el) return;
       el.className = '';
       void el.offsetWidth;
       el.className = 'show';
     }
-    function syncSwap() {
+    function syncMainLane() {
       if (G.mode !== 'coop') return;
-      const sw = (G.pots % 2) === 1;
-      if (sw === COOP.swapped) return;
-      COOP.swapped = sw;
-      if (G.playing && !G.over) showSwapBanner();
+      const mb = (G.pots % 2) === 1;
+      if (mb === COOP.mainBottom) return;
+      COOP.mainBottom = mb;
+      if (G.playing && !G.over) showLaneBanner();
     }
-    /* ホストが下段担当のとき、ゲストの画面にも下段の結果を表示させるための通知 */
-    function sendCoopBottomDisplay(r, n, j) {
+    /* ホストが自分のレーン（上段）の結果を、ゲストの画面にも表示させるための通知 */
+    function sendCoopDisplay(r, n, j) {
       if (!COOP.roomRef) return;
-      const payload = { r: r, ln: 'b', rd: G.round, tm: Math.round((AC.currentTime - G.startTime) * 1000) };
+      const payload = { r: r, ln: n.lane, rd: G.round, tm: Math.round((AC.currentTime - G.startTime) * 1000) };
       if (j) payload.j = j;
-      COOP.roomRef.child('events/b' + n.id).set(payload);
+      COOP.roomRef.child('events/' + n.lane + n.id).set(payload);
     }
 
-    /* ================= 協力プレイ：下段（救済レーン）の処理 ================= */
-    /* 救済食材が下段に入るまでの固定オフセット（秒）：元のノートがターゲットを
-       通過した時刻（ミス時刻）＋この値で下段の右端に現れ、そこから travel 秒かけて
-       下段の輪へ届く。両端末ともこの式で計算するので出現タイミングがずれない */
+    /* ================= 協力プレイ：救済レーンの処理 ================= */
+    /* 救済食材がもう一方のレーンに入るまでの固定オフセット（秒）：元のノートが
+       ターゲットを通過した時刻（ミス時刻）＋この値で相手レーンの右端に現れ、
+       そこから travel 秒かけて相手レーンの輪へ届く。両端末ともこの式で計算する
+       ので出現タイミングがずれない */
     const RESCUE_DELAY = 0.55;
     /* アイテムキーから食材データを引く（救済食材を両端末で同じ見た目にするため） */
     function itemFromKey(key) {
@@ -2713,28 +2709,30 @@
       if (key.t === 'x') return SHIRATAKI_XL;
       return FOODS[key.i || 0] || FOODS[0];
     }
-    /* 救済食材ノートを作る。srcは元の上段ノート（または同等の情報を持つオブジェクト）。
-       危険食材（石・どくキノコ・くさった肉）が上段をスルーして流れ直してきた場合は
-       hazard フラグを引き継ぐ：下段では「切ったらダメ／スルーで＋150」になる */
-    function makeRescueNote(src, hitTime, travel) {
+    /* 救済食材ノートを作る。srcは元のメインノート（または同等の情報を持つオブジェクト）。
+       危険食材（石・どくキノコ・くさった肉）がメインのレーンをスルーして流れ直してきた
+       場合は hazard フラグを引き継ぐ：救済側では「切ったらダメ／スルーで＋150」になる。
+       targetLane は流れ直す先のレーン（メインと反対側） */
+    function makeRescueNote(src, hitTime, travel, targetLane) {
       const item = itemFromKey(src.itemKey);
       const long = !!(src.itemKey && (src.itemKey.t === 's' || src.itemKey.t === 'x'));
       const hazard = !!src.hazard || !!(src.itemKey && src.itemKey.t === 'h');
       const el = document.createElement('div');
-      el.className = 'note lane-b' + (hazard ? ' hazard' : '') + (long ? ' long shirataki' : '') + (src.size === 1.5 ? ' big' : src.size === 0.5 ? ' small' : '');
+      el.className = 'note' + (targetLane === 'b' ? ' lane-b' : '') + (hazard ? ' hazard' : '') + (long ? ' long shirataki' : '') + (src.size === 1.5 ? ' big' : src.size === 0.5 ? ' small' : '');
       el.innerHTML = '<div class="foodSvg">' + item.svg + '</div><div class="foodName">' + item.name + '</div>';
       el.style.display = 'none';
       return {
-        id: src.id, lane: 'b', itemKey: src.itemKey, hitTime: hitTime, el: el, svg: item.svg,
+        id: src.id, lane: targetLane, itemKey: src.itemKey, hitTime: hitTime, el: el, svg: item.svg,
         hazard: hazard, long: long, xlong: false, shirataki: long, judged: false, falling: false,
         fallStart: 0, travel: travel, size: src.size || 1, pw: src.pw, gw: src.gw,
         level: src.level || 1, rescue: true
       };
     }
-    /* 上段担当：上段で切り逃した食材を、下段の右端から救済食材として流れ直させる。
-       落下アニメーションではなく、上段で消えたあと下段に新しく流れ直す。
-       via='local' は自分が上段担当で相手へ結果を知らせる場合、
-       via='remote' は相手（ゲスト）が上段担当で、その結果を受けて自分の画面でも
+    /* 自分のレーンで切り逃した食材を、もう一方のレーンの右端から救済食材として
+       流れ直させる。落下アニメーションではなく、元のレーンで消えたあと相手の
+       レーンに新しく流れ直す。
+       via='local' は自分がそのレーンの担当で相手へ結果を知らせる場合、
+       via='remote' は相手が担当で、その結果を受けて自分の画面でも
        同じ救済食材を出す場合（再送はしない） */
     function spawnRescue(n, via) {
       const isHz = !!n.hazard;
@@ -2742,29 +2740,30 @@
       const idx = G.notes.indexOf(n);
       if (idx >= 0) G.notes.splice(idx, 1);
       n.el.remove();
-      /* 危険食材の上段スルーはミスではない（得点にもならない）。
-         そのまま下段へ流れ直したことだけを知らせる */
-      if (isHz) { showJudge('dodge', 'スルー！下段へ', 't'); sfxDodge(); }
-      else { showJudge('miss', 'きりのがし！', 't'); sfxMiss(); }
+      const target = n.lane === 'b' ? 't' : 'b';
+      /* 危険食材のメイン側スルーはミスではない（得点にもならない）。
+         そのままもう一方のレーンへ流れ直したことだけを知らせる */
+      if (isHz) { showJudge('dodge', target === 'b' ? 'スルー！下段へ' : 'スルー！上段へ', n.lane); sfxDodge(); }
+      else { showJudge('miss', 'きりのがし！', n.lane); sfxMiss(); }
       /* 出現タイミングはミス時刻（元のノートのターゲット通過時刻）を基準に決める。
-         ホストの検出タイミング（判定窓＋フレームのブレ）を基準にすると、その分だけ
-         ゲスト側の出現が遅れてカクついて見えるため、検出時刻は使わない */
+         検出タイミング（判定窓＋フレームのブレ）を基準にすると、その分だけ
+         相手側の出現が遅れてカクついて見えるため、検出時刻は使わない */
       const travel = travelForBar(currentBarAt(n.hitTime));
       const hit = n.hitTime + RESCUE_DELAY + travel;
-      const r = makeRescueNote(n, hit, travel);
+      const r = makeRescueNote(n, hit, travel, target);
       G.notes.push(r);
       if (G.notesById) G.notesById.set(r.id, r);
       els.notes.appendChild(r.el);
       if (via !== 'remote' && COOP.roomRef) {
-        /* 上段の結果の送り先：ホスト担当ならゲストの表示用に events、
+        /* メイン側の結果の送り先：ホスト担当ならゲストの表示用に events、
            ゲスト担当ならホストの集計用に covers（キーはレーン付きで一意にする） */
         const payload = {
-          r: isHz ? 'hzpass' : 'miss', ln: 't', rd: G.round, hz: isHz ? 1 : 0,
+          r: isHz ? 'hzpass' : 'miss', ln: n.lane, rd: G.round, hz: isHz ? 1 : 0,
           mt: Math.round((n.hitTime - G.startTime) * 1000), tr: travel,
           it: n.itemKey, s: n.size, pw: n.pw, gw: n.gw
         };
-        if (COOP.role === 'host') COOP.roomRef.child('events/t' + n.id).set(payload);
-        else COOP.roomRef.child('covers/t' + n.id).set(payload);
+        if (COOP.role === 'host') COOP.roomRef.child('events/' + n.lane + n.id).set(payload);
+        else COOP.roomRef.child('covers/' + n.lane + n.id).set(payload);
       }
     }
     /* ゲスト：救済食材も逃したとき（ハート等の集計はホストが covers を受けて行う）。
@@ -2787,20 +2786,15 @@
       if (COOP.roomRef) COOP.roomRef.child('covers/b' + n.id).set({ r: 'fail', ln: 'b', rd: G.round, tm: Math.round((AC.currentTime - G.startTime) * 1000) });
     }
     /* 判定窓を過ぎたノートの協力プレイ用処理（render から呼ばれる）。
-       どちらのレーンも「担当の端末」が処理し、相手の端末は表示専用として
-       結果イベントで解決する（担当は交代で入れ替わる） */
+       どちらのレーンも「そのレーンの担当の端末」が処理し、相手の端末は
+       表示専用として結果イベントで解決する（担当は固定：上段＝ホスト、
+       下段＝ゲスト）。メイン食材を逃したらもう一方のレーンへ救済として
+       流れ直し、救済食材を逃したら失敗（危険食材だけスルー成功で＋150） */
     function handleCoopPass(n) {
-      if (n.lane === 'b') {
-        if (bottomIsMine()) {
-          if (COOP.role === 'guest') { judgeRescueFailLocal(n); return; }
-          /* ホストが下段担当（交代後）：自分で集計し、ゲストへは表示用の結果を送る。
-             危険食材の下段スルーは＋150、通常食材の逃しはハート−1 */
-          if (n.hazard) { judgeDodge(n); sendCoopBottomDisplay('dodge', n); }
-          else { judgeMiss(n); sendCoopBottomDisplay('fail', n); }
-          return;
-        }
-        /* 相手が下段担当の端末では表示専用。結果が来ないまま大幅に過ぎたら静かに消す */
-        if (AC.currentTime - n.hitTime > n.gw + 2.5) {
+      const mine = (n.lane === 'b' && COOP.role === 'guest') || (n.lane !== 'b' && COOP.role === 'host');
+      if (!mine) {
+        /* 相手のレーンは表示専用。結果が来ないまま大幅に過ぎたら静かに消す */
+        if (AC.currentTime - n.hitTime > n.gw + (n.rescue ? 2.5 : 1.5)) {
           n.judged = true;
           n.el.remove();
           const i = G.notes.indexOf(n);
@@ -2808,27 +2802,28 @@
         }
         return;
       }
-      if (!topIsMine()) {
-        /* 相手が上段担当の端末では表示専用。相手の結果イベントで解決する。
-           イベントが来ないまま大幅に過ぎた場合だけ静かに消す */
-        if (AC.currentTime - n.hitTime > n.gw + 1.5) {
-          n.judged = true;
-          n.el.remove();
-          const i = G.notes.indexOf(n);
-          if (i >= 0) G.notes.splice(i, 1);
-        }
+      if (n.rescue) {
+        /* 自分のレーンの救済食材を逃した：これ以上は流れ直さない。
+           通常食材はハート−1、危険食材はスルー成功で＋150 */
+        if (COOP.role === 'guest') { judgeRescueFailLocal(n); return; }
+        /* ホスト（救済が上段に来ているとき）：自分で集計し、ゲストへは表示用の結果を送る */
+        if (n.hazard) { judgeDodge(n); sendCoopDisplay('dodge', n); }
+        else { judgeMiss(n); sendCoopDisplay('fail', n); }
         return;
       }
-      /* 自分が上段担当：通常食材も危険食材も、スルーしたら下段へ流れ直す（救済）。
-         違いは得点のタイミングだけ：通常食材は下段担当が切ればカバー得点、
-         危険食材は上段スルーでは得点にならず、下段でも切らずにスルーして
-         初めて＋150点になる（切ったらどちらの段でもハート−1） */
+      /* 自分のレーンのメイン食材を逃した：通常食材も危険食材も、スルーしたら
+         もう一方のレーンへ流れ直す（救済）。違いは得点のタイミングだけ：
+         通常食材は救済側が切ればカバー得点、危険食材はメイン側スルーでは
+         得点にならず、救済側でも切らずにスルーして初めて＋150点になる
+         （切ったらどちらの段でもハート−1） */
       spawnRescue(n, 'local');
     }
-    /* 下段担当の切る操作：下段の救済食材だけを判定する（担当は交代で入れ替わる） */
+    /* 下段（ゲスト固定）の切る操作：自分のレーンの食材だけを判定する。
+       下段がメインのときは通常食材を通常カットとして、メインが上段のときは
+       流れ直してきた救済食材をカバーとして判定する */
     function doChopBottom() {
       if (!G.playing || G.paused || G.over || !AC) return;
-      if (G.mode !== 'coop' || !bottomIsMine()) return;
+      if (G.mode !== 'coop' || COOP.role !== 'guest') return;
       const eighthDur = 60 / bpmForLevel(G.tempoLevel || 1) / 2;
       const cooldown = Math.min(0.2, eighthDur * 0.8);
       if (AC.currentTime - G.lastChopAt < cooldown) return;
@@ -2842,12 +2837,9 @@
         if (d < bestAbs) { bestAbs = d; best = n; }
       }
       if (best && bestAbs <= best.gw) {
-        if (COOP.role === 'host') {
-          /* ホストが下段担当（交代後）：自分で集計し、ゲストへは表示用の結果を送る */
-          if (best.hazard) { judgeHazardHit(best); sendCoopBottomDisplay('hz', best); }
-          else { judgeHit(best, bestAbs, undefined, true); sendCoopBottomDisplay('cover', best, bestAbs <= best.pw ? 'PERFECT' : 'GOOD'); }
-        } else if (best.hazard) {
-          /* 下段の危険食材を切ってしまったら、1人用と同じくハート−1・コンボリセット
+        const perfect = bestAbs <= best.pw;
+        if (best.hazard) {
+          /* 危険食材を切ってしまったら、1人用と同じくハート−1・コンボリセット
              （集計はホストが covers の 'hz' を受けて行う） */
           best.judged = true;
           best.el.remove();
@@ -2858,8 +2850,8 @@
           if (COOP.roomRef) {
             COOP.roomRef.child('covers/b' + best.id).set({ r: 'hz', ln: 'b', rd: G.round, tm: Math.round((now - G.startTime) * 1000) });
           }
-        } else {
-          const perfect = bestAbs <= best.pw;
+        } else if (best.rescue) {
+          /* 救済食材のカバー：演出は自分の端末で行い、集計はホストへ送る */
           best.judged = true;
           sfxChop(perfect);
           showJudge('cover', 'ナイスカバー！', 'b');
@@ -2870,6 +2862,20 @@
           if (idx >= 0) G.notes.splice(idx, 1);
           if (COOP.roomRef) {
             COOP.roomRef.child('covers/b' + best.id).set({ r: 'cover', ln: 'b', rd: G.round, j: perfect ? 'PERFECT' : 'GOOD', tm: Math.round((now - G.startTime) * 1000) });
+          }
+        } else {
+          /* 下段がメインのときの通常カット：演出は自分の端末で行い、
+             集計はホストへ送る（自分のスコア表示は共有状態で届く） */
+          best.judged = true;
+          sfxChop(perfect);
+          showJudge(perfect ? 'perfect' : 'good', perfect ? 'PERFECT!' : 'GOOD', 'b');
+          showSfxPop(perfect, 'b');
+          spawnHalves(best);
+          best.el.remove();
+          const idx = G.notes.indexOf(best);
+          if (idx >= 0) G.notes.splice(idx, 1);
+          if (COOP.roomRef) {
+            COOP.roomRef.child('covers/b' + best.id).set({ r: 'cut', ln: 'b', rd: G.round, j: perfect ? 'PERFECT' : 'GOOD', tm: Math.round((now - G.startTime) * 1000) });
           }
         }
       }
@@ -3054,7 +3060,7 @@
       role: null, code: '', roomRef: null, inRoom: false, inGame: false,
       joined: false, leaving: false, lastStartAt: 0, round: 0,
       hostName: '', guestName: '', trackBackup: null, uiMode: 'solo', stateTimer: 0,
-      swapped: false
+      mainBottom: false
     };
     let fbDb = null, fbReady = false, serverOffset = 0;
     function ensureFb() {
@@ -3247,47 +3253,13 @@
       }
     }
     /* ゲスト：ホストからの結果を受けて、自分の画面でも演出を出す。
-       上段の結果（ホストが上段担当のとき）では救済食材も出す。
-       下段の結果（交代でホストが下段担当になったとき）は表示専用 */
+       ホストのレーンは上段固定なので、届くのは常に上段の結果。
+       上段メインの切り逃しでは下段へ救済食材も出す。上段の救済食材
+       （下段メインの切り逃しが流れ直してきたもの）の結果は表示専用 */
     function onCoopEvent(snap) {
       const v = snap.val();
       if (!v || v.rd !== G.round || !G.playing || G.mode !== 'coop') return;
       const id = parseInt(String(snap.key).replace(/\D/g, ''), 10);
-      if (v.ln === 'b') {
-        const r = G.notesById ? G.notesById.get(id) : null;
-        if (r && !r.judged) {
-          if (v.r === 'cover') {
-            r.judged = true;
-            G.chopAnimStartB = performance.now();
-            sfxChop(v.j === 'PERFECT');
-            showJudge('cover', 'ナイスカバー！', 'b');
-            showSfxPop(v.j === 'PERFECT', 'b', v.j === 'PERFECT' ? 'PERFECT!' : 'GOOD');
-            spawnHalves(r);
-            r.el.remove();
-            const i = G.notes.indexOf(r);
-            if (i >= 0) G.notes.splice(i, 1);
-          } else if (v.r === 'fail') {
-            r.judged = true; r.falling = true; r.fallStart = performance.now();
-            showJudge('miss', 'MISS', 'b');
-            sfxMiss();
-          } else if (v.r === 'hz') {
-            r.judged = true;
-            r.el.remove();
-            const i = G.notes.indexOf(r);
-            if (i >= 0) G.notes.splice(i, 1);
-            showJudge('miss', 'ダメ！', 'b');
-            sfxMiss();
-          } else if (v.r === 'dodge') {
-            r.judged = true;
-            r.el.remove();
-            const i = G.notes.indexOf(r);
-            if (i >= 0) G.notes.splice(i, 1);
-            showJudge('dodge', 'スルー！ ＋150', 'b');
-            sfxDodge();
-          }
-        }
-        return;
-      }
       const n = G.notesById ? G.notesById.get(id) : null;
       const resolveTop = () => {
         if (n && !n.judged) {
@@ -3305,6 +3277,23 @@
           sfxChop(v.j === 'PERFECT');
         }
         resolveTop();
+      } else if (v.r === 'cover') {
+        /* 上段の救済食材をホストがカバーした（表示専用） */
+        if (n && !n.judged) {
+          G.chopAnimStart = performance.now();
+          spawnHalves(n);
+          showJudge('cover', 'ナイスカバー！', 't');
+          showSfxPop(v.j === 'PERFECT', 't', v.j === 'PERFECT' ? 'PERFECT!' : 'GOOD');
+          sfxChop(v.j === 'PERFECT');
+        }
+        resolveTop();
+      } else if (v.r === 'fail') {
+        /* 上段の救済食材をホストも逃した（表示専用：落下させて消す） */
+        if (n && !n.judged) {
+          n.judged = true; n.falling = true; n.fallStart = performance.now();
+          showJudge('miss', 'MISS', 't');
+          sfxMiss();
+        }
       } else if (v.r === 'hz') {
         resolveTop();
         showJudge('miss', 'ダメ！', 't');
@@ -3315,7 +3304,7 @@
         showJudge('dodge', 'スルー！ ＋150', 't');
         sfxDodge();
       } else if (v.r === 'miss' || v.r === 'hzpass') {
-        /* 通常食材の切り逃し（miss）と、危険食材の上段スルー（hzpass）は
+        /* 通常食材の切り逃し（miss）と、危険食材のメイン側スルー（hzpass）は
            どちらも下段へ流れ直す。危険食材はミス表示にせず、得点もまだ付けない */
         const isHz = v.r === 'hzpass' || !!v.hz;
         resolveTop();
@@ -3325,49 +3314,45 @@
         /* 出現タイミングはイベント受信時刻ではなくミス時刻＋固定オフセットで決める。
            受信が遅れてもずらさず、出現時刻を過ぎていればそのままスポーンする
            （位置は毎フレーム時刻から計算されるので、途中からでも正しい位置に出る） */
-        const r = makeRescueNote(src, G.startTime + (v.mt || 0) / 1000 + RESCUE_DELAY + (v.tr || 2), v.tr || 2);
+        const r = makeRescueNote(src, G.startTime + (v.mt || 0) / 1000 + RESCUE_DELAY + (v.tr || 2), v.tr || 2, 'b');
         G.notes.push(r);
         if (G.notesById) G.notesById.set(r.id, r);
         els.notes.appendChild(r.el);
       }
     }
     /* ホスト：ゲストの結果を受けて、共有スコアへ集計する。
-       下段の結果（ゲストが下段担当のとき）は従来どおりカバー集計、
-       上段の結果（交代でゲストが上段担当になったとき）は上段として集計し、
-       切り逃しは自分の画面でも救済食材として流れ直させる */
+       ゲストのレーンは下段固定なので、届くのは常に下段の結果。
+       下段メインの通常カットは通常集計、救済食材のカバーはカバー集計し、
+       下段メインの切り逃しは自分の画面でも上段へ救済食材として流れ直させる */
     function onCoopCover(snap) {
       const v = snap.val();
       if (!v || v.rd !== G.round || !G.playing || G.over || G.mode !== 'coop') return;
       const id = parseInt(String(snap.key).replace(/\D/g, ''), 10);
-      if (v.ln === 't') {
+      if (v.r === 'miss' || v.r === 'hzpass') {
+        /* 下段メインの切り逃し／危険食材スルー：上段へ救済として流れ直す */
         const n = G.notesById ? G.notesById.get(id) : null;
-        if (v.r === 'cut') {
-          if (n && !n.judged) { G.chopAnimStart = performance.now(); judgeHit(n, 0, v.j === 'PERFECT', false); }
-        } else if (v.r === 'hz') {
-          if (n && !n.judged) judgeHazardHit(n);
-        } else if (v.r === 'miss' || v.r === 'hzpass') {
-          if (n && !n.judged) spawnRescue(n, 'remote');
-          else if (!n) {
-            /* 自分の画面で対象ノートが既に片付いていた場合は、届いた情報から
-               救済食材を組み立て直す（タイミングはミス時刻＋固定オフセット） */
-            const isHz = v.r === 'hzpass' || !!v.hz;
-            const src = { id: id, itemKey: v.it, size: v.s || 1, pw: v.pw, gw: v.gw, level: 1, hazard: isHz };
-            const r2 = makeRescueNote(src, G.startTime + (v.mt || 0) / 1000 + RESCUE_DELAY + (v.tr || 2), v.tr || 2);
-            G.notes.push(r2);
-            if (G.notesById) G.notesById.set(r2.id, r2);
-            els.notes.appendChild(r2.el);
-            if (isHz) { showJudge('dodge', 'スルー！下段へ', 't'); sfxDodge(); }
-            else { showJudge('miss', 'きりのがし！', 't'); sfxMiss(); }
-          }
+        if (n && !n.judged) spawnRescue(n, 'remote');
+        else if (!n) {
+          /* 自分の画面で対象ノートが既に片付いていた場合は、届いた情報から
+             救済食材を組み立て直す（タイミングはミス時刻＋固定オフセット） */
+          const isHz = v.r === 'hzpass' || !!v.hz;
+          const src = { id: id, itemKey: v.it, size: v.s || 1, pw: v.pw, gw: v.gw, level: 1, hazard: isHz };
+          const r2 = makeRescueNote(src, G.startTime + (v.mt || 0) / 1000 + RESCUE_DELAY + (v.tr || 2), v.tr || 2, 't');
+          G.notes.push(r2);
+          if (G.notesById) G.notesById.set(r2.id, r2);
+          els.notes.appendChild(r2.el);
+          if (isHz) { showJudge('dodge', 'スルー！上段へ', 'b'); sfxDodge(); }
+          else { showJudge('miss', 'きりのがし！', 'b'); sfxMiss(); }
         }
         return;
       }
       const r = G.notesById ? G.notesById.get(id) : null;
       if (!r || r.judged) return;
       G.chopAnimStartB = performance.now();
-      if (v.r === 'cover') judgeHit(r, 0, v.j === 'PERFECT', true);
+      if (v.r === 'cut') judgeHit(r, 0, v.j === 'PERFECT', false);
+      else if (v.r === 'cover') judgeHit(r, 0, v.j === 'PERFECT', true);
       else if (v.r === 'fail') judgeMiss(r);
-      /* 下段の危険食材：切ったらハート−1（judgeHazardHit）、
+      /* 危険食材：切ったらハート−1（judgeHazardHit）、
          切らずにスルーできたら＋150（judgeDodge） */
       else if (v.r === 'hz') judgeHazardHit(r);
       else if (v.r === 'dodge') judgeDodge(r);
@@ -3404,7 +3389,7 @@
       /* 開始時刻はサーバー時刻で共有し、各端末の時計へ変換して同時に始める */
       G.startTime = AC.currentTime + Math.max(0.15, (startAt - serverNow()) / 1000);
       COOP.inGame = true;
-      COOP.swapped = false;
+      COOP.mainBottom = false;
       els.titleScreen.hidden = true;
       $('roomScreen').hidden = true;
       els.gameScreen.hidden = false;
@@ -3415,7 +3400,7 @@
       $('chopBtn').hidden = true;
       const cb = $('coopChopBtn');
       cb.hidden = false;
-      /* 切るボタンは担当レーンが交代しても常に「切る！」だけを表示する */
+      /* 切るボタンはメインレーンが切り替わっても常に「切る！」だけを表示する */
       cb.textContent = '切る！';
       $('coopQuitBtn').hidden = false;
       $('pauseBtn').style.display = 'none';
@@ -3565,7 +3550,7 @@
       }
       if (COOP.trackBackup) { selectTrack(COOP.trackBackup, false, false); COOP.trackBackup = null; }
       COOP.roomRef = null; COOP.role = null; COOP.code = '';
-      COOP.hostName = ''; COOP.guestName = ''; COOP.swapped = false;
+      COOP.hostName = ''; COOP.guestName = ''; COOP.mainBottom = false;
       COOP.inRoom = false; COOP.inGame = false; COOP.joined = false;
       COOP.lastStartAt = 0; COOP.leaving = false;
       $('coopEntryPanel').hidden = false;
@@ -3691,7 +3676,8 @@
     });
     const stageTap = (e) => {
       e.preventDefault();
-      /* 協力プレイでは自分の担当レーンだけを切る（担当は交代で入れ替わる） */
+      /* 協力プレイでは自分のレーンだけを切る（担当は固定：ホスト＝上段、ゲスト＝下段。
+         自分のレーンがメインのときはメイン食材を、救済側のときは救済食材を切る） */
       if (G.mode === 'coop') { if (topIsMine()) doChop(); else doChopBottom(); }
       else doChop();
     };
