@@ -1384,17 +1384,35 @@ function nearestSlime(x, y, maxD) {
    両端（攻撃者・対象の中心そのもの）は判定から除く（自分の足元のタイルで誤判定しないため）。
    対象外：ゴブリンの矢（壁を越えるのが仕様）、青・ミミックのブロック破壊（壁そのものへの攻撃） */
 function losBlocked(x1, y1, x2, y2) {
-  var dx = x2 - x1, dy = y2 - y1;
-  var dist = Math.sqrt(dx * dx + dy * dy);
-  var steps = Math.max(1, Math.ceil(dist / 4));
-  for (var i = 1; i < steps; i++) {
-    var px = x1 + dx * i / steps, py = y1 + dy * i / steps;
-    var tx = Math.floor(px / T), ty = Math.floor(py / T);
-    if (isWallTile(tileAt(tx, ty))) return true;
-    var wb = woodTileMap[tx + ',' + ty];
-    if (wb && !wb.taken) return true;
+  // 線分とタイル矩形（3px膨らませ）の交差で判定する。中心線の点サンプリングだと
+  // 斜めに接したブロック同士の角の一点をすり抜けてしまうため、角の隙間も塞ぐ。
+  var M = 3;
+  var minTx = Math.floor(Math.min(x1, x2) / T) - 1, maxTx = Math.floor(Math.max(x1, x2) / T) + 1;
+  var minTy = Math.floor(Math.min(y1, y2) / T) - 1, maxTy = Math.floor(Math.max(y1, y2) / T) + 1;
+  for (var ty = minTy; ty <= maxTy; ty++) {
+    for (var tx = minTx; tx <= maxTx; tx++) {
+      var solid = isWallTile(tileAt(tx, ty));
+      if (!solid) { var wb = woodTileMap[tx + ',' + ty]; solid = !!(wb && !wb.taken); }
+      if (!solid) continue;
+      if (segHitsBox(x1, y1, x2, y2, tx * T - M, ty * T - M, tx * T + T + M, ty * T + T + M)) return true;
+    }
   }
   return false;
+}
+function segHitsBox(x1, y1, x2, y2, bx0, by0, bx1, by1) {
+  // Liang-Barsky：線分のパラメータ範囲 [0.001, 0.999] が矩形と重なれば交差
+  var dx = x2 - x1, dy = y2 - y1;
+  var t0 = 0.001, t1 = 0.999;
+  var p = [-dx, dx, -dy, dy], q = [x1 - bx0, bx1 - x1, y1 - by0, by1 - y1];
+  for (var i = 0; i < 4; i++) {
+    if (p[i] === 0) { if (q[i] < 0) return false; }
+    else {
+      var r = q[i] / p[i];
+      if (p[i] < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
+      else { if (r < t0) return false; if (r < t1) t1 = r; }
+    }
+  }
+  return t0 <= t1;
 }
 /* 🖐️ボタン／Eキー：気絶した仲間の復活作業／施設メニュー開閉／仲間へ食べ物を渡す（長押し不要・1タップ） */
 function doHandAction() {
@@ -2930,9 +2948,50 @@ function navSteer(c, tx, ty, dt) {
   c._nav = { pts: pts, i: 0, tx: tx, ty: ty, progI: -1, progD: undefined, progT: 0, age: 0 };
   return navWaypoint(c);
 }
+/* 移動レイヤー共通：進行方向（vx,vy）の前方で、実際に進路を塞いでいる未収穫の木ブロックを探す。
+   仲間が木ブロックに囲まれ・塞がれて動けない場合に、自分で壊して進むための対象選定 */
+function findBlockingWood(c, vx, vy) {
+  var best = null, bd = 56 * 56;
+  for (var i = 0; i < woodBlocks.length; i++) {
+    var wb = woodBlocks[i];
+    if (wb.taken) continue;
+    var dx = wb.x - c.x, dy = wb.y - c.y;
+    var d2 = dx * dx + dy * dy;
+    if (d2 > bd) continue;
+    var d = Math.sqrt(d2) || 1;
+    if ((dx * vx + dy * vy) / d < 0.35) continue; // 前方にあるものだけ
+    // ブロックのタイル矩形が自分の円にほぼ接している（＝本当に進路を塞いでいる）ものだけ
+    var cx = clamp(c.x, wb.tx * T, wb.tx * T + T), cy = clamp(c.y, wb.ty * T, wb.ty * T + T);
+    if (dist2(c.x, c.y, cx, cy) > (c.r + 10) * (c.r + 10)) continue;
+    bd = d2; best = wb;
+  }
+  return best;
+}
 function moveToward(c, tx, ty, dt, stopD) {
   var dx = tx - c.x, dy = ty - c.y, d = Math.sqrt(dx * dx + dy * dy);
-  if (d <= (stopD || 6)) { c.stuckT = 0; c._watchD = undefined; c._nav = null; c._navStillT = 0; c._navEngTx = undefined; return true; }
+  if (d <= (stopD || 6)) { c.stuckT = 0; c._watchD = undefined; c._nav = null; c._navStillT = 0; c._navEngTx = undefined; c._digWb = null; return true; }
+  // 木ブロック掘り進み（全仲間・全タスク共通の移動レイヤー挙動）：掘りかけのブロックがあれば移動より先に掘り続ける。
+  // 壊し方は通常の収穫フローと同じ（0.75秒間隔で叩き、3回で木材1〜3個。ドロップは本人のバッグへ直接入る）
+  if (c._digWb) {
+    var dwb = c._digWb;
+    if (dwb.taken || dist2(c.x, c.y, dwb.x, dwb.y) > 64 * 64) c._digWb = null;
+    else {
+      c.face.x = Math.sign(dwb.x - c.x); c.face.y = 0;
+      if (Math.abs(dwb.y - c.y) > Math.abs(dwb.x - c.x)) { c.face.x = 0; c.face.y = Math.sign(dwb.y - c.y); }
+      c._digT = (c._digT || 0) - dt;
+      if (c._digT <= 0) {
+        c._digT = 0.75; c.swingT = 0.2;
+        dwb.hp -= 1; burst(dwb.x, dwb.y, '#b08954', 5, 80);
+        if (dwb.hp <= 0) {
+          dwb.taken = true; dwb.respawnT = 120; dwb.hp = 3;
+          var wn = irnd(1, 3);
+          c.bag.wood = (c.bag.wood || 0) + wn; c.bagN += wn;
+          c._digWb = null; c._nav = null; c.stuckT = 0; c._watchD = undefined;
+        }
+      }
+      return false;
+    }
+  }
   // 目的地への見通しがなければBFS経路のウェイポイントを辿る
   var wp = navSteer(c, tx, ty, dt);
   var mvx = wp ? wp.x : tx, mvy = wp ? wp.y : ty;
@@ -2947,6 +3006,11 @@ function moveToward(c, tx, ty, dt, stopD) {
   // 横にずれて回避：直行時のみ（経路追従中は経路に任せる）。このフレームでほとんど進めなかったら垂直方向にもずらしてみる
   if (!wp && Math.abs(c.x - ox) + Math.abs(c.y - oy) < c.speed * dt * 0.25) {
     tryMove(c, -vy * c.speed * dt, vx * c.speed * dt);
+    // 横ずらしでも進めず、目の前が未収穫の木ブロックなら掘って進む（次フレームから掘り進み分岐に入る）
+    if (Math.abs(c.x - ox) + Math.abs(c.y - oy) < c.speed * dt * 0.25) {
+      var fbw = findBlockingWood(c, vx, vy);
+      if (fbw) { c._digWb = fbw; c._digT = 0; c._nav = null; }
+    }
   }
   // スタック検知（呼び出し側の「諦めて次へ」フォールバック用）：
   // 1.2秒ごとに目標への接近量を見る。壁際で往復するだけの震えも「進めていない」と数える
@@ -2961,6 +3025,11 @@ function moveToward(c, tx, ty, dt, stopD) {
       if (d > c._watchD - 14) c.stuckT += c._watchT; // 1.2秒で14px以上近づけていない
       else c.stuckT = 0;
       c._watchD = d; c._watchT = 0;
+    }
+    // スタックが続いていて、目の前が未収穫の木ブロックなら掘って進む（壁際の往復で進めないケース用）
+    if (c.stuckT >= 1.2 && !c._digWb) {
+      var fbw2 = findBlockingWood(c, vx, vy);
+      if (fbw2) { c._digWb = fbw2; c._digT = 0; c._nav = null; c.stuckT = 0; }
     }
   }
   // 最終保険：同じ目的地に向かい続けているのに約5秒ほぼ動けていない（12px圏内から出ていない）
