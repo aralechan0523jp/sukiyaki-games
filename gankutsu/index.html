@@ -248,7 +248,7 @@
         🗝️ 宝箱…各階に7個。🖐️で開ける。中身は空っぽ×3・アーティファクト×1・ミミック×1・催眠ガス×2。アーティファクトをコアに献上すると次の階へ（持ち物・道具はリセット）。地下12階の献上でエンディング！<br />
         🔨 作業台…ピッケル・剣・ランタン・たいまつ・篝火・方位磁石を作る（作成には1件<b>4秒</b>かかる。作業台の近くに人がいる間だけ進むよ）<br />
         🔥 製錬炉…鉱石をインゴットに精錬する（精錬1回につき木材1個が必要・<b>1個10秒</b>かかる。終わると自動でアイテム欄に入る）。精錬は離れていても進むよ<br />
-        🔥 焚き火…🖐️メニューで木材を入れて火を保つ（燃料ゲージ最大6・木材1個で+1ゲージ＝25秒）。火がついている間は料理（焼ききのこ・シチュー、<b>1品3秒</b>かかる）も作れて、そばでは体力が回復する。火が消えると光も回復も止まるよ。火が消えたら、再点火には<b>木材1個と20秒の作業</b>が必要だよ（🖐️メニューの「火をつける」から開始。作業は焚き火の近くにいる間だけ進む）<br />
+        🔥 焚き火…火は共有ボックスの木材で自動で保たれる（25秒ごとに木材1個を消費し、ボックスの木材がなくなると消える）。火がついている間は料理（焼ききのこ・シチュー、<b>1品3秒</b>かかる）も作れて、そばでは体力が回復する。火が消えると光も回復も止まるよ。火が消えたら、再点火には<b>木材1個と20秒の作業</b>が必要だよ（🖐️メニューの「火をつける」から開始。作業は焚き火の近くにいる間だけ進む）<br />
         📋 注文キュー…料理と精錬とクラフトは<b>別々のキュー</b>（各最大<b>20件</b>）で、<b>同時に進められる</b>。料理は<b>焚き火の近くに人がいる間だけ</b>、クラフトは<b>作業台の近くに人がいる間だけ</b>進み、精錬は離れていても進むよ<br />
         📦 共有ボックス…仲間とアイテムを出し入れ<br />
         🍄 菜園…🖐️でキノコを植えるとキノコ畑になる（キノコは手持ち→共有ボックスの順に使う）。🖐️で水をあげると育ち（水も手持ち→共有ボックスの順に使う）、育ったキノコは👊で収穫（収穫しても植え直しは要らない。仲間のココも手伝ってくれる）<br /><br />
@@ -505,7 +505,7 @@ var HTORCH_TIME = 60; // たいまつ1本の持続時間（秒）
 var htorchT = HTORCH_TIME; // 燃焼中の1本の残り時間（所持数が0の間は満タンにリセットされる）
 var selKey = 'pick'; // 選択中ホットバーキー
 var coreEnergy = 0, coreLv = 1, cleared = false;
-var fireFuel = 6; // 焚き火の燃料ゲージ（最大6・1ゲージ25秒・木材1個で+1、0で消火）
+var fireFuel = 25; // 焚き火の点火タイマー（秒）：火がついている間カウントダウンし、0になるたび共有ボックスの木材を1個消費して25秒に戻す。ボックスに木材がなければ0のまま消火（fireFuel > 0 が「点火中」の判定）
 /* 施設の破壊・作り直し・時間のかかる精錬/調理 */
 var REBUILD_COST = {
   furnace: { stone: 50, wood: 10, copperOre: 10 },
@@ -568,7 +568,7 @@ var DISHES = [
 ];
 /* 料理の注文：材料＋水1個を注文時に消費してキューに積む。注文できたら true */
 function orderDish(d) {
-  if (fireFuel <= 0) { toast('火が消えているので料理できない。木材を入れて火をつけよう', 2600); return false; }
+  if (fireFuel <= 0) { toast('火が消えているので料理できない。🖐️メニューから再点火しよう', 2600); return false; }
   if (cookQueue.length >= JOB_QUEUE_MAX) { toast('📋 注文がいっぱい！（最大' + JOB_QUEUE_MAX + '件）終わるまで待ってね', 2800); return false; }
   if (countPlus('water') < 1) { toast('💧 水がない！地底湖の岸で水に向かって🖐️を押して水を汲んでこよう', 3000); return false; }
   if (!canAffordPlus(d.cost)) return false;
@@ -2314,12 +2314,13 @@ function openPanel(type) {
 
   if (type === 'fire') {
     var lit = fireFuel > 0;
-    var seg = Math.ceil(fireFuel);
     var fireFac = facByType('fire');
     var relighting = !!(fireFac && fireFac.relight);
-    var gaugeHtml = '';
-    for (var gi = 0; gi < 6; gi++) gaugeHtml += gi < seg ? '◾️' : '◽️';
-    body.appendChild(el('<div style="font-size:17px;margin-bottom:6px;">🪵' + gaugeHtml + ' <b>' + seg + '/6</b>' + (lit ? '' : '<div style="font-size:13px;color:#ff8a7a;font-weight:700;margin-top:4px;">火が消えている…再点火には木材1個と20秒の作業が必要だよ。</div>') + '</div>'));
+    // 燃料ゲージは廃止（火は共有ボックスの木材で自動維持）。代わりにボックスの木材数を表示する（ボックス破壊中は0）
+    var boxFacP = facByType('box');
+    var boxWoodN = (boxFacP && !boxFacP.broken) ? (box.wood || 0) : 0;
+    body.appendChild(el('<div style="font-size:15px;margin-bottom:6px;">🪵 共有ボックスの木材 ×' + boxWoodN + '</div>'));
+    if (!lit) body.appendChild(el('<div style="font-size:13px;color:#ff8a7a;font-weight:700;margin-bottom:6px;">火が消えている…再点火には木材1が必要</div>'));
     if (relighting) {
       // 再点火の作業中：進捗バー（作り直しと同形式）。この間は通常の燃料投入はできない
       var rlpct = Math.floor(fireFac.relight.t / RELIGHT_TIME * 100);
@@ -2347,28 +2348,6 @@ function openPanel(type) {
         toast('🔥 再点火をはじめた！近くで見守って（20秒）');
         refreshHotbar(); openPanel('fire');
       }, !canAffordPlus({ wood: 1 }));
-    } else {
-    var fr = row('🪵', '木材を入れる', '手持ちの木材 ' + (inv.wood || 0) + '個 → 燃料 +1ゲージ', '入れる', function () {
-      if ((inv.wood || 0) < 1) { toast('🪵 木材を持っていない！木材ブロックを叩いて集めよう', 2600); return; }
-      if (fireFuel >= 6) { toast('燃料は満タンだよ'); return; }
-      var wasOut = fireFuel <= 0;
-      addInv('wood', -1);
-      if (NET.mode === 'guest') { netReq({ t: 'fuel', n: 1 }); toast(wasOut ? '🔥 焚き火に火がついた！' : '🪵 木材を入れた'); }
-      else { fireFuel = Math.min(6, fireFuel + 1); SE.craft(); toast(wasOut ? '🔥 焚き火に火がついた！' : '🪵 木材を入れた（燃料 ' + Math.ceil(fireFuel) + '/6）'); }
-      refreshHotbar(); openPanel('fire');
-    }, false);
-    var bAllF = document.createElement('button');
-    bAllF.className = 'pbtn sub'; bAllF.textContent = '全部';
-    bAllF.addEventListener('click', function () {
-      var n = Math.min(inv.wood || 0, Math.ceil(6 - fireFuel));
-      if (n < 1) { toast((inv.wood || 0) < 1 ? '🪵 木材を持っていない！木材ブロックを叩いて集めよう' : '燃料は満タンだよ', 2400); return; }
-      var wasOut = fireFuel <= 0;
-      addInv('wood', -n);
-      if (NET.mode === 'guest') { netReq({ t: 'fuel', n: n }); toast(wasOut ? '🔥 焚き火に火がついた！' : '🪵 木材を ' + n + '個 入れた'); }
-      else { fireFuel = Math.min(6, fireFuel + n); SE.craft(); toast(wasOut ? '🔥 焚き火に火がついた！' : '🪵 木材を ' + n + '個 入れた（燃料 ' + Math.ceil(fireFuel) + '/6）'); }
-      refreshHotbar(); openPanel('fire');
-    });
-    fr.appendChild(bAllF);
     }
     if (!lit) body.appendChild(el('<div style="font-size:13px;color:#ff8a7a;font-weight:700;margin-bottom:6px;">火が消えているので料理できない。</div>'));
     body.appendChild(el(queueStatusHtml('cook')));
@@ -2515,24 +2494,28 @@ function update(dt) {
   plots.forEach(function (pl) {
     if (pl.planted && pl.wet && pl.stage < 3) { pl.timer += dt; if (pl.timer > 16) { pl.timer = 0; pl.stage++; } }
   });
-  /* --- 焚き火の燃料（1ゲージ25秒で減少、0で消火） --- */
+  /* --- 焚き火の燃料（ゲージ廃止：25秒ごとに共有ボックスの木材を1個消費して火を維持する） ---
+     fireFuel は「次の消費までの残り秒数」。点火中はカウントダウンし、0になるたびにボックスの木材で次の25秒へ。
+     消費の判定はホスト/ソロ権威（ゲストはスナップショットの fireFuel で追随し、自分のタイマーでは消火しない）。
+     焚き火・共有ボックスのどちらかが壊れている間は木材を使えない（0扱い）。手持ちの木材は自動では使わない。
+     一度消えたら自動では再点火しない（再点火はパネルからの20秒作業のみ） */
   if (fireFuel > 0) {
-    fireFuel = Math.max(0, fireFuel - dt / 25);
-    /* 共有ボックスから自動補充：火がついている間は、ボックスに木材がある限りゲージを満タン（6）に保つ。
-       表示ゲージが6未満なら、ボックスの木材を1個使って1ゲージ戻すのを満タンまで繰り返す（木材が足りなければある分だけ）。
-       補充はホスト/ソロ権威（ゲストは fireFuel とボックスをスナップショットで同期するので何もしない）。
-       ボックス破壊中・焚き火破壊中は補充しない。手持ちの木材は自動では使わない。
-       完全に消火した後（fireFuel=0）はこのブロック自体に入らないので、自動では再点火しない（再点火はパネルからの20秒作業のみ） */
-    if (!isGuestMode()) {
-      var fireF5 = facByType('fire'), boxF5 = facByType('box');
-      while (Math.ceil(fireFuel) < 6 && fireF5 && !fireF5.broken && boxF5 && !boxF5.broken && (box.wood || 0) >= 1) {
-        addBox('wood', -1);
-        fireFuel = Math.min(6, fireFuel + 1);
-      }
-    }
+    fireFuel -= dt;
     if (fireFuel <= 0) {
-      toast('🔥 焚き火の火が消えた…コアの光も消えて真っ暗だ。🖐️メニューから再点火しよう（木材1個・20秒の作業）', 3400);
-      if (panelType === 'fire') openPanel('fire');
+      if (!isGuestMode()) {
+        var fireF5 = facByType('fire'), boxF5 = facByType('box');
+        while (fireFuel <= 0 && fireF5 && !fireF5.broken && boxF5 && !boxF5.broken && (box.wood || 0) >= 1) {
+          addBox('wood', -1);
+          fireFuel += 25;
+        }
+        if (fireFuel <= 0) {
+          fireFuel = 0;
+          toast('🔥 焚き火の火が消えた（共有ボックスの木材が尽きた）', 3400);
+          if (panelType === 'fire') openPanel('fire');
+        }
+      } else {
+        fireFuel = 0.05; // ゲストはホストの判定（スナップショット）を待つ
+      }
     }
   }
   /* --- 木材ブロックの復活（2分） --- */
@@ -2563,14 +2546,14 @@ function update(dt) {
         }
       }
     }
-    /* 再点火の進捗（消火中の焚き火だけ。作り直しと同じ流儀で、近くにいる間だけ進み、離れると止まる。完了で fireFuel = 1 になり点火する） */
+    /* 再点火の進捗（消火中の焚き火だけ。作り直しと同じ流儀で、近くにいる間だけ進み、離れると止まる。完了で点火し、次の木材消費まで25秒） */
     if (f.relight && f.type === 'fire' && !f.broken) {
       var rlNear = (!p.down && dist2(p.x, p.y, f.x, f.y) < 80 * 80) || netRemoteNear(f.x, f.y, 80);
       if (rlNear) {
         f.relight.t += dt;
         if (f.relight.t >= RELIGHT_TIME) {
           f.relight = null;
-          fireFuel = 1;
+          fireFuel = 25;
           burst(f.x, f.y, '#ff9a3c', 18, 120); SE.levelup();
           toast('🔥 焚き火に火がついた！');
           if (panelType === 'fire') openPanel('fire');
@@ -4075,9 +4058,6 @@ function render() {
         ctx.beginPath(); ctx.ellipse(px + Math.sin(gameTime * 1.8) * 2, py - 12, 5, 7, 0, 0, 7); ctx.fill();
         ctx.beginPath(); ctx.ellipse(px + Math.sin(gameTime * 1.8 + 2) * 3, py - 22, 3.4, 4.6, 0, 0, 7); ctx.fill();
       }
-      // 燃料ゲージミニ表示（焚き火の下）
-      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(px - 19, py + 21, 38, 6);
-      if (fireFuel > 0) { ctx.fillStyle = fireFuel > 2 ? '#ff9a3c' : '#ff5f4d'; ctx.fillRect(px - 18, py + 22, 36 * clamp(fireFuel / 6, 0, 1), 4); }
     } else if (f.type === 'bench') {
       // 作業台：木の机（天板＋脚＋棚板）＋上に道具と材木
       ctx.fillStyle = '#5d3c1e';
@@ -4446,7 +4426,7 @@ function startGameCore(seed, humans) {
     inv.gold = keepGoldInv; box.gold = keepGoldBox;
   }
   coreEnergy = 0; coreLv = 1; cleared = false;
-  fireFuel = 6;
+  fireFuel = 25;
   cookQueue = []; smeltQueue = []; craftQueue = [];
   gameTime = 0; dayPrev = 1; minedCount = 0; killCount = 0; spawnT = 6; spawnT2 = 6;
   drops = []; particles = []; floaters = []; slimes = []; arrows = [];
@@ -4872,7 +4852,7 @@ function netBuildWorld() {
 function applyWorld(w) {
   if (!w) return;
   gameTime = w.t || 0;
-  fireFuel = (typeof w.fire === 'number') ? w.fire : 6;
+  fireFuel = (typeof w.fire === 'number') ? w.fire : 25;
   coreEnergy = w.ce || 0; coreLv = w.cl || 1;
   if (w.cleared && !cleared) { cleared = true; ended = true; showEnding(); }
   if (w.box) box = w.box;
@@ -5136,7 +5116,6 @@ function netProcessReq(q) {
       if (f3 && startRepairWork(f3)) toast('🔧 誰かが ' + f3.label + ' の修復を始めた', 2000);
       break;
     }
-    case 'fuel': if (q.n > 0 && fireFuel > 0) fireFuel = clamp(fireFuel + q.n, 0, 6); break; // 消火中の投入は受け付けない（再点火は20秒作業の relight 経由のみ。即点火の抜け道を塞ぐ）
     case 'boxIn': box[q.key] = (box[q.key] || 0) + (q.n || 1); break;
     case 'boxOut': {
       var have = box[q.key] || 0, n2 = Math.min(have, q.n || 1);
